@@ -2,7 +2,7 @@
 
 A modern, customizable login page for HCL Domino Server with beautiful design and easy configuration.
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 ![Domino](https://img.shields.io/badge/HCL%20Domino-12.x%20%7C%2014.x-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -77,7 +77,15 @@ DominoCustomWebPageApril26/
 ```javascript
 branding: {
     companyName: "Your Company",
-    logoUrl: "images/your-logo.svg",
+    logoUrl: "images/your-logo.svg",      // Primary logo (SVG, PNG, JPG, WEBP)
+    logoFallbackUrl: "images/logo.png",   // Fallback for older browsers
+    logoFormat: "auto",                    // "svg", "png", "jpg", "auto"
+    logoDarkModeUrl: "images/logo-dark.svg", // Optional dark mode variant
+    logo: {
+        maxWidth: 200,
+        maxHeight: null,
+        objectFit: "contain"
+    },
     welcomeTitle: "Welcome Back",
     welcomeSubtitle: "Sign in to continue"
 }
@@ -116,7 +124,12 @@ See [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for complete instructions.
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `branding.logoUrl` | Path to company logo | `images/logo-placeholder.svg` |
+| `branding.logoUrl` | Primary logo (SVG/PNG/JPG/WEBP) | `images/logo-placeholder.svg` |
+| `branding.logoFallbackUrl` | Fallback logo URL | `""` |
+| `branding.logoFormat` | Format hint (svg/png/jpg/auto) | `auto` |
+| `branding.logoDarkModeUrl` | Dark mode logo variant | `""` |
+| `branding.logo.maxWidth` | Logo max width in pixels | `200` |
+| `branding.logo.objectFit` | Object-fit for raster images | `contain` |
 | `branding.welcomeTitle` | Main heading text | `Welcome Back` |
 | `theme.primaryColor` | Button and accent color | `#0066CC` |
 | `theme.backgroundGradientStart` | Gradient start color | `#667eea` |

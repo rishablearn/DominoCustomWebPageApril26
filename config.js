@@ -21,16 +21,72 @@ const DominoLoginConfig = {
         // Company/Organization name displayed on the login page
         companyName: "Your Company Name",
         
-        // Path to your company logo (relative or absolute URL)
-        // Recommended size: 200x60 pixels, PNG or SVG format
-        // Leave empty string "" to hide logo
+        // --------------------------------------------------------
+        // LOGO CONFIGURATION - Supports SVG, PNG, JPG, WEBP, GIF
+        // --------------------------------------------------------
+        
+        // Primary logo URL (relative or absolute URL)
+        // Supported formats: SVG (recommended), PNG, JPG, WEBP, GIF
+        // Leave empty string "" to hide logo and show company name only
         logoUrl: "images/logo-placeholder.svg",
         
-        // Alternative text for the logo (accessibility)
+        // Fallback logo URL (used if primary fails to load)
+        // Useful for providing PNG fallback for SVG logos
+        logoFallbackUrl: "",
+        
+        // Logo format hint - helps optimize loading
+        // Options: "svg", "png", "jpg", "webp", "gif", "auto"
+        logoFormat: "auto",
+        
+        // Alternative text for the logo (accessibility - WCAG required)
         logoAlt: "Company Logo",
         
-        // Logo maximum width in pixels
-        logoMaxWidth: 200,
+        // Logo sizing options
+        logo: {
+            // Maximum width in pixels (applies to all formats)
+            maxWidth: 200,
+            
+            // Maximum height in pixels (set to null for auto)
+            maxHeight: null,
+            
+            // Specific width (overrides maxWidth if set)
+            width: null,
+            
+            // Specific height (overrides maxHeight if set)
+            height: null,
+            
+            // Object-fit behavior for raster images (PNG, JPG, etc.)
+            // Options: "contain", "cover", "fill", "scale-down", "none"
+            objectFit: "contain",
+            
+            // Padding around logo in pixels
+            padding: 0,
+            
+            // Background color behind logo (useful for transparent PNGs)
+            // Set to null for transparent, or use color code
+            backgroundColor: null,
+            
+            // Border radius in pixels (0 for square corners)
+            borderRadius: 0,
+            
+            // Add drop shadow to logo
+            shadow: false,
+            
+            // Invert logo colors for dark backgrounds (useful for SVGs)
+            invertOnDarkMode: false
+        },
+        
+        // Dark mode logo variant (used when system is in dark mode)
+        // Leave empty to use primary logo
+        logoDarkModeUrl: "",
+        
+        // High-DPI/Retina logo (2x resolution for PNG/JPG)
+        // Automatically used on high-DPI screens
+        logoRetina2xUrl: "",
+        
+        // Logo loading behavior
+        // Options: "eager" (load immediately), "lazy" (load when visible)
+        logoLoading: "eager",
         
         // Login page title (shown in browser tab)
         pageTitle: "Secure Login - HCL Domino",
