@@ -2,32 +2,62 @@
 
 A modern, customizable login page for HCL Domino Server with beautiful design and easy configuration.
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![Domino](https://img.shields.io/badge/HCL%20Domino-12.x%20%7C%2014.x-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## ✨ Features
 
+### Core Features
 - **Modern Design** - Beautiful, responsive UI with smooth animations
 - **Fully Customizable** - Easy configuration via `config.js`
 - **Domino Ready** - Built specifically for HCL Domino session authentication
-- **Accessibility** - WCAG 2.1 compliant with keyboard navigation support
-- **Dark Mode** - Automatic dark mode based on system preferences
-- **Error Handling** - Built-in support for Domino error messages (reasontype 1-4)
-- **Mobile Responsive** - Works perfectly on all device sizes
-- **Sample Themes** - 4 pre-built themes included
-- **Complete Documentation** - Detailed guides for deployment and customization
+- **Feature Toggles** - All features can be turned ON/OFF via simple switches
+
+### Security Features
+- **Multi-Factor Authentication (MFA)** - 2FA UI with TOTP support
+- **Accessible CAPTCHA** - Visual + Audio CAPTCHA for visually impaired users
+- **Password Strength Meter** - Real-time password strength feedback
+- **Rate Limiting UI** - Warning after failed attempts
+- **WebAuthn/Passkeys** - Modern passwordless authentication
+- **Session Timeout Warning** - Alerts before session expiry
+
+### Internationalization
+- **Multi-Language (i18n)** - 10 languages included (EN, ES, FR, DE, PT, ZH, JA, AR, HE, HI)
+- **RTL Support** - Full right-to-left language support (Arabic, Hebrew)
+- **Language Selector** - Easy language switching dropdown
+
+### UX Features
+- **Theme Switcher** - Light/Dark/Auto mode toggle
+- **Offline Detection** - Network status indicator
+- **Remember Username** - Persist last username
+- **SSO/Social Login** - Microsoft, Google, Apple, GitHub, LinkedIn buttons
+- **Domain Selector** - Multi-tenant/domain selection
+
+### Accessibility (WCAG 2.1)
+- **Screen Reader Support** - ARIA labels and announcements
+- **Keyboard Navigation** - Full keyboard accessibility
+- **High Contrast Mode** - Enhanced visibility option
+- **Reduced Motion** - Respects user preferences
+
+### Additional Features
+- **Cookie Consent** - GDPR compliance banner
+- **Analytics Hooks** - Google Analytics, Adobe, custom endpoints
+- **A/B Testing** - Variant support for testing
+- **Debug Mode** - Development debugging panel
 
 ## 📁 Project Structure
 
 ```
 DominoCustomWebPageApril26/
 ├── CustomLoginForm.html        # Main login form (modular version)
-├── config.js                   # Configuration file (customize here!)
+├── config.js                   # Configuration file (all feature toggles!)
 ├── css/
 │   └── login.css               # Stylesheet with CSS variables
 ├── js/
-│   └── login.js                # Form handling and interactions
+│   └── login.js                # Form handling and all features
+├── i18n/
+│   └── translations.js         # Multi-language translations (10 languages)
 ├── images/
 │   └── logo-placeholder.svg    # Sample logo (replace with yours)
 ├── samples/                    # Pre-built theme configurations
