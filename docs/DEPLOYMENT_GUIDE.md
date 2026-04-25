@@ -4,9 +4,20 @@
 
 This guide provides comprehensive instructions for deploying the custom login page on HCL Domino Server using the Domino Web Server Configuration database (DOMCFG.NSF).
 
-**Version:** 1.0.0  
+**Version:** 2.0.0  
 **Last Updated:** April 2026  
 **Compatible with:** HCL Domino 12.x, 14.x
+
+### What's New in v2.0.0
+
+- **Feature Toggles**: All features can be enabled/disabled via `config.js`
+- **Multi-Language (i18n)**: 10 languages with RTL support
+- **Password Strength Meter**: Real-time password feedback
+- **Theme Switcher**: Light/Dark/Auto modes
+- **Accessible CAPTCHA**: Math CAPTCHA with audio support
+- **Offline Detection**: Network status indicator
+- **Session Warning**: Timeout alerts
+- **And more**: See `config.js` for all options
 
 ---
 
@@ -170,14 +181,18 @@ Embed all CSS and JavaScript directly in the HTML form. This is the simplest app
    - `css/login.css` → Reference as `/domcfg.nsf/login.css`
    - `js/login.js` → Reference as `/domcfg.nsf/login.js`
    - `config.js` → Reference as `/domcfg.nsf/config.js`
+   - `i18n/translations.js` → Reference as `/domcfg.nsf/translations.js`
    - `images/logo-placeholder.svg` → Reference as `/domcfg.nsf/logo.svg`
 
 5. Update HTML references:
 ```html
 <link rel="stylesheet" href="/domcfg.nsf/login.css">
 <script src="/domcfg.nsf/config.js"></script>
+<script src="/domcfg.nsf/translations.js"></script>
 <script src="/domcfg.nsf/login.js"></script>
 ```
+
+> **Note:** The i18n translations file must be loaded BEFORE login.js
 
 ### Option C: Separate Database for Resources
 
@@ -800,4 +815,155 @@ If issues occur, revert to default login:
 
 ---
 
-*Document Version: 1.1.0 | April 2026*
+---
+
+## Feature Compatibility Matrix
+
+Not all features work out-of-the-box with Domino. Here's what works:
+
+### ✅ Client-Side Only (Works Immediately)
+
+| Feature | Config Key | Notes |
+|---------|------------|-------|
+| Password Strength | `enablePasswordStrength` | Fully client-side |
+| Theme Switcher | `enableThemeSwitcher` | Uses localStorage |
+| Language Selector | `enableI18n` | Uses localStorage |
+| Math CAPTCHA | `enableCaptcha` | Client-side validation |
+| Audio CAPTCHA | `enableAccessibleCaptcha` | Uses Web Speech API |
+| Offline Detection | `enableOfflineDetection` | Browser API |
+| Remember Username | `enableRememberUsername` | Uses localStorage |
+| Session Warning | `enableSessionWarning` | Client-side timer |
+| Animations | `enableAnimations` | CSS/JS animations |
+| Keyboard Shortcuts | `enableKeyboardShortcuts` | Client-side |
+
+### ⚠️ Requires Backend Development
+
+| Feature | Config Key | Requirements |
+|---------|------------|-------------|
+| MFA/2FA | `enableMFA` | Custom Domino agent for TOTP validation |
+| WebAuthn/Passkey | `enableWebAuthn` | WebAuthn server implementation |
+| SSO Buttons | `enableSSOButtons` | SAML/OAuth configuration |
+| Rate Limiting | `enableRateLimitWarning` | Server-side attempt tracking |
+| Analytics | `enableAnalytics` | Analytics service setup |
+| Domain Selector | `enableDomainSelector` | Multi-tenant configuration |
+
+### Implementing Backend Features
+
+#### MFA with Domino
+
+To implement MFA, create a Domino agent:
+
+1. Create agent `(MFAVerify)` in your application
+2. Agent should validate TOTP code against user's secret
+3. Update `config.js`:
+```javascript
+mfa: {
+    verifyEndpoint: "/your-app.nsf/MFAVerify?OpenAgent",
+    // ...
+}
+```
+
+#### Rate Limiting with Domino
+
+Track failed attempts in a database:
+
+1. Create `LoginAttempts.nsf` database
+2. Log each login attempt with timestamp and IP
+3. Check attempts before allowing login
+4. The UI will display warnings based on localStorage tracking
+
+---
+
+## External Dependencies
+
+### Google Fonts
+
+The login page uses Google Fonts (Inter). For restricted environments:
+
+**Option 1: Remove Google Fonts**
+```css
+/* In login.css, change: */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+```
+
+**Option 2: Self-host fonts**
+1. Download Inter font from Google Fonts
+2. Import as file resources
+3. Update CSS `@font-face` declaration
+
+### Lucide Icons
+
+The page uses Lucide Icons from CDN. For restricted environments:
+
+**Option 1: Self-host Lucide**
+1. Download `lucide.min.js` from https://unpkg.com/lucide@latest/dist/umd/lucide.min.js
+2. Import as file resource in DOMCFG.NSF
+3. Update HTML:
+```html
+<script src="/domcfg.nsf/lucide.min.js"></script>
+```
+
+**Option 2: Remove icons (fallback)**
+The page will function without icons, using text labels instead.
+
+---
+
+## Content Security Policy
+
+For v2.0.0 with all external resources:
+
+```html
+<meta http-equiv="Content-Security-Policy" 
+      content="default-src 'self'; 
+               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
+               font-src https://fonts.gstatic.com; 
+               script-src 'self' 'unsafe-inline' https://unpkg.com;
+               img-src 'self' data:;">
+```
+
+For self-hosted (no external resources):
+
+```html
+<meta http-equiv="Content-Security-Policy" 
+      content="default-src 'self'; 
+               style-src 'self' 'unsafe-inline'; 
+               script-src 'self' 'unsafe-inline';
+               img-src 'self' data:;">
+```
+
+---
+
+## Quick Start for Domino
+
+### Minimal Setup (Fastest)
+
+1. Use `docs/DominoEmbeddedForm.html` (all resources embedded)
+2. Create DOMCFG.NSF with template
+3. Create form, paste embedded HTML
+4. Configure Sign In Form Mapping
+5. Restart HTTP
+
+### Standard Setup (Recommended)
+
+1. Create DOMCFG.NSF
+2. Import these files as Resources:
+   - `/domcfg.nsf/login.css`
+   - `/domcfg.nsf/config.js`
+   - `/domcfg.nsf/translations.js`
+   - `/domcfg.nsf/login.js`
+   - `/domcfg.nsf/logo.svg`
+3. Create CustomLoginForm with modular HTML
+4. Configure mapping and restart HTTP
+
+### Enterprise Setup
+
+1. Create separate `loginresources.nsf` for static files
+2. Enable MFA by creating verification agent
+3. Configure SSO with your identity provider
+4. Set up analytics hooks
+
+---
+
+*Document Version: 2.0.0 | April 2026*

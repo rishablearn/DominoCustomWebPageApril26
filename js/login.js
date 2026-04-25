@@ -1686,18 +1686,20 @@
     // ============================================================
     
     function announceToScreenReader(message) {
-        const announcer = document.getElementById('srAnnouncer') || createAnnouncer();
+        // Use existing element from HTML or create one
+        let announcer = document.getElementById('screenReaderAnnouncements') || 
+                        document.getElementById('srAnnouncer');
+        
+        if (!announcer) {
+            announcer = document.createElement('div');
+            announcer.id = 'srAnnouncer';
+            announcer.className = 'screen-reader-text';
+            announcer.setAttribute('aria-live', 'polite');
+            announcer.setAttribute('aria-atomic', 'true');
+            document.body.appendChild(announcer);
+        }
+        
         announcer.textContent = message;
-    }
-    
-    function createAnnouncer() {
-        const announcer = document.createElement('div');
-        announcer.id = 'srAnnouncer';
-        announcer.className = 'screen-reader-text';
-        announcer.setAttribute('aria-live', 'polite');
-        announcer.setAttribute('aria-atomic', 'true');
-        document.body.appendChild(announcer);
-        return announcer;
     }
 
     // ============================================================

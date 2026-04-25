@@ -14,18 +14,32 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
     <!-- Google Fonts - Inter for modern typography -->
+    <!-- For Domino: Self-host fonts or use system fonts as fallback -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Lucide Icons -->
+    <!-- For Domino: Download lucide.min.js and import as file resource -->
+    <!-- Primary: CDN, Fallback: local /domcfg.nsf/lucide.min.js -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        // Fallback for Lucide if CDN fails
+        if (typeof lucide === 'undefined') {
+            var s = document.createElement('script');
+            s.src = '/domcfg.nsf/lucide.min.js';
+            document.head.appendChild(s);
+        }
+    </script>
     
     <!-- Configuration -->
+    <!-- For Domino: Change to /domcfg.nsf/config.js -->
     <script src="config.js"></script>
     
     <!-- Internationalization (i18n) -->
+    <!-- For Domino: Change to /domcfg.nsf/translations.js -->
     <script src="i18n/translations.js"></script>
     
     <!-- Stylesheets -->
+    <!-- For Domino: Change to /domcfg.nsf/login.css -->
     <link rel="stylesheet" href="css/login.css">
     
     <!-- Inline critical styles for fast initial render -->
@@ -224,13 +238,23 @@
     <!-- Custom HTML Injection Point -->
     <div id="customHtmlContainer"></div>
     
+    <!-- Screen reader announcement region -->
+    <div id="screenReaderAnnouncements" class="screen-reader-text" aria-live="polite" aria-atomic="true"></div>
+    
     <!-- JavaScript -->
+    <!-- For Domino: Change to /domcfg.nsf/login.js -->
     <script src="js/login.js"></script>
     
-    <!-- Initialize Lucide Icons -->
+    <!-- Initialize Lucide Icons with fallback -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            lucide.createIcons();
+            // Check if Lucide is available
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            } else {
+                // Fallback: Icons will be text-only
+                console.warn('Lucide icons not loaded. Using text labels.');
+            }
         });
     </script>
 </body>
