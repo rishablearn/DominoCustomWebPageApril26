@@ -40,9 +40,15 @@ project-root/
 │   ├── config-modern-gradient.js
 │   ├── config-dark-elegant.js
 │   └── config-healthcare.js
+├── dxl/                          # DXL import files for Domino
+│   ├── CustomLoginForm.dxl       # Login form DXL for import
+│   ├── SignInFormMapping.dxl     # Form mapping document DXL
+│   └── README.md                 # DXL import instructions
 ├── docs/
-│   ├── DEPLOYMENT_GUIDE.md       # Domino deployment instructions
-│   └── COMPLETE_DOCUMENTATION.md
+│   ├── DEPLOYMENT_GUIDE.md       # Domino deployment (technical)
+│   ├── BEGINNER_DEPLOYMENT_GUIDE.md  # Step-by-step for beginners
+│   ├── COMPLETE_DOCUMENTATION.md
+│   └── DominoEmbeddedForm.html   # All-in-one embedded form
 ├── preview-server.js             # Node.js local preview server
 └── README.md
 
@@ -723,15 +729,49 @@ Create 4 sample config files in /samples/:
 
 Document complete Domino deployment:
 
+### Method 1: DXL Import (Easiest)
+Create DXL files that can be imported directly into Domino Designer:
+
+**CustomLoginForm.dxl** - Contains:
+- Form definition with name "CustomLoginForm"
+- Pass-Thru HTML with complete login page
+- References to file resources (/domcfg.nsf/config.js, etc.)
+- Proper DXL structure for Domino 12.x/14.x
+
+**SignInFormMapping.dxl** - Contains:
+- Document of type LoginFormMapping
+- Configured for "All Web Sites / Entire Server"
+- Points to CustomLoginForm in domcfg.nsf
+
+**Import Steps:**
+1. Open DOMCFG.NSF in Domino Designer
+2. File → Import → DXL
+3. Select CustomLoginForm.dxl
+4. File → Import → DXL
+5. Select SignInFormMapping.dxl
+6. Import file resources manually (CSS, JS, images)
+
+### Method 2: Manual Setup
 1. Creating DOMCFG.NSF from template
 2. Setting ACL (Anonymous: Reader)
-3. Creating CustomLoginForm in Designer
+3. Creating CustomLoginForm in Designer (pass-thru HTML)
 4. Importing file resources (CSS, JS, images)
 5. Configuring Sign In Form Mapping
 6. Restarting HTTP task
-7. Testing and troubleshooting
-8. Feature compatibility matrix (client-side vs backend required)
-9. External dependencies and self-hosting options
+
+### Beginner Documentation Requirements
+Create a step-by-step guide assuming ZERO development experience:
+- ASCII diagrams showing dialog boxes
+- Exact field values to enter
+- Screenshots description placeholders
+- Visual examples of customizations
+- Pre-deployment checklist
+- Troubleshooting common problems
+
+### Additional Documentation
+- Testing and troubleshooting
+- Feature compatibility matrix (client-side vs backend required)
+- External dependencies and self-hosting options
 
 ---
 
