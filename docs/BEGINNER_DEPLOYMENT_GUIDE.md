@@ -186,66 +186,129 @@ Now we'll create the login form and add the HTML content.
 └─────────────────────────────────────┘
 ```
 
-#### Step 1.3.3: Add Pass-Thru HTML Content
+#### Step 1.3.3: Add the HTML Content
 
-This is the critical step where we add the login page HTML.
+This is the critical step where we add the login page HTML to the form.
 
-**Step A: Select the entire form area**
-1. Click inside the blank form design area
-2. Press **Ctrl+A** to select all (even if it looks empty)
+> **Reference:** [HCL Domino Designer Documentation - Using HTML on a page, form, or subform](https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMPORTING_HTML_INTO_A_PAGE_OR_FORM_STEPS.html)
 
-**Step B: Create Pass-Thru HTML section**
-1. Click **Create** menu → **Pass-Thru HTML**
-   
-   Alternative method:
-   - Click **Text** menu → **Pass-Thru HTML**
-   
-   You should see: `[<HTML>]` marker appear, indicating Pass-Thru mode
+**Step A: Copy the HTML content**
+
+1. Open the file `CustomLoginForm.html` in a text editor:
+   - **Windows:** Right-click the file → **Open with** → **Notepad** (or Notepad++)
+   - **Mac:** Right-click → **Open With** → **TextEdit** (or VS Code)
+
+2. Select ALL the content:
+   - Press **Ctrl+A** (Windows) or **Cmd+A** (Mac)
+   - Everything should be highlighted in blue
+
+3. Copy to clipboard:
+   - Press **Ctrl+C** (Windows) or **Cmd+C** (Mac)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Form: CustomLoginForm                                   │
+│ Notepad++ - CustomLoginForm.html                        │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  [<HTML>]  ◄── This marker indicates Pass-Thru HTML     │
-│  █                                                      │
-│  [</HTML>]                                              │
-│                                                         │
+│ ████████████████████████████████████  ◄── All selected  │
+│ ████████████████████████████████████      (highlighted) │
+│ ████████████████████████████████████                    │
+│ ████████████████████████████████████                    │
+│ ████████████████████████████████████                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Step C: Paste the HTML content**
-1. Open the file `CustomLoginForm.html` in a text editor (Notepad++, VS Code, etc.)
-2. Select ALL the content (**Ctrl+A**)
-3. Copy it (**Ctrl+C**)
-4. Go back to Domino Designer
-5. Click between the `[<HTML>]` markers (where your cursor should be)
-6. Paste (**Ctrl+V**)
+**Step B: Paste into the Domino Form**
 
-**Step D: Verify the content**
-- You should see the HTML code appear in green text
-- Green text = Pass-Thru HTML (Domino won't process it, sends as-is to browser)
+1. Switch back to **Domino Designer** (the form should still be open)
+2. Click inside the blank form design area
+3. Paste the content:
+   - Press **Ctrl+V** (Windows) or **Cmd+V** (Mac)
+   - Or click **Edit** menu → **Paste**
+
+4. You should see the HTML code appear in the form (it may look like plain text at this point)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Form: CustomLoginForm                                   │
+│ Form: CustomLoginForm (Untitled)                        │
 ├─────────────────────────────────────────────────────────┤
-│ [<HTML>]                                                │
-│ <!DOCTYPE html>                      ◄── Green text     │
+│ <!DOCTYPE html>                                         │
 │ <html lang="en">                                        │
 │ <head>                                                  │
 │     <meta charset="UTF-8">                              │
 │     <meta name="viewport" content="width=device-wi...   │
+│     <title id="pageTitle">Secure Login</title>          │
 │     ...                                                 │
+│ </body>                                                 │
 │ </html>                                                 │
-│ [</HTML>]                                               │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Step E: Save the form**
+**Step C: Mark the content as Pass-Thru HTML**
+
+Now we need to tell Domino to send this HTML directly to the browser without processing it.
+
+1. Select ALL the pasted content:
+   - Click at the beginning of the content
+   - Press **Ctrl+A** to select all
+   - Or click **Edit** menu → **Select All**
+
+2. Mark as Pass-Thru HTML:
+   - Click **Text** menu → **Pass-Thru HTML**
+   
+```
+┌─────────────────────────────────────────────────────────┐
+│ Domino Designer                                         │
+├─────────────────────────────────────────────────────────┤
+│ File  Edit  View  Create  [Text]  Design  ...           │
+│                              │                          │
+│                              ▼                          │
+│                    ┌─────────────────────┐              │
+│                    │ Text Properties...  │              │
+│                    │ Font                │              │
+│                    │ Size                │              │
+│                    │ Style               │              │
+│                    │ ─────────────────── │              │
+│                    │ ✓ Pass-Thru HTML   │◄── Click this │
+│                    │ Hide Paragraph      │              │
+│                    └─────────────────────┘              │
+└─────────────────────────────────────────────────────────┘
+```
+
+3. After clicking **Pass-Thru HTML**, the text will change to **green color**
+   - Green text = Pass-Thru HTML (Domino sends it as-is to browser)
+   - Black text = Regular text (Domino may process/convert it)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Form: CustomLoginForm                                   │
+├─────────────────────────────────────────────────────────┤
+│ <!DOCTYPE html>                      ◄── GREEN text     │
+│ <html lang="en">                         means it's     │
+│ <head>                                   Pass-Thru HTML │
+│     <meta charset="UTF-8">                              │
+│     ...                                                 │
+│ </html>                                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Step D: Verify Pass-Thru HTML is Applied**
+
+To confirm the HTML is properly marked:
+
+1. Click anywhere in the green HTML text
+2. Look at the **Text** menu
+3. **Pass-Thru HTML** should have a checkmark (✓) next to it
+
+If the text is NOT green:
+- Select all the text again (**Ctrl+A**)
+- Click **Text** menu → **Pass-Thru HTML** again
+
+**Step E: Save the Form**
+
 1. Press **Ctrl+S** to save
 2. Or click **File** menu → **Save**
-3. Close the form design window
+3. If prompted for a name, verify it says `CustomLoginForm`
+4. Close the form design window (**Ctrl+W** or click the X)
 
 #### Step 1.3.4: Verify Form Was Created
 
