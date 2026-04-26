@@ -729,29 +729,35 @@ Create 4 sample config files in /samples/:
 
 Document complete Domino deployment:
 
-### Method 1: DXL Import (Easiest)
-Create DXL files that can be imported directly into Domino Designer:
+### Method 1: Manual Form Creation in Domino Designer (Recommended)
+Step-by-step process to create the login form:
 
-**CustomLoginForm.dxl** - Contains:
-- Form definition with name "CustomLoginForm"
-- Pass-Thru HTML with complete login page
-- References to file resources (/domcfg.nsf/config.js, etc.)
-- Proper DXL structure for Domino 12.x/14.x
+1. **Create DOMCFG.NSF** from Domino Web Server Configuration template
+2. **Set ACL** - Anonymous needs Reader access
+3. **Create Form:**
+   - Right-click Forms → New Form
+   - Set Name: `CustomLoginForm`
+   - Create → Pass-Thru HTML
+   - Paste entire CustomLoginForm.html content
+   - Save
+4. **Import File Resources:**
+   - Resources → Files → Import
+   - Import: config.js, login.css, login.js, translations.js, logo.svg
+5. **Create Sign In Form Mapping** document
+6. **Restart HTTP** - `tell http restart`
 
-**SignInFormMapping.dxl** - Contains:
-- Document of type LoginFormMapping
-- Configured for "All Web Sites / Entire Server"
-- Points to CustomLoginForm in domcfg.nsf
+### Method 2: Embedded Form (Simpler but Limited)
+Use DominoEmbeddedForm.html which has all CSS/JS inline - no separate files needed.
 
-**Import Steps:**
-1. Open DOMCFG.NSF in Domino Designer
-2. File → Import → DXL
-3. Select CustomLoginForm.dxl
-4. File → Import → DXL
-5. Select SignInFormMapping.dxl
-6. Import file resources manually (CSS, JS, images)
+### Method 3: DXL Programmatic Import (Advanced)
+Create DXL files for automated deployment via LotusScript/Java agents:
 
-### Method 2: Manual Setup
+**CustomLoginForm.dxl** - Form with embedded HTML
+**SignInFormMapping.dxl** - Form mapping document
+
+Import via NotesDXLImporter class (no menu option exists in Designer).
+
+### Standard Manual Setup
 1. Creating DOMCFG.NSF from template
 2. Setting ACL (Anonymous: Reader)
 3. Creating CustomLoginForm in Designer (pass-thru HTML)

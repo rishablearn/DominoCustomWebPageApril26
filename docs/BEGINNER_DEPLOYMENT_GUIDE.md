@@ -70,9 +70,9 @@ A form is like a template. In our case, it's a template for the login page that 
 
 ---
 
-## Method 1: Using DXL Import (Easiest)
+## Method 1: Create Form Manually in Domino Designer (Recommended)
 
-**DXL (Domino XML Language)** allows you to import pre-built forms directly into Domino. This is the easiest method.
+This is the standard and most reliable method for creating the custom login form.
 
 ### Step 1.1: Create DOMCFG.NSF Database
 
@@ -135,41 +135,209 @@ A form is like a template. In our case, it's a template for the login page that 
 
 **Why Anonymous needs Reader access:** When someone visits your login page, they're not logged in yet (they're "anonymous"). They need to be able to see the login form.
 
-### Step 1.3: Import the DXL File
+### Step 1.3: Create the Custom Login Form
 
-1. In Domino Designer, open `domcfg.nsf`
-2. Click **File** menu → **Import** → **DXL**
-3. Browse to the file: `dxl/CustomLoginForm.dxl` (from this project)
-4. Click **Import**
-5. You should see a success message
+Now we'll create the login form and add the HTML content.
 
-**If you don't see the Import DXL option:**
-- Make sure you're in **Domino Designer** (not Notes Client)
-- Make sure the database is open and selected
+#### Step 1.3.1: Create a New Form
 
-### Step 1.4: Import Resource Files
+1. Open `domcfg.nsf` in **HCL Domino Designer**
+2. In the left panel (Design pane), find and expand **Forms**
+3. Right-click on **Forms** → Select **New Form**
+4. A blank form design window opens
 
-Now we need to import the CSS, JavaScript, and image files.
+```
+┌─────────────────────────────────────────────────────────┐
+│ Domino Designer                                         │
+├─────────────────────────────────────────────────────────┤
+│ ▼ domcfg.nsf                                            │
+│   ├─ Forms                  ◄── Right-click here        │
+│   │   └─ (empty)                 Select "New Form"      │
+│   ├─ Views                                              │
+│   ├─ Resources                                          │
+│   └─ ...                                                │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Step 1.3.2: Set Form Properties
+
+1. With the new form open, click **Design** menu → **Form Properties**
+   (Or press **Alt+Enter**, or right-click → **Form Properties**)
+
+2. In the Properties box that appears:
+
+   **Basics Tab:**
+   | Property | Value to Enter |
+   |----------|----------------|
+   | Name | `CustomLoginForm` |
+   | Comment | `Custom branded login form v2.0` |
+
+3. Click the **X** to close the Properties box (it auto-saves)
+
+```
+┌─────────────────────────────────────┐
+│ Form Properties                     │
+├─────────────────────────────────────┤
+│ Name:    [CustomLoginForm      ]    │
+│ Comment: [Custom branded login ]    │
+│ Type:    ○ Document  ● No type      │
+│                                     │
+│ [Defaults] [Launch] [Background]    │
+└─────────────────────────────────────┘
+```
+
+#### Step 1.3.3: Add Pass-Thru HTML Content
+
+This is the critical step where we add the login page HTML.
+
+**Step A: Select the entire form area**
+1. Click inside the blank form design area
+2. Press **Ctrl+A** to select all (even if it looks empty)
+
+**Step B: Create Pass-Thru HTML section**
+1. Click **Create** menu → **Pass-Thru HTML**
+   
+   Alternative method:
+   - Click **Text** menu → **Pass-Thru HTML**
+   
+   You should see: `[<HTML>]` marker appear, indicating Pass-Thru mode
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Form: CustomLoginForm                                   │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  [<HTML>]  ◄── This marker indicates Pass-Thru HTML     │
+│  █                                                      │
+│  [</HTML>]                                              │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Step C: Paste the HTML content**
+1. Open the file `CustomLoginForm.html` in a text editor (Notepad++, VS Code, etc.)
+2. Select ALL the content (**Ctrl+A**)
+3. Copy it (**Ctrl+C**)
+4. Go back to Domino Designer
+5. Click between the `[<HTML>]` markers (where your cursor should be)
+6. Paste (**Ctrl+V**)
+
+**Step D: Verify the content**
+- You should see the HTML code appear in green text
+- Green text = Pass-Thru HTML (Domino won't process it, sends as-is to browser)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Form: CustomLoginForm                                   │
+├─────────────────────────────────────────────────────────┤
+│ [<HTML>]                                                │
+│ <!DOCTYPE html>                      ◄── Green text     │
+│ <html lang="en">                                        │
+│ <head>                                                  │
+│     <meta charset="UTF-8">                              │
+│     <meta name="viewport" content="width=device-wi...   │
+│     ...                                                 │
+│ </html>                                                 │
+│ [</HTML>]                                               │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Step E: Save the form**
+1. Press **Ctrl+S** to save
+2. Or click **File** menu → **Save**
+3. Close the form design window
+
+#### Step 1.3.4: Verify Form Was Created
+
+1. In the left panel, expand **Forms**
+2. You should see `CustomLoginForm` listed
+3. Double-click to open and verify content is there
+
+### Step 1.4: Import Resource Files (CSS, JavaScript, Images)
+
+Now we need to import the CSS, JavaScript, and image files that the form references.
+
+#### Step 1.4.1: Navigate to File Resources
 
 1. In Domino Designer, with `domcfg.nsf` open
-2. In the left panel, expand **Resources**
+2. In the left panel (Design pane), expand **Resources**
 3. Click on **Files**
-4. Right-click in the empty area → **Import**
-5. Import each file one at a time:
 
-   | File to Import | After Import, Rename To |
-   |----------------|------------------------|
-   | `css/login.css` | `login.css` |
-   | `config.js` | `config.js` |
-   | `js/login.js` | `login.js` |
-   | `i18n/translations.js` | `translations.js` |
-   | `images/logo-placeholder.svg` | `logo.svg` |
+```
+┌─────────────────────────────────────────────────────────┐
+│ ▼ domcfg.nsf                                            │
+│   ├─ Forms                                              │
+│   │   └─ CustomLoginForm                                │
+│   ├─ Views                                              │
+│   ▼ Resources                   ◄── Expand this         │
+│     ├─ Files                    ◄── Click here          │
+│     ├─ Images                                           │
+│     ├─ Stylesheets                                      │
+│     └─ ...                                              │
+└─────────────────────────────────────────────────────────┘
+```
 
-**How to rename a file resource:**
-1. Right-click on the imported file
-2. Select **Properties** or **Rename**
-3. Change the name
-4. Save
+#### Step 1.4.2: Import Each File
+
+For EACH file listed below, follow these steps:
+
+1. Right-click in the Files panel (right side, where files are listed)
+2. Select **Import...** (or **File** menu → **Import**)
+3. Browse to the file location on your computer
+4. Select the file
+5. Click **Import** or **Open**
+
+**Files to Import (in this order):**
+
+| # | Source File | Name in Domino | Purpose |
+|---|-------------|----------------|---------|
+| 1 | `config.js` | `config.js` | All settings |
+| 2 | `css/login.css` | `login.css` | Styles |
+| 3 | `js/login.js` | `login.js` | Functionality |
+| 4 | `i18n/translations.js` | `translations.js` | Languages |
+| 5 | `images/logo-placeholder.svg` | `logo.svg` | Logo image |
+
+#### Step 1.4.3: Rename Files If Needed
+
+Sometimes files import with their folder path (e.g., `css/login.css` instead of `login.css`).
+
+**To rename a file:**
+1. Right-click on the file in the list
+2. Select **Properties** (or **Design Properties**)
+3. In the Properties box, find **Name**
+4. Change to just the filename (no folders)
+5. Close Properties (it auto-saves)
+6. Press **Ctrl+S** to ensure save
+
+```
+┌─────────────────────────────────────┐
+│ File Resource Properties            │
+├─────────────────────────────────────┤
+│ Name: [login.css              ]     │  ◄── Just filename
+│                                     │      NOT css/login.css
+│ MIME Type: [text/css          ]     │
+└─────────────────────────────────────┘
+```
+
+#### Step 1.4.4: Verify All Files Are Present
+
+Your Files list should show:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Files                                                   │
+├─────────────────────────────────────────────────────────┤
+│ 📄 config.js                                            │
+│ 📄 login.css                                            │
+│ 📄 login.js                                             │
+│ 📄 translations.js                                      │
+│ 🖼️ logo.svg                                             │
+└─────────────────────────────────────────────────────────┘
+```
+
+**IMPORTANT:** These names must match EXACTLY what's in the HTML:
+- The HTML references `/domcfg.nsf/config.js`
+- So the file must be named `config.js` (not `Config.js` or `config.JS`)
 
 ### Step 1.5: Create Login Form Mapping
 
@@ -215,56 +383,54 @@ tell http restart
 
 ---
 
-## Method 2: Manual Setup in Domino Designer
+## Method 2: All-In-One Embedded Form (No Separate Files)
 
-If the DXL import doesn't work, follow these steps to create everything manually.
+If you prefer a simpler setup without separate CSS/JS files, use the embedded version.
 
-### Step 2.1: Create DOMCFG.NSF
+### When to Use This Method
 
-(Same as Step 1.1 above)
+- Simpler deployment (only one form, no file resources)
+- Restricted environments where file resources are problematic
+- Quick testing before full deployment
 
-### Step 2.2: Set Database Permissions
+### Step 2.1: Create DOMCFG.NSF and Set Permissions
 
-(Same as Step 1.2 above)
+(Same as Steps 1.1 and 1.2 above)
 
-### Step 2.3: Create the Login Form Manually
+### Step 2.2: Create the Embedded Form
 
 1. Open `domcfg.nsf` in **Domino Designer**
-2. In the left panel, right-click on **Forms**
-3. Select **New Form**
-4. A blank form opens
+2. Right-click **Forms** → **New Form**
+3. Set **Name** to `CustomLoginForm` in Form Properties
 
-**Set Form Properties:**
-1. Click **Design** menu → **Form Properties** (or press Alt+Enter)
-2. In the properties box:
-   - **Name:** `CustomLoginForm`
-   - **Comment:** `Custom Login Form v2.0`
-3. Close the properties box
+4. Click **Create** menu → **Pass-Thru HTML**
 
-**Add HTML Content:**
-1. In the form design area, you'll see a blank page
-2. Click **Create** menu → **Hotspot** → **Computed Text**
-3. Delete any default content
-4. We need to change this to Pass-Thru HTML:
-   - Select all content in the form
-   - Click **Text** menu → **Pass-Thru HTML**
-   - The text should change to green (indicating HTML mode)
+5. Open the file `docs/DominoEmbeddedForm.html` from this project
+   - This file has ALL CSS and JavaScript embedded inline
+   - No separate file resources needed
 
-5. Now paste the ENTIRE contents of the `DominoEmbeddedForm.html` file
+6. Copy the ENTIRE contents and paste into the form
 
-6. Save the form (Ctrl+S)
+7. Save (**Ctrl+S**)
 
-### Step 2.4: Import Resource Files
-
-(Same as Step 1.4 above)
-
-### Step 2.5: Create Login Form Mapping
+### Step 2.3: Create Login Form Mapping
 
 (Same as Step 1.5 above)
 
-### Step 2.6: Restart HTTP Service
+### Step 2.4: Restart HTTP
 
-(Same as Step 1.6 above)
+```
+tell http restart
+```
+
+### Limitations of Embedded Method
+
+- Larger HTML file (harder to maintain)
+- Changes require editing the form directly
+- Limited customization options compared to separate config.js
+- Missing some advanced features (translations, etc.)
+
+**Recommendation:** Use Method 1 for production deployments.
 
 ---
 

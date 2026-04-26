@@ -1,75 +1,78 @@
-# DXL Import Files
+# DXL Files for Advanced/Automated Deployment
 
-This folder contains DXL (Domino XML Language) files for easy import into HCL Domino.
+This folder contains DXL (Domino XML Language) files for **programmatic import** into HCL Domino.
+
+## Important Note
+
+**Domino Designer does NOT have a "Import DXL" menu option.** 
+
+DXL files are used for:
+- Automated deployment scripts
+- LotusScript/Java agent imports
+- Command-line tools
+- Template creation
+
+**For manual deployment, use the BEGINNER_DEPLOYMENT_GUIDE.md instead.**
 
 ## Files Included
 
 | File | Description |
 |------|-------------|
-| `CustomLoginForm.dxl` | The main login form with all HTML, CSS references, and JavaScript |
-| `SignInFormMapping.dxl` | The mapping document that tells Domino to use the custom form |
+| `CustomLoginForm.dxl` | The login form with embedded HTML content |
+| `SignInFormMapping.dxl` | The form mapping document |
 
-## Import Instructions
+## How to Use DXL Files
 
-### Prerequisites
+### Option 1: LotusScript Agent (Recommended for Automation)
 
-1. **DOMCFG.NSF must exist** - Create it first if it doesn't
-2. **You need Designer access** to DOMCFG.NSF
-3. **HCL Domino Designer** must be installed
+Create a LotusScript agent to import DXL:
 
-### Step-by-Step Import
-
-#### Step 1: Import the Login Form
-
-1. Open **HCL Domino Designer**
-2. Open `domcfg.nsf` database on your server
-3. Click **File** → **Import** → **DXL**
-4. Browse to and select `CustomLoginForm.dxl`
-5. Click **Import**
-6. Verify: Expand **Forms** in the design pane - you should see `CustomLoginForm`
-
-#### Step 2: Import the Mapping Document
-
-1. With DOMCFG.NSF still open in Designer
-2. Click **File** → **Import** → **DXL**
-3. Browse to and select `SignInFormMapping.dxl`
-4. Click **Import**
-5. Verify: The mapping document should now exist
-
-#### Step 3: Import Resource Files
-
-The form references these files which must be imported separately:
-
-1. In Designer, expand **Resources** → **Files**
-2. Right-click → **Import**
-3. Import each file:
-
-| Source File | Target Name |
-|-------------|-------------|
-| `../css/login.css` | `login.css` |
-| `../config.js` | `config.js` |
-| `../js/login.js` | `login.js` |
-| `../i18n/translations.js` | `translations.js` |
-| `../images/logo-placeholder.svg` | `logo.svg` |
-
-**Note:** File resources don't need paths - Domino serves them from the database root.
-
-#### Step 4: Restart HTTP
-
-On Domino console:
-```
-tell http restart
+```lotusscript
+Sub Initialize
+    Dim session As New NotesSession
+    Dim db As NotesDatabase
+    Dim importer As NotesDXLImporter
+    Dim stream As NotesStream
+    
+    Set db = session.CurrentDatabase
+    Set importer = session.CreateDXLImporter()
+    Set stream = session.CreateStream()
+    
+    ' Import the login form
+    Call stream.Open("C:\path\to\CustomLoginForm.dxl")
+    Call importer.SetInput(stream)
+    Call importer.SetOutput(db)
+    Call importer.Process()
+    Call stream.Close()
+    
+    Print "Import complete"
+End Sub
 ```
 
-#### Step 5: Test
+### Option 2: Java Import
 
-1. Open incognito/private browser window
-2. Navigate to: `https://your-server.com/names.nsf`
-3. You should see the custom login form
+```java
+import lotus.domino.*;
 
-## Alternative: Command Line DXL Import
+public class DXLImport {
+    public static void main(String[] args) throws Exception {
+        Session session = NotesFactory.createSession();
+        Database db = session.getDatabase("", "domcfg.nsf");
+        DXLImporter importer = session.createDXLImporter();
+        
+        // Import from file
+        Stream stream = session.createStream();
+        stream.open("CustomLoginForm.dxl");
+        importer.setInput(stream);
+        importer.setOutput(db);
+        importer.process();
+    }
+}
+```
 
-If you have access to the Domino server console or command line, you can use the DXL import utility:
+### Option 3: Command Line (If Available)
+
+Some Domino installations include command-line utilities:
 
 ### On Windows (Domino server)
 
