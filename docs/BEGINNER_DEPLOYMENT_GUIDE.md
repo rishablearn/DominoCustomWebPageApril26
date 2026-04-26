@@ -382,7 +382,65 @@ Sometimes files import with their folder path (e.g., `css/login.css` instead of 
 └─────────────────────────────────────┘
 ```
 
-#### Step 1.4.4: Verify All Files Are Present
+#### Step 1.4.4: Set Correct MIME Types (CRITICAL!)
+
+**⚠️ THIS STEP IS REQUIRED** - Without it, browsers will refuse to load the files!
+
+When you import files, Domino may not set the correct MIME type automatically. You MUST set the MIME type for each file manually.
+
+**For EACH file resource:**
+
+1. Right-click on the file in the Files list
+2. Select **Properties** (or **Design Properties**)
+3. Find the **MIME Type** field
+4. Enter the correct MIME type from the table below
+5. Close Properties and Save (**Ctrl+S**)
+
+**Required MIME Types:**
+
+| File Name | MIME Type | Why It's Needed |
+|-----------|-----------|-----------------|
+| `config.js` | `text/javascript` | Browser needs this to execute JS |
+| `login.js` | `text/javascript` | Browser needs this to execute JS |
+| `translations.js` | `text/javascript` | Browser needs this to execute JS |
+| `login.css` | `text/css` | Browser needs this for styling |
+| `logo.svg` | `image/svg+xml` | Browser needs this to display SVG |
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ File Resource Properties                                │
+├─────────────────────────────────────────────────────────┤
+│ Name:      [config.js                             ]     │
+│                                                         │
+│ MIME Type: [text/javascript                       ]     │
+│            ▲                                            │
+│            │                                            │
+│            └── MUST be set correctly!                   │
+│                                                         │
+│ Alias:     [                                      ]     │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Common Error If MIME Type Is Wrong:**
+
+If you see this error in browser console (F12):
+```
+Refused to execute script from 'https://server/domcfg.nsf/config.js' 
+because its MIME type ('text/html') is not executable
+```
+
+**Fix:** Go back and set the MIME type to `text/javascript` for that file.
+
+**Verification:**
+
+After setting MIME types, test each file URL directly in your browser:
+- `https://your-server/domcfg.nsf/config.js` - should show JavaScript code
+- `https://your-server/domcfg.nsf/login.css` - should show CSS code
+- `https://your-server/domcfg.nsf/login.js` - should show JavaScript code
+
+If any URL shows an error page or HTML instead of the file content, the MIME type is incorrect.
+
+#### Step 1.4.5: Verify All Files Are Present
 
 Your Files list should show:
 
@@ -794,6 +852,44 @@ Open the same URL on your phone to verify it's responsive.
 - Syntax error in config.js (missing comma, quote, etc.)
 - File resource not found
 - Lucide icons CDN blocked (corporate firewall)
+
+### Problem: "MIME type is not executable" Error
+
+**Error message:**
+```
+Refused to execute script from 'https://server/domcfg.nsf/config.js' 
+because its MIME type ('text/html') is not executable, 
+and strict MIME type checking is enabled.
+```
+
+**Cause:** The file resources don't have correct MIME types set in Domino.
+
+**Solution:**
+
+1. Open `domcfg.nsf` in **Domino Designer**
+2. Go to **Resources** → **Files**
+3. For EACH JavaScript file (config.js, login.js, translations.js):
+   - Right-click → **Properties**
+   - Set **MIME Type** to: `text/javascript`
+   - Save
+4. For login.css:
+   - Set **MIME Type** to: `text/css`
+5. For logo.svg:
+   - Set **MIME Type** to: `image/svg+xml`
+6. Save all changes
+7. Restart HTTP: `tell http restart`
+
+**Quick Reference - MIME Types:**
+
+| File | MIME Type |
+|------|-----------|
+| `.js` files | `text/javascript` |
+| `.css` files | `text/css` |
+| `.svg` files | `image/svg+xml` |
+| `.png` files | `image/png` |
+| `.jpg` files | `image/jpeg` |
+
+**Verify fix:** Open each file URL directly in browser - you should see the file content, not an error page.
 
 ### Problem: Logo Not Displaying
 
