@@ -75,13 +75,22 @@ const DominoLoginConfig = {
         companyName: "Your Company Name",
         
         // --------------------------------------------------------
-        // LOGO CONFIGURATION - Supports SVG, PNG, JPG, WEBP, GIF
+        // LOGO CONFIGURATION
+        // Domino supports: PNG, JPG, GIF (NO SVG!)
         // --------------------------------------------------------
         
         // Primary logo URL (relative or absolute URL)
-        // Supported formats: SVG (recommended), PNG, JPG, WEBP, GIF
-        // Leave empty string "" to hide logo and show company name only
-        logoUrl: "images/logo-placeholder.svg",
+        // 
+        // FOR DOMINO DEPLOYMENT:
+        //   - Use: "/domcfg.nsf/logo.png" (no subfolders!)
+        //   - Domino does NOT support SVG - use PNG, JPG, or GIF only
+        //   - Leave empty "" to hide logo and show company name only
+        //
+        // FOR LOCAL DEVELOPMENT:
+        //   - Use: "images/logo-placeholder.png"
+        //
+        // Supported formats: PNG, JPG, WEBP, GIF (NO SVG in Domino!)
+        logoUrl: "",  // Set to "/domcfg.nsf/logo.png" for Domino
         
         // Fallback logo URL (used if primary fails to load)
         // Useful for providing PNG fallback for SVG logos

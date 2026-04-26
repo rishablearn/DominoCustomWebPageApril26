@@ -59,7 +59,7 @@ DominoCustomWebPageApril26/
 ├── i18n/
 │   └── translations.js         # Multi-language translations (10 languages)
 ├── images/
-│   └── logo-placeholder.svg    # Sample logo (replace with yours)
+│   └── logo-placeholder.png    # Sample logo (replace with yours)
 ├── samples/                    # Pre-built theme configurations
 │   ├── config-corporate-blue.js
 │   ├── config-modern-gradient.js
@@ -97,7 +97,7 @@ DominoCustomWebPageApril26/
    - Form labels and text
    - Error messages
 
-2. Replace `images/logo-placeholder.svg` with your company logo
+2. Replace logo with your company logo (PNG, JPG, or GIF - **Domino does NOT support SVG**)
 
 3. Adjust CSS variables in `css/login.css` for fine-tuning
 
@@ -107,10 +107,10 @@ DominoCustomWebPageApril26/
 ```javascript
 branding: {
     companyName: "Your Company",
-    logoUrl: "images/your-logo.svg",      // Primary logo (SVG, PNG, JPG, WEBP)
-    logoFallbackUrl: "images/logo.png",   // Fallback for older browsers
-    logoFormat: "auto",                    // "svg", "png", "jpg", "auto"
-    logoDarkModeUrl: "images/logo-dark.svg", // Optional dark mode variant
+    logoUrl: "/domcfg.nsf/logo.png",      // For Domino - NO SVG support!
+    logoFallbackUrl: "",                   // Fallback URL
+    logoFormat: "auto",                    // "png", "jpg", "auto" (no svg)
+    logoDarkModeUrl: "",                   // Optional dark mode variant
     logo: {
         maxWidth: 200,
         maxHeight: null,
@@ -154,9 +154,9 @@ See [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for complete instructions.
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `branding.logoUrl` | Primary logo (SVG/PNG/JPG/WEBP) | `images/logo-placeholder.svg` |
+| `branding.logoUrl` | Primary logo (PNG/JPG/GIF - no SVG!) | `""` (empty) |
 | `branding.logoFallbackUrl` | Fallback logo URL | `""` |
-| `branding.logoFormat` | Format hint (svg/png/jpg/auto) | `auto` |
+| `branding.logoFormat` | Format hint (png/jpg/auto - no svg) | `auto` |
 | `branding.logoDarkModeUrl` | Dark mode logo variant | `""` |
 | `branding.logo.maxWidth` | Logo max width in pixels | `200` |
 | `branding.logo.objectFit` | Object-fit for raster images | `contain` |

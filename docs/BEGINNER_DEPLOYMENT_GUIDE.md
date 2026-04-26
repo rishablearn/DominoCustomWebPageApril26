@@ -402,42 +402,56 @@ Sometimes files import with their folder path (e.g., `css/login.css` instead of 
 
 **⚠️ THIS STEP IS REQUIRED** - Without it, browsers will refuse to load the files!
 
-When you import files, Domino may not set the correct MIME type automatically. You MUST set the MIME type for each file manually.
+> **Reference:** [HCL Domino Designer - File Resource Web Properties](https://help.hcl-software.com/dom_designer/11.0.1/basic/H_TO_DEPLOY_A_FILE_RESOURCE_ON_THE_WEB_STEPS.html)
 
-**For EACH file resource:**
+When you import files, Domino may not set the correct MIME type automatically for `.js` files. You MUST set the MIME type for each file manually using the **Web Properties** tab.
 
-1. Right-click on the file in the Files list
-2. Select **Properties** (or **Design Properties**)
-3. Find the **MIME Type** field
-4. Enter the correct MIME type from the table below
-5. Close Properties and Save (**Ctrl+S**)
+**For EACH file resource, follow these EXACT steps:**
+
+1. **Select** the file in the Files list (click once to highlight it)
+2. Look at the **Properties panel** on the right side of Designer
+   - If you don't see it, go to **Window** menu → **Properties**
+3. In the Properties panel, click the **"Web Properties"** tab (also called "Web" tab)
+   - This is usually the second tab with a globe icon 🌐
+4. Find the **"MIME type"** field
+5. Enter the correct MIME type from the table below
+6. Press **Enter** to confirm
+7. Save the database (**Ctrl+S** or **File** → **Save**)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Domino Designer - Properties Panel                              │
+├─────────────────────────────────────────────────────────────────┤
+│  [Basic] [Web Properties] [Info] [Design]                       │
+│           ▲                                                     │
+│           └── Click this tab!                                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Read Only:  [ ] (unchecked)                                    │
+│                                                                 │
+│  MIME type:  [text/javascript                    ]              │
+│              ▲                                                  │
+│              └── Enter the MIME type here                       │
+│                  This sets the Content-Type HTTP header         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 **Required MIME Types:**
 
-| File Name | MIME Type | Why It's Needed |
-|-----------|-----------|-----------------|
-| `config.js` | `text/javascript` | Browser needs this to execute JS |
-| `login.js` | `text/javascript` | Browser needs this to execute JS |
-| `translations.js` | `text/javascript` | Browser needs this to execute JS |
-| `login.css` | `text/css` | Browser needs this for styling |
-| `logo.png` | `image/png` | Browser needs this to display image |
+| File Name | MIME Type | Notes |
+|-----------|-----------|-------|
+| `config.js` | `text/javascript` | Domino may not auto-detect this! |
+| `login.js` | `text/javascript` | Domino may not auto-detect this! |
+| `translations.js` | `text/javascript` | Domino may not auto-detect this! |
+| `login.css` | `text/css` | Usually auto-detected |
+| `logo.png` | `image/png` | Usually auto-detected |
+| `logo.jpg` | `image/jpeg` | Usually auto-detected |
 
-**⚠️ NOTE:** Domino does NOT support SVG. Use PNG, JPG, or GIF instead.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ File Resource Properties                                │
-├─────────────────────────────────────────────────────────┤
-│ Name:      [config.js                             ]     │
-│                                                         │
-│ MIME Type: [text/javascript                       ]     │
-│            ▲                                            │
-│            │                                            │
-│            └── MUST be set correctly!                   │
-│                                                         │
-│ Alias:     [                                      ]     │
-└─────────────────────────────────────────────────────────┘
-```
+**⚠️ IMPORTANT NOTES:**
+- Domino does NOT support SVG files. Use PNG, JPG, or GIF instead.
+- The MIME type field is in the **Web Properties** tab, NOT the Basic tab!
+- If the Web Properties tab is empty, make sure you selected a file resource.
 
 **Common Error If MIME Type Is Wrong:**
 
@@ -907,18 +921,25 @@ and strict MIME type checking is enabled.
 
 **Solution:**
 
+> **Reference:** [HCL Domino Designer - File Resource Web Properties](https://help.hcl-software.com/dom_designer/11.0.1/basic/H_TO_DEPLOY_A_FILE_RESOURCE_ON_THE_WEB_STEPS.html)
+
 1. Open `domcfg.nsf` in **Domino Designer**
 2. Go to **Resources** → **Files**
 3. For EACH JavaScript file (config.js, login.js, translations.js):
-   - Right-click → **Properties**
-   - Set **MIME Type** to: `text/javascript`
-   - Save
+   - **Click once** on the file to select it
+   - In the **Properties panel** (right side), click the **"Web Properties"** tab
+   - In the **MIME type** field, enter: `text/javascript`
+   - Press **Enter**
 4. For login.css:
-   - Set **MIME Type** to: `text/css`
+   - Select the file, go to **Web Properties** tab
+   - Set **MIME type** to: `text/css`
 5. For logo.png (or .jpg):
-   - Set **MIME Type** to: `image/png` (or `image/jpeg`)
-6. Save all changes
+   - Select the file, go to **Web Properties** tab
+   - Set **MIME type** to: `image/png` (or `image/jpeg`)
+6. Save all changes (**Ctrl+S**)
 7. Restart HTTP: `tell http restart`
+
+**⚠️ CRITICAL:** The MIME type field is in the **Web Properties** tab, NOT the Basic tab!
 
 **Quick Reference - MIME Types:**
 
