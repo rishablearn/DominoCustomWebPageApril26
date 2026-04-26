@@ -1,19 +1,54 @@
 <!--
 ================================================================================
-DOMINO EMBEDDED LOGIN FORM
+DOMINO EMBEDDED LOGIN FORM - ALL-IN-ONE VERSION
 ================================================================================
-This is a standalone version of the login form with ALL CSS and JavaScript 
-embedded inline. Use this file when creating the form in DOMCFG.NSF via 
-Domino Designer.
+This is a STANDALONE version of the login form with ALL CSS and JavaScript 
+embedded inline. NO external file resources needed!
 
-Instructions:
-1. Open DOMCFG.NSF in Domino Designer
-2. Create a new form (or copy $$LoginUserForm)
-3. Name it "CustomLoginForm" 
-4. In the form properties, set "Content type" to "HTML"
-5. Paste this entire HTML content into the form
-6. Save the form
-7. Create a Sign In Form Mapping pointing to this form
+Use this when:
+- You want the simplest possible deployment
+- You cannot import file resources to DOMCFG.NSF
+- You want quick testing before full deployment
+
+DEPLOYMENT STEPS:
+================================================================================
+1. Open DOMCFG.NSF in HCL Domino Designer
+
+2. Create a new form:
+   - Right-click "Forms" → "New Form"
+   
+3. Set form name:
+   - Design menu → Form Properties
+   - Name: "CustomLoginForm"
+   - Close Properties
+
+4. Add this HTML as Pass-Thru HTML:
+   - Copy ALL content of this file (Ctrl+A, Ctrl+C)
+   - Click in the form design area
+   - Paste (Ctrl+V)
+   - Select all pasted content (Ctrl+A)
+   - Text menu → Pass-Thru HTML
+   - Text should turn GREEN
+   - Save (Ctrl+S)
+
+5. Create Sign In Form Mapping:
+   - Open DOMCFG.NSF in Notes Client
+   - Create mapping pointing to CustomLoginForm
+
+6. Restart HTTP:
+   - Run: tell http restart
+
+CUSTOMIZATION:
+================================================================================
+To customize, edit the DominoLoginConfig object below (around line 40).
+- Change companyName, colors, labels, etc.
+- For a logo, upload to DOMCFG.NSF as file resource named "logo.svg"
+  then set: logoUrl: "/domcfg.nsf/logo.svg"
+  (NO subfolders like /images/ - Domino doesn't support that!)
+
+REFERENCE:
+================================================================================
+HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMPORTING_HTML_INTO_A_PAGE_OR_FORM_STEPS.html
 
 ================================================================================
 -->
@@ -36,15 +71,26 @@ Instructions:
     <!-- ========== EMBEDDED CONFIGURATION ========== -->
     <script>
     /**
+     * =====================================================================
      * CONFIGURATION - Modify these values to customize your login page
+     * =====================================================================
+     * This is the ONLY section you need to edit for customization.
+     * All changes take effect immediately after saving the form.
      */
     const DominoLoginConfig = {
         branding: {
             companyName: "Your Company Name",
-            // To use a logo, either:
-            // 1. Upload to DOMCFG.NSF as a file resource and use: "/domcfg.nsf/logo.svg"
-            // 2. Use a data URI (base64 encoded image)
-            // 3. Leave empty "" to hide logo
+            
+            // LOGO OPTIONS:
+            // -------------
+            // Option 1: Upload logo to DOMCFG.NSF as file resource
+            //           Set logoUrl to: "/domcfg.nsf/logo.svg"
+            //           IMPORTANT: No subfolders! NOT "/domcfg.nsf/images/logo.svg"
+            //
+            // Option 2: Use base64 data URI (no file upload needed)
+            //           Set logoUrl to: "data:image/svg+xml;base64,..."
+            //
+            // Option 3: Leave empty "" to hide logo and show company name only
             logoUrl: "",
             logoAlt: "Company Logo",
             logoMaxWidth: 200,
