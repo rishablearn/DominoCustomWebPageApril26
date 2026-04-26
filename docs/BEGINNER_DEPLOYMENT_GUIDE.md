@@ -192,9 +192,23 @@ This is the critical step where we add the login page HTML to the form.
 
 > **Reference:** [HCL Domino Designer Documentation - Using HTML on a page, form, or subform](https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMPORTING_HTML_INTO_A_PAGE_OR_FORM_STEPS.html)
 
+**⚠️ IMPORTANT: Use the Domino-Ready HTML File!**
+
+There are TWO HTML files in this project:
+- `CustomLoginForm.html` - For **local development/testing**
+- `CustomLoginForm-Domino.html` - For **Domino deployment** ← **USE THIS ONE!**
+
+The difference is the file paths:
+| File | Path Example | Use For |
+|------|--------------|---------|
+| `CustomLoginForm.html` | `css/login.css` | Local testing |
+| `CustomLoginForm-Domino.html` | `/domcfg.nsf/login.css` | **Domino Server** |
+
+Domino serves file resources from the database root (no subfolders), so you MUST use `CustomLoginForm-Domino.html`.
+
 **Step A: Copy the HTML content**
 
-1. Open the file `CustomLoginForm.html` in a text editor:
+1. Open the file **`CustomLoginForm-Domino.html`** in a text editor:
    - **Windows:** Right-click the file → **Open with** → **Notepad** (or Notepad++)
    - **Mac:** Right-click → **Open With** → **TextEdit** (or VS Code)
 
@@ -853,9 +867,32 @@ Open the same URL on your phone to verify it's responsive.
 - File resource not found
 - Lucide icons CDN blocked (corporate firewall)
 
-### Problem: "MIME type is not executable" Error
+### Problem: "MIME type is not executable" Error (Wrong Path)
 
-**Error message:**
+**Error message with `/css/` or `/js/` in path:**
+```
+Refused to apply style from 'https://server/domcfg.nsf/css/login.css' 
+because its MIME type ('text/html') is not a supported stylesheet MIME type
+```
+
+**Cause:** You used the wrong HTML file! Domino doesn't support subfolder paths for file resources.
+
+**Solution:** Use `CustomLoginForm-Domino.html` instead of `CustomLoginForm.html`
+
+The paths should be:
+- ✅ Correct: `/domcfg.nsf/login.css`
+- ❌ Wrong: `/domcfg.nsf/css/login.css`
+
+If you already pasted the wrong file, you need to:
+1. Open the form in Designer
+2. Delete all content
+3. Copy from `CustomLoginForm-Domino.html` instead
+4. Paste and mark as Pass-Thru HTML
+5. Save
+
+### Problem: "MIME type is not executable" Error (MIME Not Set)
+
+**Error message WITHOUT `/css/` or `/js/` in path:**
 ```
 Refused to execute script from 'https://server/domcfg.nsf/config.js' 
 because its MIME type ('text/html') is not executable, 

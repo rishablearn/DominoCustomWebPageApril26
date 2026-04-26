@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Secure Login Portal - HCL Domino">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <title id="pageTitle">Secure Login - HCL Domino</title>
+    
+    <!-- Preload critical resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Google Fonts - Inter for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons - CDN with local fallback -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script>
+        // Fallback for Lucide if CDN fails
+        if (typeof lucide === 'undefined') {
+            var s = document.createElement('script');
+            s.src = '/domcfg.nsf/lucide.min.js';
+            document.head.appendChild(s);
+        }
+    </script>
+    
+    <!-- ============================================== -->
+    <!-- DOMINO FILE RESOURCES - NO SUBFOLDER PATHS!   -->
+    <!-- Files are served from database root           -->
+    <!-- ============================================== -->
+    
+    <!-- Configuration - MUST be /domcfg.nsf/config.js (no folders) -->
+    <script src="/domcfg.nsf/config.js"></script>
+    
+    <!-- Internationalization - MUST be /domcfg.nsf/translations.js (no i18n/ folder) -->
+    <script src="/domcfg.nsf/translations.js"></script>
+    
+    <!-- Stylesheet - MUST be /domcfg.nsf/login.css (no css/ folder) -->
+    <link rel="stylesheet" href="/domcfg.nsf/login.css">
+    
+    <!-- Inline critical styles for fast initial render -->
+    <style>
+        :root {
+            --primary-color: #0066CC;
+            --primary-hover: #0052A3;
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-primary: #1a1a2e;
+            --text-secondary: #6c757d;
+            --input-bg: #f8f9fa;
+            --input-border: #dee2e6;
+            --error-color: #dc3545;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+            padding: 20px;
+        }
+        
+        .login-container {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Animation Layer -->
+    <div class="background-layer" id="backgroundLayer">
+        <div class="bg-shape bg-shape-1"></div>
+        <div class="bg-shape bg-shape-2"></div>
+        <div class="bg-shape bg-shape-3"></div>
+    </div>
+    
+    <!-- Main Login Container -->
+    <div class="login-container" id="loginContainer">
+        <!-- Login Card -->
+        <div class="login-card">
+            <!-- Logo Section -->
+            <!-- Logo - MUST be /domcfg.nsf/logo.svg (no images/ folder) -->
+            <div class="logo-section" id="logoSection">
+                <img src="/domcfg.nsf/logo.svg" alt="Company Logo" id="companyLogo" class="company-logo">
+            </div>
+            
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <h1 class="welcome-title" id="welcomeTitle">Welcome Back</h1>
+                <p class="welcome-subtitle" id="welcomeSubtitle">Please sign in to access your applications</p>
+            </div>
+            
+            <!-- Error Message Display -->
+            <div class="error-container" id="errorContainer" role="alert" aria-live="polite" style="display: none;">
+                <div class="error-message">
+                    <i data-lucide="alert-circle" class="error-icon"></i>
+                    <span id="errorText"></span>
+                </div>
+            </div>
+            
+            <!-- Login Form -->
+            <!-- 
+                DOMINO AUTHENTICATION:
+                - Form action: /names.nsf?Login (standard Domino login endpoint)
+                - Required hidden field: RedirectTo (where to go after login)
+                - Field names MUST be: Username, Password (case-sensitive)
+            -->
+            <form id="loginForm" 
+                  name="loginForm" 
+                  method="POST" 
+                  action="/names.nsf?Login" 
+                  autocomplete="on"
+                  aria-label="Login Form">
+                
+                <!-- Hidden Fields for Domino -->
+                <input type="hidden" name="RedirectTo" id="RedirectTo" value="/">
+                
+                <!-- Domino will populate these fields with error information -->
+                <!-- reasontype: 0=prompt, 1=not authorized, 2=invalid creds, 3=expired, 4=timing -->
+                <input type="hidden" name="reasontype" id="reasontype" value="">
+                
+                <!-- Username Field -->
+                <div class="form-group">
+                    <label for="Username" class="form-label" id="usernameLabel">
+                        <i data-lucide="user" class="label-icon"></i>
+                        <span>Username</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="text" 
+                               id="Username" 
+                               name="Username" 
+                               class="form-input" 
+                               placeholder="Enter your username"
+                               autocomplete="username"
+                               required
+                               aria-required="true"
+                               aria-describedby="usernameHelp">
+                        <div class="input-focus-ring"></div>
+                    </div>
+                </div>
+                
+                <!-- Password Field -->
+                <div class="form-group">
+                    <label for="Password" class="form-label" id="passwordLabel">
+                        <i data-lucide="lock" class="label-icon"></i>
+                        <span>Password</span>
+                    </label>
+                    <div class="input-wrapper password-wrapper">
+                        <input type="password" 
+                               id="Password" 
+                               name="Password" 
+                               class="form-input" 
+                               placeholder="Enter your password"
+                               autocomplete="current-password"
+                               required
+                               aria-required="true">
+                        <button type="button" 
+                                class="password-toggle" 
+                                id="passwordToggle"
+                                aria-label="Toggle password visibility"
+                                tabindex="-1">
+                            <i data-lucide="eye" id="eyeIcon"></i>
+                        </button>
+                        <div class="input-focus-ring"></div>
+                    </div>
+                </div>
+                
+                <!-- Remember Me & Forgot Password Row -->
+                <div class="form-options">
+                    <div class="remember-me" id="rememberMeContainer">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rememberMe" name="rememberMe" class="checkbox-input">
+                            <span class="checkbox-custom"></span>
+                            <span class="checkbox-text" id="rememberMeLabel">Remember me</span>
+                        </label>
+                    </div>
+                    <a href="#" class="forgot-password-link" id="forgotPasswordLink">Forgot password?</a>
+                </div>
+                
+                <!-- Submit Button -->
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span class="btn-text" id="btnText">Sign In</span>
+                    <span class="btn-loader" id="btnLoader" style="display: none;">
+                        <svg class="spinner" viewBox="0 0 24 24">
+                            <circle class="spinner-circle" cx="12" cy="12" r="10" fill="none" stroke-width="3"></circle>
+                        </svg>
+                    </span>
+                    <i data-lucide="arrow-right" class="btn-icon"></i>
+                </button>
+            </form>
+            
+            <!-- Security Notice -->
+            <div class="security-notice" id="securityNotice">
+                <i data-lucide="shield-check" class="security-icon"></i>
+                <span id="securityText">This is a secure connection</span>
+            </div>
+            
+            <!-- Help Link -->
+            <div class="help-section" id="helpSection" style="display: none;">
+                <a href="#" id="helpLink" class="help-link">
+                    <i data-lucide="help-circle"></i>
+                    <span id="helpText">Need help?</span>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="login-footer">
+            <p class="footer-text" id="footerText">© 2026 Your Company Name. All rights reserved.</p>
+            <div class="domino-badge" id="dominoBadge">
+                <span>Powered by</span>
+                <strong>HCL Domino</strong>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- Custom HTML Injection Point -->
+    <div id="customHtmlContainer"></div>
+    
+    <!-- Screen reader announcement region -->
+    <div id="screenReaderAnnouncements" class="screen-reader-text" aria-live="polite" aria-atomic="true"></div>
+    
+    <!-- JavaScript - MUST be /domcfg.nsf/login.js (no js/ folder) -->
+    <script src="/domcfg.nsf/login.js"></script>
+    
+    <!-- Initialize Lucide Icons with fallback -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if Lucide is available
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            } else {
+                // Fallback: Icons will be text-only
+                console.warn('Lucide icons not loaded. Using text labels.');
+            }
+        });
+    </script>
+</body>
+</html>
