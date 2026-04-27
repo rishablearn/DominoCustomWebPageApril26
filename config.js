@@ -86,9 +86,6 @@ const DominoLoginConfig = {
         //   - Domino does NOT support SVG - use PNG, JPG, or GIF only
         //   - Leave empty "" to hide logo and show company name only
         //
-        // FOR LOCAL DEVELOPMENT:
-        //   - Use: "images/logo-placeholder.png"
-        //
         // Supported formats: PNG, JPG, WEBP, GIF (NO SVG in Domino!)
         logoUrl: "",  // Set to "/domcfg.nsf/logo.png" for Domino
         

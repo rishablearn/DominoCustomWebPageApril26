@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
     
     // Default to index/login page
     if (urlPath === '/' || urlPath === '') {
-        urlPath = '/CustomLoginForm.html';
+        urlPath = '/CustomLoginForm-Domino.html';
     }
 
     // Handle mock login POST (for testing)
@@ -119,26 +119,26 @@ function handleMockLogin(req, res) {
             } else if (username === 'unauthorized') {
                 // Simulate unauthorized access (reasontype=1)
                 res.writeHead(302, { 
-                    'Location': '/CustomLoginForm.html?reasontype=1' 
+                    'Location': '/CustomLoginForm-Domino.html?reasontype=1' 
                 });
                 res.end();
             } else if (username === 'expired') {
                 // Simulate session expired (reasontype=3)
                 res.writeHead(302, { 
-                    'Location': '/CustomLoginForm.html?reasontype=3' 
+                    'Location': '/CustomLoginForm-Domino.html?reasontype=3' 
                 });
                 res.end();
             } else {
                 // Invalid credentials (reasontype=2)
                 res.writeHead(302, { 
-                    'Location': '/CustomLoginForm.html?reasontype=2' 
+                    'Location': '/CustomLoginForm-Domino.html?reasontype=2' 
                 });
                 res.end();
             }
         } else {
             // Missing credentials
             res.writeHead(302, { 
-                'Location': '/CustomLoginForm.html?reasontype=2' 
+                'Location': '/CustomLoginForm-Domino.html?reasontype=2' 
             });
             res.end();
         }

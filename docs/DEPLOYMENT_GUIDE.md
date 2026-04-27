@@ -244,23 +244,21 @@ This is the critical step where we add the login page HTML to the form.
 
 > **Reference:** [HCL Domino Designer Documentation - Using HTML on a page, form, or subform](https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMPORTING_HTML_INTO_A_PAGE_OR_FORM_STEPS.html)
 
-**⚠️ IMPORTANT: Use the Domino-Ready HTML File!**
+**⚠️ IMPORTANT: Choose the Right HTML File!**
 
-There are TWO HTML files in this project:
-- `CustomLoginForm.html` - For **local development/testing**
-- `CustomLoginForm-Domino.html` - For **Domino deployment** ← **USE THIS ONE!**
+There are THREE HTML files for Domino deployment:
 
-The difference is the file paths:
-| File | Path Example | Use For |
-|------|--------------|---------|
-| `CustomLoginForm.html` | `css/login.css` | Local testing |
-| `CustomLoginForm-Domino.html` | `/domcfg.nsf/login.css` | **Domino Server** |
+| File | Location | Best For | MIME Config |
+|------|----------|----------|-------------|
+| `EnterpriseLoginForm.html` | `docs/` | ⭐ **RECOMMENDED** - Enterprise features | ❌ None |
+| `DominoEmbeddedForm.html` | `docs/` | Simple clean login | ❌ None |
+| `CustomLoginForm-Domino.html` | Root | Advanced (external files) | ⚠️ Required |
 
-Domino serves file resources from the database root (no subfolders), so you MUST use `CustomLoginForm-Domino.html`.
+**We recommend `EnterpriseLoginForm.html`** - it has all CSS/JS inline, so no MIME configuration needed!
 
 **Step A: Copy the HTML content**
 
-1. Open the file **`CustomLoginForm-Domino.html`** in a text editor:
+1. Open your chosen HTML file (we recommend **`docs/EnterpriseLoginForm.html`**) in a text editor:
    - **Windows:** Right-click the file → **Open with** → **Notepad** (or Notepad++)
    - **Mac:** Right-click → **Open With** → **TextEdit** (or VS Code)
 
@@ -273,7 +271,7 @@ Domino serves file resources from the database root (no subfolders), so you MUST
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Notepad++ - CustomLoginForm.html                        │
+│ Notepad++ - EnterpriseLoginForm.html                    │
 ├─────────────────────────────────────────────────────────┤
 │ ████████████████████████████████████  ◄── All selected  │
 │ ████████████████████████████████████      (highlighted) │
@@ -945,20 +943,15 @@ Refused to apply style from 'https://server/domcfg.nsf/css/login.css'
 because its MIME type ('text/html') is not a supported stylesheet MIME type
 ```
 
-**Cause:** You used the wrong HTML file! Domino doesn't support subfolder paths for file resources.
+**Cause:** You used an HTML file with subfolder paths. Domino doesn't support subfolder paths for file resources.
 
-**Solution:** Use `CustomLoginForm-Domino.html` instead of `CustomLoginForm.html`
+**Solution:** Use `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` instead - they have all CSS/JS inline, so no external files needed!
 
-The paths should be:
+If you must use external files, paths should be:
 - ✅ Correct: `/domcfg.nsf/login.css`
 - ❌ Wrong: `/domcfg.nsf/css/login.css`
 
-If you already pasted the wrong file, you need to:
-1. Open the form in Designer
-2. Delete all content
-3. Copy from `CustomLoginForm-Domino.html` instead
-4. Paste and mark as Pass-Thru HTML
-5. Save
+To fix, replace the form content with `docs/EnterpriseLoginForm.html`.
 
 ### Problem: "MIME type is not executable" Error (MIME Not Set)
 
@@ -1348,10 +1341,9 @@ Use this checklist before deploying to production:
 (If available, add links to video tutorials here)
 
 - How to create DOMCFG.NSF: `[link]`
-- How to import DXL files: `[link]`
-- How to customize config.js: `[link]`
+- How to customize your login page: `[link]`
 
 ---
 
-*Document Version: 2.0.0 | April 2026*
-*For beginners with zero Domino development experience*
+*Document Version: 2.1.0 | April 2026*
+*Complete step-by-step deployment guide for Domino administrators*

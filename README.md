@@ -123,7 +123,7 @@ DominoCustomWebPageApril26/
 **⚠️ If using this option, you MUST:**
 1. Import all file resources (config.js, login.css, login.js, translations.js)
 2. Set MIME types in **Web Properties** tab for each file
-3. See [BEGINNER_DEPLOYMENT_GUIDE.md](docs/BEGINNER_DEPLOYMENT_GUIDE.md) for detailed instructions
+3. See [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for detailed instructions
 
 ---
 
@@ -283,9 +283,8 @@ logoUrl: ""
 
 | Document | Description |
 |----------|-------------|
-| [BEGINNER_DEPLOYMENT_GUIDE.md](docs/BEGINNER_DEPLOYMENT_GUIDE.md) | Step-by-step for first-time admins |
-| [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) | Technical deployment reference |
-| [COMPLETE_DOCUMENTATION.md](docs/COMPLETE_DOCUMENTATION.md) | Full feature documentation |
+| [DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) | Complete step-by-step deployment instructions |
+| [COMPLETE_DOCUMENTATION.md](docs/COMPLETE_DOCUMENTATION.md) | Full technical documentation |
 
 ## 📚 HCL References
 
