@@ -184,29 +184,18 @@ If you must use external files, set MIME types in **Web Properties** tab (not Ba
 DominoCustomWebPageApril26/
 │
 ├── docs/
-│   ├── EnterpriseLoginForm.html    ⭐ RECOMMENDED - All-in-one with enterprise features
-│   ├── DominoEmbeddedForm.html     ⭐ All-in-one simple version
-│   ├── BEGINNER_DEPLOYMENT_GUIDE.md   Step-by-step for first-time admins
-│   ├── DEPLOYMENT_GUIDE.md            Technical deployment reference
-│   └── COMPLETE_DOCUMENTATION.md      This file
+│   ├── EnterpriseLoginForm.html   ⭐ RECOMMENDED - All-in-one enterprise
+│   ├── DominoEmbeddedForm.html    ⭐ All-in-one simple version
+│   ├── DEPLOYMENT_GUIDE.md           Complete deployment instructions
+│   └── COMPLETE_DOCUMENTATION.md     This file
 │
-├── CustomLoginForm.html            # For local development only
-├── CustomLoginForm-Domino.html     # For Domino with external files (advanced)
-├── config.js                       # Configuration (for modular version)
-├── css/
-│   └── login.css                   # Stylesheet (for modular version)
-├── js/
-│   └── login.js                    # JavaScript (for modular version)
-├── i18n/
-│   └── translations.js             # Translations (for modular version)
-│
-├── samples/                        # Pre-built theme configurations
-│   ├── config-corporate-blue.js
-│   ├── config-modern-gradient.js
-│   ├── config-dark-elegant.js
-│   └── config-healthcare.js
-│
-├── preview-server.js               # Local testing server
+├── CustomLoginForm-Domino.html    # Advanced: Uses external files
+├── config.js                      # Configuration for modular version
+├── css/login.css                  # Stylesheet for modular version
+├── js/login.js                    # JavaScript for modular version
+├── i18n/translations.js           # Translations for modular version
+├── samples/                       # Pre-built theme configurations
+├── preview-server.js              # Local testing server
 └── README.md
 ```
 
@@ -217,7 +206,6 @@ DominoCustomWebPageApril26/
 | `docs/EnterpriseLoginForm.html` | Enterprise login with quick links, security notice | ❌ None |
 | `docs/DominoEmbeddedForm.html` | Simple clean login page | ❌ None |
 | `CustomLoginForm-Domino.html` | Modular version for Domino | ⚠️ Required |
-| `CustomLoginForm.html` | Local development only | N/A |
 
 ---
 

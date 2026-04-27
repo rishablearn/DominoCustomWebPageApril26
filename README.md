@@ -51,26 +51,20 @@ We provide **self-contained HTML files** with ALL CSS and JavaScript embedded in
 DominoCustomWebPageApril26/
 │
 ├── docs/
-│   ├── EnterpriseLoginForm.html    ⭐ RECOMMENDED - Enterprise features, all-in-one
-│   ├── DominoEmbeddedForm.html     ⭐ Simple version, all-in-one
-│   ├── BEGINNER_DEPLOYMENT_GUIDE.md   Step-by-step instructions
-│   ├── DEPLOYMENT_GUIDE.md            Technical deployment guide
-│   └── COMPLETE_DOCUMENTATION.md      Full documentation
+│   ├── EnterpriseLoginForm.html   ⭐ RECOMMENDED - All-in-one enterprise
+│   ├── DominoEmbeddedForm.html    ⭐ All-in-one simple version
+│   ├── DEPLOYMENT_GUIDE.md           Complete deployment instructions
+│   └── COMPLETE_DOCUMENTATION.md     Full technical documentation
 │
-├── CustomLoginForm.html            # For local development only
-├── CustomLoginForm-Domino.html     # For Domino with external files (advanced)
-├── config.js                       # Configuration (for modular version)
-├── css/login.css                   # Styles (for modular version)
-├── js/login.js                     # Scripts (for modular version)
-├── i18n/translations.js            # Translations (for modular version)
+├── CustomLoginForm-Domino.html    # Advanced: Uses external files
+├── config.js                      # Configuration for modular version
+├── css/login.css                  # Styles for modular version
+├── js/login.js                    # Scripts for modular version
+├── i18n/translations.js           # Translations for modular version
 │
-├── samples/                        # Pre-built theme configurations
-│   ├── config-corporate-blue.js
-│   ├── config-modern-gradient.js
-│   ├── config-dark-elegant.js
-│   └── config-healthcare.js
+├── samples/                       # Pre-built theme configurations
 │
-└── preview-server.js               # Local preview server
+└── preview-server.js              # Local preview server
 ```
 
 ---

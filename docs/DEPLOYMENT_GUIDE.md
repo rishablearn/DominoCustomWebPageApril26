@@ -1,969 +1,1357 @@
 # HCL Domino Custom Login Page - Deployment Guide
 
-## Overview
+**Complete Step-by-Step Instructions for Domino Administrators**
 
-This guide provides comprehensive instructions for deploying the custom login page on HCL Domino Server using the Domino Web Server Configuration database (DOMCFG.NSF).
-
-**Version:** 2.0.0  
-**Last Updated:** April 2026  
-**Compatible with:** HCL Domino 12.x, 14.x
-
-### What's New in v2.0.0
-
-- **Feature Toggles**: All features can be enabled/disabled via `config.js`
-- **Multi-Language (i18n)**: 10 languages with RTL support
-- **Password Strength Meter**: Real-time password feedback
-- **Theme Switcher**: Light/Dark/Auto modes
-- **Accessible CAPTCHA**: Math CAPTCHA with audio support
-- **Offline Detection**: Network status indicator
-- **Session Warning**: Timeout alerts
-- **And more**: See `config.js` for all options
+This guide provides detailed instructions for deploying the custom login page. Follow each step exactly as written.
 
 ---
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Creating DOMCFG.NSF Database](#creating-domcfgnsf-database)
-3. [Creating the Custom Login Form](#creating-the-custom-login-form)
-4. [Configuring the Login Form Mapping](#configuring-the-login-form-mapping)
-5. [Adding Resources (CSS, JS, Images)](#adding-resources)
-6. [Testing the Login Page](#testing-the-login-page)
-7. [Troubleshooting](#troubleshooting)
-8. [Security Considerations](#security-considerations)
-9. [Customization Reference](#customization-reference)
+1. [What You Need Before Starting](#what-you-need-before-starting)
+2. [Understanding the Basics](#understanding-the-basics)
+3. [Choosing Your Deployment Option](#choosing-your-deployment-option) ⭐ **Start Here**
+4. [Method 1: Manual Setup in Domino Designer](#method-1-create-form-manually-in-domino-designer-recommended)
+5. [Configuring Your Login Page](#configuring-your-login-page)
+6. [Testing Your Login Page](#testing-your-login-page)
+7. [Troubleshooting Common Problems](#troubleshooting-common-problems)
+8. [Getting Help](#getting-help)
 
 ---
 
-## Prerequisites
+## What You Need Before Starting
 
-Before deploying the custom login page, ensure you have:
+### Required Software
 
-- [ ] **HCL Domino Server** running (version 12.x or later recommended)
-- [ ] **HCL Domino Designer** installed for creating forms
-- [ ] **HCL Notes Client** or Domino Administrator for configuration
-- [ ] **Server Administrator access** to the Domino server
-- [ ] **Session-based authentication** enabled on the server
+| Software | Purpose | Where to Get It |
+|----------|---------|-----------------|
+| HCL Notes Client | Access Domino databases | Your IT department |
+| HCL Domino Designer | Create/edit forms | Your IT department |
+| HCL Domino Administrator | Server management | Your IT department |
+| Text Editor (Notepad++) | Edit configuration files | https://notepad-plus-plus.org |
+| Web Browser | Test the login page | Already installed |
 
-### Server Configuration Requirements
+### Required Access
 
-Ensure your Domino server has session-based authentication enabled:
+You need **administrator access** to your Domino server. If you don't have this, contact your IT department.
 
-1. Open the **Server Document** in the Domino Directory
-2. Navigate to **Internet Protocols > HTTP**
-3. Set **Session authentication** to "Multi-Server" or "Single Server"
-4. Set **Session timeout** as needed (default: 30 minutes)
+To check if you have admin access:
+1. Open HCL Notes Client
+2. Try to open the **Domino Directory** (names.nsf) on your server
+3. If you can see and edit documents, you likely have sufficient access
+
+### Files You'll Need
+
+Download or locate these files from this project:
+
+**✅ RECOMMENDED (No MIME issues):**
+- `docs/EnterpriseLoginForm.html` - **Enterprise login with all CSS/JS inline**
+- `docs/DominoEmbeddedForm.html` - Simple login with all CSS/JS inline
+
+**For modular deployment (requires MIME setup):**
+- `CustomLoginForm-Domino.html` - Login page for Domino (uses external files)
+- `config.js` - Configuration settings
+- `css/login.css` - Styling
+- `js/login.js` - Functionality
+- `i18n/translations.js` - Language translations
+- Your logo file (PNG, JPG, or GIF - **Domino does NOT support SVG**)
 
 ---
 
-## Creating DOMCFG.NSF Database
+## Understanding the Basics
 
-The DOMCFG.NSF database is required for custom login forms. If it doesn't exist, create it:
+### What is DOMCFG.NSF?
 
-### Step 1: Create the Database
+DOMCFG.NSF is a special database that tells Domino how to handle web login. When someone tries to access a protected resource on your Domino web server, Domino checks this database to find your custom login form.
 
-1. Open **HCL Domino Administrator** or **HCL Notes Client**
-2. Go to **File > Application > New**
-3. Configure the new database:
-   - **Server:** Your Domino server name
-   - **Title:** Domino Web Server Configuration
-   - **File name:** `DOMCFG.NSF` (this name is **mandatory**)
-   - Check **Show Advanced Templates**
-   - Select template: **Domino Web Server Configuration (DOMCFG5.NTF)**
-4. Click **OK** to create the database
+**Think of it like:** A receptionist desk at the entrance of a building. Everyone who wants to enter must check in there first.
 
-### Step 2: Configure ACL
+### What is Session Authentication?
 
-1. Open the newly created DOMCFG.NSF
-2. Go to **File > Application > Access Control**
-3. Add entries:
+Session authentication means users log in once, and Domino remembers them for a period of time (usually 30 minutes). They don't need to log in again for each page they visit.
+
+### What is a Form in Domino?
+
+A form is like a template. In our case, it's a template for the login page that Domino shows to users.
+
+---
+
+## Choosing Your Deployment Option
+
+### 🎯 Quick Decision Guide
+
+| If You Want... | Use This File | MIME Issues? |
+|----------------|---------------|--------------|
+| **Simplest deployment, no MIME issues** | `EnterpriseLoginForm.html` | ✅ **NONE** |
+| Self-contained, all-in-one | `DominoEmbeddedForm.html` | ✅ **NONE** |
+| Modular with external files | `CustomLoginForm-Domino.html` | ⚠️ Requires MIME setup |
+
+### ✅ RECOMMENDED: EnterpriseLoginForm.html (Zero MIME Issues)
+
+**This is the best option for most users.** The `EnterpriseLoginForm.html` file:
+- Has ALL CSS and JavaScript embedded inline
+- Requires NO external file resources
+- **Completely avoids MIME type errors**
+- Includes enterprise features (quick links, security notice, support info)
+- Inspired by corporate login pages like ONGC Verse and UIIC Mail
+
+**Location:** `docs/EnterpriseLoginForm.html`
+
+### Why MIME Errors Happen
+
+When you use external files (`.js`, `.css`), Domino must serve them with the correct MIME type:
+- `.js` files need `text/javascript`
+- `.css` files need `text/css`
+
+If Domino serves them as `text/html` (the default), browsers refuse to load them:
+```
+Refused to execute script from 'config.js' because its MIME type ('text/html') is not executable
+```
+
+### How to Avoid MIME Errors
+
+**Option A: Use Self-Contained HTML (Recommended)**
+- Use `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html`
+- All CSS/JS is inline - no external files needed
+- **Zero MIME configuration required**
+
+**Option B: If Using External Files**
+- Must set MIME types manually in Domino Designer
+- See Step 1.4.4 below for detailed instructions
+- Reference: [HCL Documentation - File Resource Web Properties](https://help.hcl-software.com/dom_designer/11.0.1/basic/H_TO_DEPLOY_A_FILE_RESOURCE_ON_THE_WEB_STEPS.html)
+
+---
+
+## Method 1: Create Form Manually in Domino Designer (Recommended)
+
+This is the standard and most reliable method for creating the custom login form.
+
+### Step 1.1: Create DOMCFG.NSF Database
+
+**If DOMCFG.NSF already exists on your server, skip to Step 1.2**
+
+1. Open **HCL Notes Client**
+2. Click **File** menu → **Application** → **New**
+3. Fill in the dialog:
+
+   | Field | What to Enter |
+   |-------|---------------|
+   | Server | Select your Domino server name (e.g., `Server1/YourCompany`) |
+   | Title | `Domino Web Server Configuration` |
+   | File name | `domcfg.nsf` (type this exactly) |
+   | Template | Click **Show Advanced Templates** checkbox, then select **Domino Web Server Configuration** |
+
+4. Click **OK**
+5. Wait for the database to be created (this may take a few seconds)
+
+**Screenshot Reference:**
+```
+┌─────────────────────────────────────────┐
+│ New Application                         │
+├─────────────────────────────────────────┤
+│ Server: [Server1/YourCompany    ▼]      │
+│ Title:  [Domino Web Server Config    ]  │
+│ File:   [domcfg.nsf                  ]  │
+│                                         │
+│ ☑ Show Advanced Templates               │
+│ Template: [Domino Web Server Config ▼]  │
+│                                         │
+│         [  OK  ]  [ Cancel ]            │
+└─────────────────────────────────────────┘
+```
+
+### Step 1.2: Set Database Permissions (ACL)
+
+1. Open the newly created `domcfg.nsf` database
+2. Click **File** menu → **Application** → **Access Control**
+3. You'll see a list of names/groups with access levels
+4. Make these changes:
+
+   **Add Anonymous access:**
+   - Click **Add** button
+   - Type: `Anonymous`
+   - Click **OK**
+   - Select `Anonymous` in the list
+   - Set **Access** to `Reader`
+   - Click **OK**
+
+   **Verify these entries exist:**
    | Name | Access Level |
    |------|--------------|
    | -Default- | No Access |
    | Anonymous | Reader |
-   | Your Admin Name | Manager |
    | LocalDomainServers | Manager |
-4. Click **OK** to save
+   | Your Admin Name | Manager |
 
-> **Important:** Anonymous must have at least Reader access for the login form to be accessible.
+5. Click **OK** to save
+
+**Why Anonymous needs Reader access:** When someone visits your login page, they're not logged in yet (they're "anonymous"). They need to be able to see the login form.
+
+### Step 1.3: Create the Custom Login Form
+
+Now we'll create the login form and add the HTML content.
+
+#### Step 1.3.1: Create a New Form
+
+1. Open `domcfg.nsf` in **HCL Domino Designer**
+2. In the left panel (Design pane), find and expand **Forms**
+3. Right-click on **Forms** → Select **New Form**
+4. A blank form design window opens
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Domino Designer                                         │
+├─────────────────────────────────────────────────────────┤
+│ ▼ domcfg.nsf                                            │
+│   ├─ Forms                  ◄── Right-click here        │
+│   │   └─ (empty)                 Select "New Form"      │
+│   ├─ Views                                              │
+│   ├─ Resources                                          │
+│   └─ ...                                                │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Step 1.3.2: Set Form Properties
+
+1. With the new form open, click **Design** menu → **Form Properties**
+   (Or press **Alt+Enter**, or right-click → **Form Properties**)
+
+2. In the Properties box that appears:
+
+   **Basics Tab:**
+   | Property | Value to Enter |
+   |----------|----------------|
+   | Name | `CustomLoginForm` |
+   | Comment | `Custom branded login form v2.0` |
+
+3. Click the **X** to close the Properties box (it auto-saves)
+
+```
+┌─────────────────────────────────────┐
+│ Form Properties                     │
+├─────────────────────────────────────┤
+│ Name:    [CustomLoginForm      ]    │
+│ Comment: [Custom branded login ]    │
+│ Type:    ○ Document  ● No type      │
+│                                     │
+│ [Defaults] [Launch] [Background]    │
+└─────────────────────────────────────┘
+```
+
+#### Step 1.3.3: Add the HTML Content
+
+This is the critical step where we add the login page HTML to the form.
+
+> **Reference:** [HCL Domino Designer Documentation - Using HTML on a page, form, or subform](https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMPORTING_HTML_INTO_A_PAGE_OR_FORM_STEPS.html)
+
+**⚠️ IMPORTANT: Use the Domino-Ready HTML File!**
+
+There are TWO HTML files in this project:
+- `CustomLoginForm.html` - For **local development/testing**
+- `CustomLoginForm-Domino.html` - For **Domino deployment** ← **USE THIS ONE!**
+
+The difference is the file paths:
+| File | Path Example | Use For |
+|------|--------------|---------|
+| `CustomLoginForm.html` | `css/login.css` | Local testing |
+| `CustomLoginForm-Domino.html` | `/domcfg.nsf/login.css` | **Domino Server** |
+
+Domino serves file resources from the database root (no subfolders), so you MUST use `CustomLoginForm-Domino.html`.
+
+**Step A: Copy the HTML content**
+
+1. Open the file **`CustomLoginForm-Domino.html`** in a text editor:
+   - **Windows:** Right-click the file → **Open with** → **Notepad** (or Notepad++)
+   - **Mac:** Right-click → **Open With** → **TextEdit** (or VS Code)
+
+2. Select ALL the content:
+   - Press **Ctrl+A** (Windows) or **Cmd+A** (Mac)
+   - Everything should be highlighted in blue
+
+3. Copy to clipboard:
+   - Press **Ctrl+C** (Windows) or **Cmd+C** (Mac)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Notepad++ - CustomLoginForm.html                        │
+├─────────────────────────────────────────────────────────┤
+│ ████████████████████████████████████  ◄── All selected  │
+│ ████████████████████████████████████      (highlighted) │
+│ ████████████████████████████████████                    │
+│ ████████████████████████████████████                    │
+│ ████████████████████████████████████                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Step B: Paste into the Domino Form**
+
+1. Switch back to **Domino Designer** (the form should still be open)
+2. Click inside the blank form design area
+3. Paste the content:
+   - Press **Ctrl+V** (Windows) or **Cmd+V** (Mac)
+   - Or click **Edit** menu → **Paste**
+
+4. You should see the HTML code appear in the form (it may look like plain text at this point)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Form: CustomLoginForm (Untitled)                        │
+├─────────────────────────────────────────────────────────┤
+│ <!DOCTYPE html>                                         │
+│ <html lang="en">                                        │
+│ <head>                                                  │
+│     <meta charset="UTF-8">                              │
+│     <meta name="viewport" content="width=device-wi...   │
+│     <title id="pageTitle">Secure Login</title>          │
+│     ...                                                 │
+│ </body>                                                 │
+│ </html>                                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Step C: Mark the content as Pass-Thru HTML**
+
+Now we need to tell Domino to send this HTML directly to the browser without processing it.
+
+1. Select ALL the pasted content:
+   - Click at the beginning of the content
+   - Press **Ctrl+A** to select all
+   - Or click **Edit** menu → **Select All**
+
+2. Mark as Pass-Thru HTML:
+   - Click **Text** menu → **Pass-Thru HTML**
+   
+```
+┌─────────────────────────────────────────────────────────┐
+│ Domino Designer                                         │
+├─────────────────────────────────────────────────────────┤
+│ File  Edit  View  Create  [Text]  Design  ...           │
+│                              │                          │
+│                              ▼                          │
+│                    ┌─────────────────────┐              │
+│                    │ Text Properties...  │              │
+│                    │ Font                │              │
+│                    │ Size                │              │
+│                    │ Style               │              │
+│                    │ ─────────────────── │              │
+│                    │ ✓ Pass-Thru HTML   │◄── Click this │
+│                    │ Hide Paragraph      │              │
+│                    └─────────────────────┘              │
+└─────────────────────────────────────────────────────────┘
+```
+
+3. After clicking **Pass-Thru HTML**, the text will change to **green color**
+   - Green text = Pass-Thru HTML (Domino sends it as-is to browser)
+   - Black text = Regular text (Domino may process/convert it)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Form: CustomLoginForm                                   │
+├─────────────────────────────────────────────────────────┤
+│ <!DOCTYPE html>                      ◄── GREEN text     │
+│ <html lang="en">                         means it's     │
+│ <head>                                   Pass-Thru HTML │
+│     <meta charset="UTF-8">                              │
+│     ...                                                 │
+│ </html>                                                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Step D: Verify Pass-Thru HTML is Applied**
+
+To confirm the HTML is properly marked:
+
+1. Click anywhere in the green HTML text
+2. Look at the **Text** menu
+3. **Pass-Thru HTML** should have a checkmark (✓) next to it
+
+If the text is NOT green:
+- Select all the text again (**Ctrl+A**)
+- Click **Text** menu → **Pass-Thru HTML** again
+
+**Step E: Save the Form**
+
+1. Press **Ctrl+S** to save
+2. Or click **File** menu → **Save**
+3. If prompted for a name, verify it says `CustomLoginForm`
+4. Close the form design window (**Ctrl+W** or click the X)
+
+#### Step 1.3.4: Verify Form Was Created
+
+1. In the left panel, expand **Forms**
+2. You should see `CustomLoginForm` listed
+3. Double-click to open and verify content is there
+
+### Step 1.4: Import Resource Files (CSS, JavaScript, Images)
+
+Now we need to import the CSS, JavaScript, and image files that the form references.
+
+#### Step 1.4.1: Navigate to File Resources
+
+1. In Domino Designer, with `domcfg.nsf` open
+2. In the left panel (Design pane), expand **Resources**
+3. Click on **Files**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ▼ domcfg.nsf                                            │
+│   ├─ Forms                                              │
+│   │   └─ CustomLoginForm                                │
+│   ├─ Views                                              │
+│   ▼ Resources                   ◄── Expand this         │
+│     ├─ Files                    ◄── Click here          │
+│     ├─ Images                                           │
+│     ├─ Stylesheets                                      │
+│     └─ ...                                              │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Step 1.4.2: Import Each File
+
+For EACH file listed below, follow these steps:
+
+1. Right-click in the Files panel (right side, where files are listed)
+2. Select **Import...** (or **File** menu → **Import**)
+3. Browse to the file location on your computer
+4. Select the file
+5. Click **Import** or **Open**
+
+**Files to Import (in this order):**
+
+| # | Source File | Name in Domino | Purpose |
+|---|-------------|----------------|---------|
+| 1 | `config.js` | `config.js` | All settings |
+| 2 | `css/login.css` | `login.css` | Styles |
+| 3 | `js/login.js` | `login.js` | Functionality |
+| 4 | `i18n/translations.js` | `translations.js` | Languages |
+| 5 | Your logo file (PNG, JPG, GIF) | `logo.png` | Logo image |
+
+**⚠️ NOTE:** Domino does NOT support SVG files. Use PNG, JPG, or GIF for logos.
+
+#### Step 1.4.3: Rename Files If Needed
+
+Sometimes files import with their folder path (e.g., `css/login.css` instead of `login.css`).
+
+**To rename a file:**
+1. Right-click on the file in the list
+2. Select **Properties** (or **Design Properties**)
+3. In the Properties box, find **Name**
+4. Change to just the filename (no folders)
+5. Close Properties (it auto-saves)
+6. Press **Ctrl+S** to ensure save
+
+```
+┌─────────────────────────────────────┐
+│ File Resource Properties            │
+├─────────────────────────────────────┤
+│ Name: [login.css              ]     │  ◄── Just filename
+│                                     │      NOT css/login.css
+│ MIME Type: [text/css          ]     │
+└─────────────────────────────────────┘
+```
+
+#### Step 1.4.4: Set Correct MIME Types (CRITICAL!)
+
+**⚠️ THIS STEP IS REQUIRED** - Without it, browsers will refuse to load the files!
+
+> **Reference:** [HCL Domino Designer - File Resource Web Properties](https://help.hcl-software.com/dom_designer/11.0.1/basic/H_TO_DEPLOY_A_FILE_RESOURCE_ON_THE_WEB_STEPS.html)
+
+When you import files, Domino may not set the correct MIME type automatically for `.js` files. You MUST set the MIME type for each file manually using the **Web Properties** tab.
+
+**For EACH file resource, follow these EXACT steps:**
+
+1. **Select** the file in the Files list (click once to highlight it)
+2. Look at the **Properties panel** on the right side of Designer
+   - If you don't see it, go to **Window** menu → **Properties**
+3. In the Properties panel, click the **"Web Properties"** tab (also called "Web" tab)
+   - This is usually the second tab with a globe icon 🌐
+4. Find the **"MIME type"** field
+5. Enter the correct MIME type from the table below
+6. Press **Enter** to confirm
+7. Save the database (**Ctrl+S** or **File** → **Save**)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Domino Designer - Properties Panel                              │
+├─────────────────────────────────────────────────────────────────┤
+│  [Basic] [Web Properties] [Info] [Design]                       │
+│           ▲                                                     │
+│           └── Click this tab!                                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Read Only:  [ ] (unchecked)                                    │
+│                                                                 │
+│  MIME type:  [text/javascript                    ]              │
+│              ▲                                                  │
+│              └── Enter the MIME type here                       │
+│                  This sets the Content-Type HTTP header         │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Required MIME Types:**
+
+| File Name | MIME Type | Notes |
+|-----------|-----------|-------|
+| `config.js` | `text/javascript` | Domino may not auto-detect this! |
+| `login.js` | `text/javascript` | Domino may not auto-detect this! |
+| `translations.js` | `text/javascript` | Domino may not auto-detect this! |
+| `login.css` | `text/css` | Usually auto-detected |
+| `logo.png` | `image/png` | Usually auto-detected |
+| `logo.jpg` | `image/jpeg` | Usually auto-detected |
+
+**⚠️ IMPORTANT NOTES:**
+- Domino does NOT support SVG files. Use PNG, JPG, or GIF instead.
+- The MIME type field is in the **Web Properties** tab, NOT the Basic tab!
+- If the Web Properties tab is empty, make sure you selected a file resource.
+
+**Common Error If MIME Type Is Wrong:**
+
+If you see this error in browser console (F12):
+```
+Refused to execute script from 'https://server/domcfg.nsf/config.js' 
+because its MIME type ('text/html') is not executable
+```
+
+**Fix:** Go back and set the MIME type to `text/javascript` for that file.
+
+**Verification:**
+
+After setting MIME types, test each file URL directly in your browser:
+- `https://your-server/domcfg.nsf/config.js` - should show JavaScript code
+- `https://your-server/domcfg.nsf/login.css` - should show CSS code
+- `https://your-server/domcfg.nsf/login.js` - should show JavaScript code
+
+If any URL shows an error page or HTML instead of the file content, the MIME type is incorrect.
+
+#### Step 1.4.5: Verify All Files Are Present
+
+Your Files list should show:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Files                                                   │
+├─────────────────────────────────────────────────────────┤
+│ 📄 config.js                                            │
+│ 📄 login.css                                            │
+│ 📄 login.js                                             │
+│ 📄 translations.js                                      │
+│ 🖼️ logo.png                                             │
+└─────────────────────────────────────────────────────────┘
+```
+
+**IMPORTANT:** These names must match EXACTLY what's in the HTML:
+- The HTML references `/domcfg.nsf/config.js`
+- So the file must be named `config.js` (not `Config.js` or `config.JS`)
+
+### Step 1.5: Create Login Form Mapping
+
+This tells Domino to use your custom form for logins.
+
+1. Open `domcfg.nsf` in **Notes Client** (not Designer)
+2. You should see the main view
+3. Look for **Sign In Form Mappings** or a button labeled **Add Mapping**
+4. Click to create a new mapping document
+5. Fill in:
+
+   | Field | Value |
+   |-------|-------|
+   | Site Configuration | Select "All Web Sites / Entire Server" |
+   | Target Database | `domcfg.nsf` |
+   | Target Form | `CustomLoginForm` |
+   | Comments | `Custom branded login - v2.0` |
+
+6. **Save and Close** the document (Ctrl+S, then Esc)
+
+### Step 1.6: Restart HTTP Service
+
+For changes to take effect, restart the Domino HTTP service:
+
+**Option A: Using Domino Administrator**
+1. Open HCL Domino Administrator
+2. Connect to your server
+3. Click **Server** tab
+4. Click **Status** tab
+5. Find **HTTP** in the task list
+6. Right-click → **Restart Task**
+
+**Option B: Using Server Console**
+1. Open Domino Administrator
+2. Go to **Server** → **Console**
+3. Type: `tell http restart`
+4. Press Enter
+
+**Option C: Ask your Domino administrator to run:**
+```
+tell http restart
+```
 
 ---
 
-## Creating the Custom Login Form
+## Method 2: All-In-One Embedded Form (No Separate Files)
 
-### Method 1: Using Domino Designer (Recommended)
+If you prefer a simpler setup without separate CSS/JS files, use the embedded version.
 
-1. Open **HCL Domino Designer**
-2. Open the **DOMCFG.NSF** database
-3. Expand **Forms** in the design pane
-4. Right-click and select **New Form**
-5. Name the form: `CustomLoginForm` (or your preferred name)
+### When to Use This Method
 
-### Step 3: Add Form Content
+- Simpler deployment (only one form, no file resources)
+- Restricted environments where file resources are problematic
+- Quick testing before full deployment
 
-In the form design, switch to HTML mode and paste the contents from `CustomLoginForm.html`:
+### Step 2.1: Create DOMCFG.NSF and Set Permissions
 
-#### Required HTML Structure for Domino
+(Same as Steps 1.1 and 1.2 above)
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Your Company</title>
-    
-    <!-- Include CSS inline or reference from File Resource -->
-    <style>
-        /* Paste contents of css/login.css here */
-    </style>
-</head>
-<body>
-    <!-- Login Form - CRITICAL: These field names are required by Domino -->
-    <form method="POST" action="/names.nsf?Login" name="loginForm">
-        
-        <!-- Hidden field for redirect after login -->
-        <input type="hidden" name="RedirectTo" value="/">
-        
-        <!-- Username field - MUST be named "Username" -->
-        <input type="text" name="Username" id="Username" required>
-        
-        <!-- Password field - MUST be named "Password" -->
-        <input type="password" name="Password" id="Password" required>
-        
-        <button type="submit">Sign In</button>
-    </form>
-    
-    <!-- Include JavaScript inline -->
-    <script>
-        /* Paste contents of config.js here */
-        /* Paste contents of js/login.js here */
-    </script>
-</body>
-</html>
-```
+### Step 2.2: Create the Embedded Form
 
-### Critical Field Requirements
+1. Open `domcfg.nsf` in **Domino Designer**
+2. Right-click **Forms** → **New Form**
+3. Set **Name** to `CustomLoginForm` in Form Properties
 
-| Field Name | Type | Purpose |
-|------------|------|---------|
-| `Username` | Text | User's login name (required) |
-| `Password` | Password | User's password (required) |
-| `RedirectTo` | Hidden | URL to redirect after login |
-| `reasontype` | Hidden | Error code from Domino |
+4. Click **Create** menu → **Pass-Thru HTML**
 
-### Form Action URL
+5. Open the file `docs/DominoEmbeddedForm.html` from this project
+   - This file has ALL CSS and JavaScript embedded inline
+   - No separate file resources needed
 
-The form **must** submit to `/names.nsf?Login`:
-```html
-<form method="POST" action="/names.nsf?Login">
-```
+6. Copy the ENTIRE contents and paste into the form
 
----
+7. Save (**Ctrl+S**)
 
-## Adding Resources
+### Step 2.3: Create Login Form Mapping
 
-### Option A: Embed Resources (Simplest)
+(Same as Step 1.5 above)
 
-Embed all CSS and JavaScript directly in the HTML form. This is the simplest approach:
-
-1. Copy contents of `css/login.css` into a `<style>` tag
-2. Copy contents of `config.js` into a `<script>` tag
-3. Copy contents of `js/login.js` into another `<script>` tag
-4. Convert `images/logo-placeholder.svg` to Base64 and embed
-
-### Option B: File Resources in DOMCFG.NSF
-
-1. In Domino Designer, open DOMCFG.NSF
-2. Expand **Resources > Files**
-3. Right-click and select **Import**
-4. Import each file:
-   - `css/login.css` → Reference as `/domcfg.nsf/login.css`
-   - `js/login.js` → Reference as `/domcfg.nsf/login.js`
-   - `config.js` → Reference as `/domcfg.nsf/config.js`
-   - `i18n/translations.js` → Reference as `/domcfg.nsf/translations.js`
-   - `images/logo-placeholder.svg` → Reference as `/domcfg.nsf/logo.svg`
-
-5. Update HTML references:
-```html
-<link rel="stylesheet" href="/domcfg.nsf/login.css">
-<script src="/domcfg.nsf/config.js"></script>
-<script src="/domcfg.nsf/translations.js"></script>
-<script src="/domcfg.nsf/login.js"></script>
-```
-
-> **Note:** The i18n translations file must be loaded BEFORE login.js
-
-### Option C: Separate Database for Resources
-
-For larger deployments, create a separate database for static resources:
-
-1. Create a new database (e.g., `loginresources.nsf`)
-2. Import all CSS, JS, and image files
-3. Set Anonymous to Reader access
-4. Reference files using:
-```html
-<link rel="stylesheet" href="/loginresources.nsf/login.css">
-```
-
----
-
-## Configuring the Login Form Mapping
-
-### Step 1: Open Sign In Form Mappings
-
-1. Open **DOMCFG.NSF** in Notes Client
-2. Navigate to the **Sign In Form Mappings** view
-
-### Step 2: Create New Mapping
-
-1. Click **Add Mapping**
-2. Configure the mapping:
-
-#### Site Information
-- **All Web Sites/Entire Server** - Use custom form for all sites
-- **Specific Web Sites/Virtual Servers** - Use for specific IP addresses only
-
-#### Form Mapping
-| Field | Value |
-|-------|-------|
-| Target Database | DOMCFG.NSF |
-| Target Form | CustomLoginForm |
-| Comment | Custom branded login form v1.0 |
-
-3. **Save and close** the document
-
-### Step 3: Restart HTTP Task
-
-For changes to take effect:
+### Step 2.4: Restart HTTP
 
 ```
 tell http restart
 ```
 
-Or restart the Domino server.
+### Limitations of Embedded Method
+
+- Larger HTML file (harder to maintain)
+- Changes require editing the form directly
+- Limited customization options compared to separate config.js
+- Missing some advanced features (translations, etc.)
+
+**Recommendation:** Use Method 1 for production deployments.
 
 ---
 
-## Testing the Login Page
+## Configuring Your Login Page
 
-### Test Checklist
+After deployment, you'll want to customize the login page for your organization.
 
-- [ ] Navigate to a protected resource that requires authentication
-- [ ] Verify the custom login form appears
-- [ ] Test valid credentials - should redirect successfully
-- [ ] Test invalid credentials - should show error message (reasontype=2)
-- [ ] Test session timeout scenario
-- [ ] Verify logo displays correctly
-- [ ] Check mobile responsiveness
-- [ ] Test keyboard navigation (Tab, Enter)
-- [ ] Verify password visibility toggle works
+### Where to Make Changes
 
-### Common Test URLs
+All customization is done in the `config.js` file.
 
-```
-https://your-server.com/names.nsf?Login
-https://your-server.com/mail/username.nsf
-https://your-server.com/any-protected-resource.nsf
-```
+**To edit config.js in Domino:**
+1. Open `domcfg.nsf` in Domino Designer
+2. Expand **Resources** → **Files**
+3. Double-click on `config.js`
+4. The file opens in a text editor
+5. Make your changes
+6. Save (Ctrl+S)
+7. Restart HTTP service for changes to take effect
 
----
+### Basic Customizations
 
-## Troubleshooting
+#### Change Company Name
 
-### Issue: Default login form still appears
-
-**Causes & Solutions:**
-1. DOMCFG.NSF not in server's data directory
-   - Ensure file is at `<Domino Data>/domcfg.nsf`
-2. Form mapping not configured
-   - Check Sign In Form Mappings view
-3. HTTP task not restarted
-   - Run `tell http restart`
-
-### Issue: Form appears but login fails
-
-**Causes & Solutions:**
-1. Field names incorrect
-   - Verify `Username` and `Password` field names (case-sensitive)
-2. Form action URL wrong
-   - Must be `/names.nsf?Login`
-3. Method not POST
-   - Ensure `method="POST"`
-
-### Issue: CSS/JS not loading
-
-**Causes & Solutions:**
-1. Anonymous doesn't have Reader access
-   - Check ACL settings
-2. File paths incorrect
-   - Verify resource URLs
-3. CORS issues
-   - Ensure resources are in same domain
-
-### Issue: Error messages not displaying
-
-**Causes & Solutions:**
-1. reasontype field missing
-   - Add `<input type="hidden" name="reasontype" id="reasontype">`
-2. JavaScript not handling errors
-   - Check browser console for errors
-
-### Debug Mode
-
-Add this to the form for debugging:
-```html
-<div id="debug" style="display:none;">
-    <p>reasontype: <span id="debugReasonType"></span></p>
-    <p>RedirectTo: <span id="debugRedirect"></span></p>
-</div>
-<script>
-document.getElementById('debugReasonType').textContent = 
-    new URLSearchParams(location.search).get('reasontype') || 'none';
-</script>
-```
-
----
-
-## Security Considerations
-
-### HTTPS Requirement
-
-Always use HTTPS for login pages:
-- Configure SSL certificate on Domino server
-- Redirect HTTP to HTTPS
-
-### Content Security Policy
-
-Add CSP headers to prevent XSS:
-```html
-<meta http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
-               font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://unpkg.com;">
-```
-
-### Input Validation
-
-- Domino handles credential validation server-side
-- Client-side validation is for UX only
-- Never trust client-side validation for security
-
-### Audit Logging
-
-Enable audit logging in Domino:
-1. Server Document > Security > Audit Settings
-2. Enable login/logout events
-
----
-
-## Customization Reference
-
-### Configuration File (config.js)
-
-The `config.js` file contains all customizable options:
-
-#### Branding Options
+Find this section in `config.js`:
 ```javascript
 branding: {
-    companyName: "Your Company",
-    logoUrl: "/domcfg.nsf/logo.svg",
-    welcomeTitle: "Welcome Back",
-    welcomeSubtitle: "Please sign in",
-    footerText: "© 2026 Your Company"
-}
+    companyName: "Your Company Name",
 ```
 
-#### Theme Colors
+Change `"Your Company Name"` to your actual company name:
+```javascript
+branding: {
+    companyName: "Acme Corporation",
+```
+
+#### Change Logo
+
+1. First, import your logo as a file resource (see Step 1.4)
+2. Name it something like `company-logo.png` (Domino does NOT support SVG!)
+3. In `config.js`, find:
+```javascript
+logoUrl: "",  // Empty by default
+```
+
+4. Change to:
+```javascript
+logoUrl: "/domcfg.nsf/company-logo.png",  // PNG, JPG, or GIF only - NO SVG!
+```
+
+**Important:** The URL must start with `/domcfg.nsf/` when the file is inside DOMCFG.NSF
+
+#### Change Colors
+
+Find the `theme` section:
 ```javascript
 theme: {
     primaryColor: "#0066CC",
-    backgroundGradientStart: "#667eea",
-    backgroundGradientEnd: "#764ba2",
-    // ... see config.js for full options
-}
 ```
 
-#### Form Settings
+Change the color codes. Color codes start with `#` followed by 6 characters.
+
+**Common colors:**
+| Color | Code |
+|-------|------|
+| Blue | #0066CC |
+| Green | #28a745 |
+| Red | #dc3545 |
+| Purple | #6f42c1 |
+| Orange | #fd7e14 |
+| Dark Gray | #343a40 |
+
+**Find more colors at:** https://htmlcolorcodes.com/
+
+#### Change Welcome Message
+
+Find:
 ```javascript
-form: {
-    usernameLabel: "Username",
-    passwordLabel: "Password",
-    loginButtonText: "Sign In",
+welcomeTitle: "Welcome Back",
+welcomeSubtitle: "Please sign in to access your applications",
+```
+
+Change to your preferred text:
+```javascript
+welcomeTitle: "Sign In to Acme Portal",
+welcomeSubtitle: "Enter your credentials to continue",
+```
+
+### Enabling/Disabling Features
+
+All features have switches (true/false) at the top of `config.js`:
+
+```javascript
+features: {
+    // Security Features
+    enableMFA: false,                    // Multi-Factor Authentication
+    enableCaptcha: false,                // CAPTCHA verification
+    enablePasswordStrength: true,        // Password strength meter
+    
+    // UX Features  
+    enableI18n: true,                    // Multi-language support
+    enableThemeSwitcher: true,           // Light/Dark mode toggle
+    enableSessionWarning: true,          // Session timeout warning
+```
+
+**To enable a feature:** Change `false` to `true`
+**To disable a feature:** Change `true` to `false`
+
+**Example - Enable CAPTCHA:**
+```javascript
+enableCaptcha: true,
+```
+
+**Example - Disable theme switcher:**
+```javascript
+enableThemeSwitcher: false,
+```
+
+### Feature Configuration Examples
+
+#### Example 1: Enable Password Strength Meter with Custom Rules
+
+```javascript
+features: {
+    enablePasswordStrength: true,
+},
+
+passwordStrength: {
+    minLength: 10,              // Minimum 10 characters
+    requireUppercase: true,     // Must have uppercase
+    requireLowercase: true,     // Must have lowercase
+    requireNumbers: true,       // Must have numbers
+    requireSpecialChars: true,  // Must have special characters
+    showMeter: true,            // Show the strength bar
+    showRequirements: true,     // Show checklist of requirements
+},
+```
+
+#### Example 2: Enable Remember Me and Forgot Password
+
+```javascript
+features: {
     showRememberMe: true,
-    showForgotPassword: true
-}
+    showForgotPassword: true,
+},
+
+form: {
+    showRememberMe: true,
+    rememberMeLabel: "Keep me signed in",
+    showForgotPassword: true,
+    forgotPasswordUrl: "https://helpdesk.yourcompany.com/reset-password",
+    forgotPasswordText: "Forgot your password?",
+},
 ```
 
-### Error Message Customization
+#### Example 3: Change Background to Company Image
 
-Domino passes `reasontype` parameter on authentication failure:
-
-| reasontype | Meaning |
-|------------|---------|
-| 0 | Initial prompt (no error) |
-| 1 | Not authorized to access database |
-| 2 | Invalid username or password |
-| 3 | Session expired |
-| 4 | Server timing issue (SSO) |
-
-Customize messages in `config.js`:
 ```javascript
-errorMessages: {
-    1: "Access denied. Please contact your administrator.",
-    2: "Invalid credentials. Please try again.",
-    3: "Session timed out. Please sign in again.",
-    4: "Server synchronization error. Please retry."
-}
+theme: {
+    backgroundImage: "/domcfg.nsf/company-background.jpg",
+    backgroundOverlayOpacity: 0.6,  // Darken image so text is readable
+    backgroundGradientStart: null,   // Disable gradient
+    backgroundGradientEnd: null,
+},
 ```
+
+First, import your background image as a file resource.
+
+#### Example 4: Enable Multiple Languages
+
+```javascript
+features: {
+    enableI18n: true,
+    enableRTL: true,  // Enable for Arabic/Hebrew
+},
+
+i18n: {
+    defaultLanguage: "en",
+    autoDetect: true,  // Use visitor's browser language
+    showLanguageSelector: true,
+    availableLanguages: [
+        { code: "en", name: "English", dir: "ltr", flag: "🇺🇸" },
+        { code: "es", name: "Español", dir: "ltr", flag: "🇪🇸" },
+        { code: "fr", name: "Français", dir: "ltr", flag: "🇫🇷" },
+    ],
+},
+```
+
+#### Example 5: Add Custom Footer Text
+
+```javascript
+branding: {
+    footerText: "© 2026 Acme Corporation. All rights reserved. IT Help: x1234",
+    showDominoBadge: false,  // Hide "Powered by Domino"
+},
+```
+
+---
+
+## Testing Your Login Page
+
+### Step 1: Open a Private/Incognito Browser Window
+
+This ensures you're not logged in from a previous session.
+
+- **Chrome:** Ctrl+Shift+N
+- **Firefox:** Ctrl+Shift+P  
+- **Edge:** Ctrl+Shift+N
+- **Safari:** Cmd+Shift+N
+
+### Step 2: Navigate to a Protected Resource
+
+Enter one of these URLs (replace `your-server.com` with your actual server):
+
+```
+https://your-server.com/names.nsf
+https://your-server.com/mail/yourusername.nsf
+https://your-server.com/?Login
+```
+
+### Step 3: Verify the Custom Login Page Appears
+
+You should see YOUR custom login page, not the default Domino login.
+
+**If you see the default Domino login (gray background, simple form):**
+- The setup isn't complete - see Troubleshooting section
+
+### Step 4: Test Login
+
+1. Enter valid credentials
+2. Click Sign In
+3. You should be redirected to the resource you requested
+
+### Step 5: Test Invalid Login
+
+1. Enter wrong password
+2. Click Sign In
+3. You should see an error message on the login page
+
+### Step 6: Test on Mobile
+
+Open the same URL on your phone to verify it's responsive.
+
+---
+
+## Troubleshooting Common Problems
+
+### Problem: Default Domino Login Still Appears
+
+**Possible causes and solutions:**
+
+1. **DOMCFG.NSF not in correct location**
+   - Must be in the Domino data directory root
+   - Not in a subfolder
+   - File name must be exactly `domcfg.nsf`
+
+2. **Form mapping not created**
+   - Open DOMCFG.NSF in Notes Client
+   - Check if Sign In Form Mapping document exists
+   - Create one if missing
+
+3. **HTTP not restarted**
+   - Run `tell http restart` on server console
+
+4. **Browser cache**
+   - Try incognito/private window
+   - Clear browser cache
+
+### Problem: Login Page Appears But CSS/Styling Missing
+
+**Cause:** Resource files not accessible
+
+**Solutions:**
+1. Check Anonymous has Reader access in ACL
+2. Verify file names are correct (case-sensitive)
+3. Check file paths in config.js start with `/domcfg.nsf/`
+
+### Problem: Login Fails with "Not Authorized"
+
+**Cause:** Session authentication not enabled on server
+
+**Solution:**
+1. Open Server Document in Domino Directory
+2. Go to **Internet Protocols** → **HTTP**
+3. Set **Session authentication** to:
+   - "Single Server" (for one server)
+   - "Multi-Server" (for multiple servers with SSO)
+4. Save and restart HTTP
+
+### Problem: JavaScript Errors in Browser Console
+
+**How to check:**
+1. Open browser Developer Tools (F12)
+2. Click **Console** tab
+3. Look for red error messages
+
+**Common causes:**
+- Syntax error in config.js (missing comma, quote, etc.)
+- File resource not found
+- Lucide icons CDN blocked (corporate firewall)
+
+### Problem: "MIME type is not executable" Error (Wrong Path)
+
+**Error message with `/css/` or `/js/` in path:**
+```
+Refused to apply style from 'https://server/domcfg.nsf/css/login.css' 
+because its MIME type ('text/html') is not a supported stylesheet MIME type
+```
+
+**Cause:** You used the wrong HTML file! Domino doesn't support subfolder paths for file resources.
+
+**Solution:** Use `CustomLoginForm-Domino.html` instead of `CustomLoginForm.html`
+
+The paths should be:
+- ✅ Correct: `/domcfg.nsf/login.css`
+- ❌ Wrong: `/domcfg.nsf/css/login.css`
+
+If you already pasted the wrong file, you need to:
+1. Open the form in Designer
+2. Delete all content
+3. Copy from `CustomLoginForm-Domino.html` instead
+4. Paste and mark as Pass-Thru HTML
+5. Save
+
+### Problem: "MIME type is not executable" Error (MIME Not Set)
+
+**Error message WITHOUT `/css/` or `/js/` in path:**
+```
+Refused to execute script from 'https://server/domcfg.nsf/config.js' 
+because its MIME type ('text/html') is not executable, 
+and strict MIME type checking is enabled.
+```
+
+**Cause:** The file resources don't have correct MIME types set in Domino.
+
+**Solution:**
+
+> **Reference:** [HCL Domino Designer - File Resource Web Properties](https://help.hcl-software.com/dom_designer/11.0.1/basic/H_TO_DEPLOY_A_FILE_RESOURCE_ON_THE_WEB_STEPS.html)
+
+1. Open `domcfg.nsf` in **Domino Designer**
+2. Go to **Resources** → **Files**
+3. For EACH JavaScript file (config.js, login.js, translations.js):
+   - **Click once** on the file to select it
+   - In the **Properties panel** (right side), click the **"Web Properties"** tab
+   - In the **MIME type** field, enter: `text/javascript`
+   - Press **Enter**
+4. For login.css:
+   - Select the file, go to **Web Properties** tab
+   - Set **MIME type** to: `text/css`
+5. For logo.png (or .jpg):
+   - Select the file, go to **Web Properties** tab
+   - Set **MIME type** to: `image/png` (or `image/jpeg`)
+6. Save all changes (**Ctrl+S**)
+7. Restart HTTP: `tell http restart`
+
+**⚠️ CRITICAL:** The MIME type field is in the **Web Properties** tab, NOT the Basic tab!
+
+**Quick Reference - MIME Types:**
+
+| File | MIME Type |
+|------|-----------|
+| `.js` files | `text/javascript` |
+| `.css` files | `text/css` |
+| `.png` files | `image/png` |
+| `.jpg` files | `image/jpeg` |
+| `.gif` files | `image/gif` |
+
+**⚠️ Domino does NOT support SVG files. Use PNG, JPG, or GIF instead.**
+
+**Verify fix:** Open each file URL directly in browser - you should see the file content, not an error page.
+
+### Problem: Logo Not Displaying
+
+**Solutions:**
+1. Verify logo file is imported as file resource
+2. Check URL path is correct: `/domcfg.nsf/your-logo.png`
+3. Check file format is supported (PNG, JPG, GIF - **NOT SVG**)
+4. Try opening the logo URL directly in browser
+
+### Problem: Changes to config.js Not Taking Effect
+
+**Solutions:**
+1. Make sure you saved the file (Ctrl+S)
+2. Restart HTTP service
+3. Clear browser cache or use incognito window
+
+---
+
+## Getting Help
+
+### HCL Documentation
+
+- [HCL Domino Documentation](https://help.hcl-software.com/domino/)
+- [Customizing the Login Form](https://help.hcl-software.com/domino/14.5.1/admin/conf_customizingthehtmlloginform_t.html)
+
+### Support Contacts
+
+- **HCL Support:** https://support.hcltechsw.com/
+- **HCL Community:** https://community.hcltechsw.com/
+
+### This Project
+
+If you need help with this specific login page project:
+1. Check the README.md file
+2. Review the COMPLETE_DOCUMENTATION.md
+3. Look at sample configurations in the `/samples` folder
 
 ---
 
 ## Quick Reference Card
 
-### File Structure
-```
-DOMCFG.NSF
-├── Forms
-│   └── CustomLoginForm
-├── Resources/Files
-│   ├── login.css
-│   ├── login.js
-│   ├── config.js
-│   └── logo.svg
-└── Sign In Form Mappings
-    └── [Your Mapping Document]
-```
+### Key File Locations
 
-### Required Form Fields
-- `Username` (text input)
-- `Password` (password input)
-- `RedirectTo` (hidden)
+| Purpose | Location |
+|---------|----------|
+| Login Form | DOMCFG.NSF → Forms → CustomLoginForm |
+| Configuration | DOMCFG.NSF → Resources → Files → config.js |
+| Stylesheet | DOMCFG.NSF → Resources → Files → login.css |
+| JavaScript | DOMCFG.NSF → Resources → Files → login.js |
+| Translations | DOMCFG.NSF → Resources → Files → translations.js |
+| Logo | DOMCFG.NSF → Resources → Files → logo.png |
 
-### Form Action
-```html
-<form method="POST" action="/names.nsf?Login">
-```
+### Key Commands
 
-### ACL Requirements
-- Anonymous: Reader
-- Administrators: Manager
+| Action | Command |
+|--------|---------|
+| Restart HTTP | `tell http restart` |
+| Check HTTP status | `show tasks` |
+| View HTTP config | `show configuration http` |
+| Enable debug | `set config DOMINOCONSOLELOG=2` |
 
----
+### Important URLs
 
-## Support & Resources
-
-- [HCL Domino Documentation](https://help.hcl-software.com/domino/)
-- [Customizing the HTML Log-in Form](https://help.hcl-software.com/domino/14.5.1/admin/conf_customizingthehtmlloginform_t.html)
-- [Configuring Modern Login Form](https://help.hcl-software.com/domino/12.0.2/admin/conf_creatingmodernloginform.html)
+| URL | Purpose |
+|-----|---------|
+| `/names.nsf?Login` | Force login page |
+| `/?Logout` | Log out |
+| `/domcfg.nsf/login.css` | CSS file resource |
+| `/domcfg.nsf/config.js` | Config file resource |
 
 ---
 
-## Complete NSF Deployment Guide
-
-This section provides step-by-step instructions to deploy the custom login page as an NSF file on HCL Domino Server.
-
-### Prerequisites Checklist
-
-Before starting, ensure you have:
-
-- [ ] HCL Domino Server 12.x or 14.x running
-- [ ] HCL Domino Designer installed (for creating/editing NSF)
-- [ ] Administrator access to the Domino server
-- [ ] Session-based authentication enabled
-- [ ] Access to server's data directory
-
 ---
 
-### Step 1: Create the DOMCFG.NSF Database
+## Customization Examples with Screenshots
 
-#### Option A: Using Domino Administrator
+This section provides visual examples of common customizations.
 
-1. Open **HCL Domino Administrator**
-2. Connect to your Domino server
-3. Go to **Files** tab
-4. Click **New Database** (or File > Database > New)
-5. Fill in the details:
-   - **Server:** `YourServerName/YourOrg`
-   - **Title:** `Domino Web Server Configuration`
-   - **File Name:** `domcfg.nsf` *(case-insensitive but lowercase recommended)*
-   - **Template:** Click **Show Advanced Templates** → Select **Domino Web Server Configuration (DOMCFG5.NTF)**
-6. Click **OK** to create
+### Changing the Color Scheme
 
-#### Option B: Using Notes Client
-
-1. Open **HCL Notes Client**
-2. Go to **File > Application > New**
-3. Configure:
-   - **Server:** Your Domino server
-   - **Title:** Domino Web Server Configuration
-   - **File name:** `domcfg.nsf`
-   - Check **Show Advanced Templates**
-   - Select: **Domino Web Server Configuration (DOMCFG5.NTF)**
-4. Click **OK**
-
-#### Option C: Using Domino Console
-
-```bash
-# On Domino server console or remote console
-load compact -c domcfg.nsf
-# If database doesn't exist, create via Designer or copy template
+**Before (Default Blue):**
+```
+┌─────────────────────────────────┐
+│        🔵 Company Logo          │
+│                                 │
+│     [Username Field     ]       │
+│     [Password Field     ]       │
+│                                 │
+│    [█████ Sign In ████████]     │  ← Blue button
+│                                 │
+└─────────────────────────────────┘
+Background: Purple gradient
 ```
 
----
+**After (Green Theme):**
 
-### Step 2: Configure Database ACL
+Edit `config.js`:
+```javascript
+theme: {
+    primaryColor: "#28a745",           // Green
+    primaryColorHover: "#218838",      // Darker green
+    backgroundGradientStart: "#134e5e",
+    backgroundGradientEnd: "#71b280",
+},
+```
 
-1. Open `domcfg.nsf` in Notes Client
-2. Go to **File > Application > Access Control**
-3. Set the following ACL entries:
+```
+┌─────────────────────────────────┐
+│        🟢 Company Logo          │
+│                                 │
+│     [Username Field     ]       │
+│     [Password Field     ]       │
+│                                 │
+│    [█████ Sign In ████████]     │  ← Green button
+│                                 │
+└─────────────────────────────────┘
+Background: Teal to green gradient
+```
 
-| Entry | Access Level | Roles |
-|-------|--------------|-------|
-| -Default- | No Access | - |
-| Anonymous | Reader | - |
-| LocalDomainServers | Manager | All roles |
-| YourAdminName | Manager | All roles |
-| [YourServerName] | Manager | All roles |
+### Adding Your Company Logo
 
-4. Click **OK** to save
+**Step-by-step:**
 
-> ⚠️ **Critical:** Anonymous MUST have Reader access for the login form to be visible to unauthenticated users.
+1. **Prepare your logo:**
+   - **⚠️ Domino does NOT support SVG - use PNG instead**
+   - Recommended format: PNG with transparent background
+   - Alternative: JPG or GIF
+   - Recommended size: 200-400px wide
+   - File size: Under 100KB
 
----
+2. **Import logo into Domino:**
+   - Open DOMCFG.NSF in Designer
+   - Expand **Resources** → **Files**
+   - Right-click → **Import**
+   - Select your logo file
+   - Name it: `company-logo.png` (PNG, JPG, or GIF - **NOT SVG**)
 
-### Step 3: Create the Custom Login Form
-
-#### 3.1 Open Designer
-
-1. Launch **HCL Domino Designer**
-2. Open `domcfg.nsf` database
-3. In the design navigator, expand **Forms**
-
-#### 3.2 Create New Form
-
-1. Right-click on **Forms** → **New Form**
-2. Set form properties:
-   - **Name:** `CustomLoginForm`
-   - **Comment:** Custom branded login form v1.0
-   - **Type:** Document
-
-#### 3.3 Add HTML Content
-
-1. In the form design area, delete any default content
-2. Go to **Create > HTML** (or press Ctrl+H)
-3. Paste the complete HTML from `docs/DominoEmbeddedForm.html`
-
-**Alternative: Pass-Thru HTML Method**
-
-1. Select the entire form content area
-2. Go to **Text > Pass-Thru HTML**
-3. Paste the HTML content
-
-#### 3.4 Save the Form
-
-1. Press **Ctrl+S** to save
-2. Close the form designer
-
----
-
-### Step 4: Import Static Resources
-
-#### 4.1 Import CSS File
-
-1. In Designer, expand **Resources > Files**
-2. Right-click → **Import**
-3. Navigate to `css/login.css`
-4. Click **Import**
-5. The file will be accessible at `/domcfg.nsf/login.css`
-
-#### 4.2 Import JavaScript Files
-
-1. Right-click **Files** → **Import**
-2. Import `config.js` → accessible at `/domcfg.nsf/config.js`
-3. Import `js/login.js` → accessible at `/domcfg.nsf/login.js`
-
-#### 4.3 Import Logo Files
-
-1. Import your logo file(s):
-   - For SVG: `company-logo.svg` → `/domcfg.nsf/logo.svg`
-   - For PNG: `company-logo.png` → `/domcfg.nsf/logo.png`
-   - For PNG fallback: `company-logo-fallback.png`
-
-2. Update `config.js` logo settings:
+3. **Update config.js:**
 ```javascript
 branding: {
-    logoUrl: "/domcfg.nsf/logo.svg",
-    logoFallbackUrl: "/domcfg.nsf/logo.png",
-    logoFormat: "svg"
-}
+    logoUrl: "/domcfg.nsf/company-logo.png",  // PNG, JPG, or GIF only - NO SVG!
+    logoAlt: "Acme Corporation Logo",    // Accessibility
+    logo: {
+        maxWidth: 180,       // Adjust size
+        maxHeight: 60,
+    },
+},
 ```
 
-#### 4.4 Verify File Resources
+### Complete Corporate Blue Theme Example
 
-After import, your Resources/Files should contain:
-```
-Resources/Files/
-├── login.css
-├── config.js
-├── login.js
-├── logo.svg (or logo.png)
-└── (optional) logo-fallback.png
-```
-
----
-
-### Step 5: Configure Sign In Form Mapping
-
-#### 5.1 Open DOMCFG Database
-
-1. Open `domcfg.nsf` in Notes Client (not Designer)
-2. You should see the main configuration view
-
-#### 5.2 Create Mapping Document
-
-1. Look for **Sign In Form Mappings** or similar view
-2. Click **Add Mapping** or create a new document
-
-#### 5.3 Configure Mapping
-
-Fill in the mapping document:
-
-| Field | Value |
-|-------|-------|
-| **Site Configuration** | All Web Sites / Entire Server |
-| **Target Database** | domcfg.nsf |
-| **Target Form** | CustomLoginForm |
-| **Comment** | Custom login form - v1.0 |
-
-For specific virtual servers:
-| Field | Value |
-|-------|-------|
-| **Site Configuration** | Specific Web Sites |
-| **IP Address** | Your server IP |
-| **Host Name** | your-domain.com |
-
-#### 5.4 Save Document
-
-1. Save and close the mapping document
-2. Verify it appears in the Sign In Form Mappings view
-
----
-
-### Step 6: Update HTML Resource References
-
-If using external resources (not embedded), update your HTML:
-
-```html
-<!-- In CustomLoginForm -->
-<head>
-    <link rel="stylesheet" href="/domcfg.nsf/login.css">
-</head>
-<body>
-    <!-- Form content -->
-    
-    <script src="/domcfg.nsf/config.js"></script>
-    <script src="/domcfg.nsf/login.js"></script>
-</body>
-```
-
----
-
-### Step 7: Restart HTTP Service
-
-#### Option A: Domino Console
-
-```bash
-tell http restart
-```
-
-#### Option B: Full HTTP Refresh
-
-```bash
-tell http quit
-load http
-```
-
-#### Option C: Server Restart (if needed)
-
-```bash
-restart server
-```
-
----
-
-### Step 8: Test the Deployment
-
-#### 8.1 Test Login Form Appearance
-
-1. Open a browser (incognito/private mode recommended)
-2. Navigate to a protected resource:
-   ```
-   https://your-server.com/names.nsf
-   https://your-server.com/mail/user.nsf
-   https://your-server.com/?Login
-   ```
-3. Verify custom login form appears
-
-#### 8.2 Test Authentication
-
-1. Enter valid credentials → Should redirect to requested resource
-2. Enter invalid credentials → Should show error (reasontype=2)
-3. Test session timeout → Should show session expired message
-
-#### 8.3 Test Resources
-
-1. Verify logo displays correctly
-2. Check CSS is applied (colors, fonts, layout)
-3. Test JavaScript functionality (password toggle, validation)
-4. Test on mobile device for responsiveness
-
----
-
-### Step 9: Production Deployment Checklist
-
-- [ ] DOMCFG.NSF exists in server data directory
-- [ ] ACL configured with Anonymous Reader access
-- [ ] CustomLoginForm created and saved
-- [ ] All resources imported (CSS, JS, images)
-- [ ] Sign In Form Mapping configured
-- [ ] HTTP task restarted
-- [ ] SSL/TLS certificate installed
-- [ ] Login form appears on protected resources
-- [ ] Authentication works with valid credentials
-- [ ] Error messages display correctly
-- [ ] Logo and branding display correctly
-- [ ] Mobile responsiveness verified
-- [ ] Keyboard navigation works (Tab, Enter)
-
----
-
-### Deployment Scripts
-
-#### Verify DOMCFG Exists (Console Command)
-```bash
-show database domcfg.nsf
-```
-
-#### Check HTTP Configuration
-```bash
-show server
-show configuration http
-```
-
-#### Debug Login Issues
-```bash
-set config DOMINOCONSOLELOG=2
-tell http restart
-```
-
----
-
-### Rollback Procedure
-
-If issues occur, revert to default login:
-
-1. Open DOMCFG.NSF
-2. Delete or disable the Sign In Form Mapping document
-3. Restart HTTP: `tell http restart`
-4. Default Domino login form will be used
-
----
-
-### File Locations Reference
-
-| File | Server Location | URL Path |
-|------|-----------------|----------|
-| DOMCFG.NSF | `<Domino Data>/domcfg.nsf` | N/A |
-| Login Form | DOMCFG.NSF > Forms | N/A |
-| login.css | DOMCFG.NSF > Resources/Files | `/domcfg.nsf/login.css` |
-| config.js | DOMCFG.NSF > Resources/Files | `/domcfg.nsf/config.js` |
-| login.js | DOMCFG.NSF > Resources/Files | `/domcfg.nsf/login.js` |
-| logo.svg | DOMCFG.NSF > Resources/Files | `/domcfg.nsf/logo.svg` |
-
----
-
-### Common Deployment Issues
-
-#### Issue: "Database domcfg.nsf not found"
-**Solution:** Ensure DOMCFG.NSF is in the server's data directory (not a subdirectory)
-
-#### Issue: Login form not showing after restart
-**Solution:** 
-1. Verify Sign In Form Mapping document exists
-2. Check mapping points to correct form name
-3. Clear browser cache and try incognito mode
-
-#### Issue: Resources return 404
-**Solution:**
-1. Verify Anonymous has Reader access
-2. Check file names match exactly (case-sensitive)
-3. Verify files are in Resources/Files (not Shared Resources)
-
-#### Issue: Form submits but authentication fails
-**Solution:**
-1. Verify form action is `/names.nsf?Login`
-2. Check field names are exactly `Username` and `Password`
-3. Ensure form method is POST
-
----
-
-## Support & Resources
-
-- [HCL Domino Documentation](https://help.hcl-software.com/domino/)
-- [Customizing the HTML Log-in Form](https://help.hcl-software.com/domino/14.5.1/admin/conf_customizingthehtmlloginform_t.html)
-- [Configuring Modern Login Form](https://help.hcl-software.com/domino/12.0.2/admin/conf_creatingmodernloginform.html)
-
----
-
----
-
-## Feature Compatibility Matrix
-
-Not all features work out-of-the-box with Domino. Here's what works:
-
-### ✅ Client-Side Only (Works Immediately)
-
-| Feature | Config Key | Notes |
-|---------|------------|-------|
-| Password Strength | `enablePasswordStrength` | Fully client-side |
-| Theme Switcher | `enableThemeSwitcher` | Uses localStorage |
-| Language Selector | `enableI18n` | Uses localStorage |
-| Math CAPTCHA | `enableCaptcha` | Client-side validation |
-| Audio CAPTCHA | `enableAccessibleCaptcha` | Uses Web Speech API |
-| Offline Detection | `enableOfflineDetection` | Browser API |
-| Remember Username | `enableRememberUsername` | Uses localStorage |
-| Session Warning | `enableSessionWarning` | Client-side timer |
-| Animations | `enableAnimations` | CSS/JS animations |
-| Keyboard Shortcuts | `enableKeyboardShortcuts` | Client-side |
-
-### ⚠️ Requires Backend Development
-
-| Feature | Config Key | Requirements |
-|---------|------------|-------------|
-| MFA/2FA | `enableMFA` | Custom Domino agent for TOTP validation |
-| WebAuthn/Passkey | `enableWebAuthn` | WebAuthn server implementation |
-| SSO Buttons | `enableSSOButtons` | SAML/OAuth configuration |
-| Rate Limiting | `enableRateLimitWarning` | Server-side attempt tracking |
-| Analytics | `enableAnalytics` | Analytics service setup |
-| Domain Selector | `enableDomainSelector` | Multi-tenant configuration |
-
-### Implementing Backend Features
-
-#### MFA with Domino
-
-To implement MFA, create a Domino agent:
-
-1. Create agent `(MFAVerify)` in your application
-2. Agent should validate TOTP code against user's secret
-3. Update `config.js`:
 ```javascript
-mfa: {
-    verifyEndpoint: "/your-app.nsf/MFAVerify?OpenAgent",
-    // ...
-}
+const DominoLoginConfig = {
+    
+    features: {
+        enablePasswordStrength: true,
+        enableThemeSwitcher: false,      // Disable for corporate
+        enableI18n: false,               // English only
+        showRememberMe: true,
+        showForgotPassword: true,
+        showSecurityNotice: true,
+        showDominoBadge: false,          // Hide Domino badge
+    },
+    
+    branding: {
+        companyName: "Acme Corporation",
+        logoUrl: "/domcfg.nsf/acme-logo.png",  // NO SVG support in Domino
+        logoAlt: "Acme Corporation",
+        pageTitle: "Acme Corporation - Sign In",
+        welcomeTitle: "Welcome to Acme",
+        welcomeSubtitle: "Enter your credentials to continue",
+        footerText: "© 2026 Acme Corporation. For support: help@acme.com",
+    },
+    
+    theme: {
+        primaryColor: "#003366",         // Corporate navy blue
+        primaryColorHover: "#002244",
+        backgroundGradientStart: "#003366",
+        backgroundGradientEnd: "#006699",
+        cardBackground: "rgba(255, 255, 255, 0.98)",
+    },
+    
+    form: {
+        usernameLabel: "Employee ID",
+        usernamePlaceholder: "Enter your employee ID",
+        passwordLabel: "Password",
+        passwordPlaceholder: "Enter your password",
+        loginButtonText: "Sign In",
+        showRememberMe: true,
+        rememberMeLabel: "Remember me",
+        showForgotPassword: true,
+        forgotPasswordUrl: "https://helpdesk.acme.com/reset",
+        forgotPasswordText: "Forgot password?",
+    },
+    
+    domino: {
+        loginActionUrl: "/names.nsf?Login",
+        defaultRedirectTo: "/",
+    },
+    
+    errorMessages: {
+        0: "",
+        1: "Access denied. Contact IT: x4567",
+        2: "Invalid ID or password.",
+        3: "Session expired. Please sign in again.",
+        4: "Server error. Please try again.",
+        generic: "An error occurred."
+    },
+};
 ```
 
-#### Rate Limiting with Domino
+### Multi-Language Setup Example
 
-Track failed attempts in a database:
+```javascript
+const DominoLoginConfig = {
+    
+    features: {
+        enableI18n: true,        // Enable languages
+        enableRTL: true,         // Enable right-to-left
+    },
+    
+    i18n: {
+        defaultLanguage: "en",
+        autoDetect: true,
+        showLanguageSelector: true,
+        rememberLanguage: true,
+        availableLanguages: [
+            { code: "en", name: "English", dir: "ltr", flag: "🇺🇸" },
+            { code: "es", name: "Español", dir: "ltr", flag: "🇪🇸" },
+            { code: "de", name: "Deutsch", dir: "ltr", flag: "🇩🇪" },
+            { code: "ar", name: "العربية", dir: "rtl", flag: "🇸🇦" },
+        ],
+    },
+};
+```
 
-1. Create `LoginAttempts.nsf` database
-2. Log each login attempt with timestamp and IP
-3. Check attempts before allowing login
-4. The UI will display warnings based on localStorage tracking
+**Result:**
+```
+🌐 [English ▼]     ← Language selector appears
+
+┌─────────────────────────────────┐
+│        Company Logo             │
+│                                 │
+│   Welcome Back                  │
+│   Please sign in...             │
+│                                 │
+│     [Username          ]        │
+│     [Password          ]        │
+│                                 │
+│    [█████ Sign In ███████]      │
+└─────────────────────────────────┘
+```
+
+### Password Strength with Custom Rules
+
+```javascript
+const DominoLoginConfig = {
+    
+    features: {
+        enablePasswordStrength: true,
+    },
+    
+    passwordStrength: {
+        minLength: 12,                    // Require 12 chars
+        requireUppercase: true,
+        requireLowercase: true,
+        requireNumbers: true,
+        requireSpecialChars: true,        // Require special chars
+        showMeter: true,
+        showRequirements: true,           // Show checklist
+        checkCommonPasswords: true,
+        preventUsernameInPassword: true,
+    },
+};
+```
+
+**Result (when user types password):**
+```
+Password: [••••••••••    ]
+
+Password Strength: [███████░░░] Good
+
+Requirements:
+  ✓ At least 12 characters
+  ✓ One uppercase letter
+  ✓ One lowercase letter
+  ✓ One number
+  ✗ One special character (!@#$%...)
+```
 
 ---
 
-## External Dependencies
+## Checklist: Before Going Live
 
-### Google Fonts
+Use this checklist before deploying to production:
 
-The login page uses Google Fonts (Inter). For restricted environments:
+### Design & Branding
+- [ ] Company logo imported and displaying correctly
+- [ ] Company name updated in branding
+- [ ] Welcome message customized
+- [ ] Footer text with copyright/contact info
+- [ ] Color scheme matches corporate colors
+- [ ] Page title updated for browser tab
 
-**Option 1: Remove Google Fonts**
-```css
-/* In login.css, change: */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-```
+### Functionality
+- [ ] Login works with valid credentials
+- [ ] Error messages display for invalid login
+- [ ] Forgot password link points to correct URL
+- [ ] Remember me checkbox works (if enabled)
+- [ ] Password toggle shows/hides password
 
-**Option 2: Self-host fonts**
-1. Download Inter font from Google Fonts
-2. Import as file resources
-3. Update CSS `@font-face` declaration
+### Security
+- [ ] HTTPS is enabled on the server
+- [ ] ACL restricts access appropriately
+- [ ] Password strength rules match company policy
+- [ ] Session timeout set appropriately
 
-### Lucide Icons
+### Accessibility
+- [ ] Logo has alt text
+- [ ] Form fields have labels
+- [ ] Tab navigation works through form
+- [ ] Error messages are visible
 
-The page uses Lucide Icons from CDN. For restricted environments:
+### Mobile
+- [ ] Page displays correctly on phone
+- [ ] Touch targets are large enough
+- [ ] Keyboard appears for inputs
 
-**Option 1: Self-host Lucide**
-1. Download `lucide.min.js` from https://unpkg.com/lucide@latest/dist/umd/lucide.min.js
-2. Import as file resource in DOMCFG.NSF
-3. Update HTML:
-```html
-<script src="/domcfg.nsf/lucide.min.js"></script>
-```
-
-**Option 2: Remove icons (fallback)**
-The page will function without icons, using text labels instead.
-
----
-
-## Content Security Policy
-
-For v2.0.0 with all external resources:
-
-```html
-<meta http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; 
-               style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; 
-               font-src https://fonts.gstatic.com; 
-               script-src 'self' 'unsafe-inline' https://unpkg.com;
-               img-src 'self' data:;">
-```
-
-For self-hosted (no external resources):
-
-```html
-<meta http-equiv="Content-Security-Policy" 
-      content="default-src 'self'; 
-               style-src 'self' 'unsafe-inline'; 
-               script-src 'self' 'unsafe-inline';
-               img-src 'self' data:;">
-```
+### Testing
+- [ ] Tested in Chrome
+- [ ] Tested in Firefox
+- [ ] Tested in Safari
+- [ ] Tested in Edge
+- [ ] Tested on mobile device
 
 ---
 
-## Quick Start for Domino
+## Video Tutorial Links
 
-### Minimal Setup (Fastest)
+(If available, add links to video tutorials here)
 
-1. Use `docs/DominoEmbeddedForm.html` (all resources embedded)
-2. Create DOMCFG.NSF with template
-3. Create form, paste embedded HTML
-4. Configure Sign In Form Mapping
-5. Restart HTTP
-
-### Standard Setup (Recommended)
-
-1. Create DOMCFG.NSF
-2. Import these files as Resources:
-   - `/domcfg.nsf/login.css`
-   - `/domcfg.nsf/config.js`
-   - `/domcfg.nsf/translations.js`
-   - `/domcfg.nsf/login.js`
-   - `/domcfg.nsf/logo.svg`
-3. Create CustomLoginForm with modular HTML
-4. Configure mapping and restart HTTP
-
-### Enterprise Setup
-
-1. Create separate `loginresources.nsf` for static files
-2. Enable MFA by creating verification agent
-3. Configure SSO with your identity provider
-4. Set up analytics hooks
+- How to create DOMCFG.NSF: `[link]`
+- How to import DXL files: `[link]`
+- How to customize config.js: `[link]`
 
 ---
 
 *Document Version: 2.0.0 | April 2026*
+*For beginners with zero Domino development experience*
