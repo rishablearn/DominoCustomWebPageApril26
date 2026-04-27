@@ -253,16 +253,38 @@ Option 4: Hide logo
         },
         
         // =====================================================================
-        // ERROR MESSAGES
+        // ERROR MESSAGES (Domino reasontype codes)
         // =====================================================================
         errorMessages: {
-            emptyUsername: "Please enter your username",
-            emptyPassword: "Please enter your password",
-            invalidCredentials: "Invalid username or password. Please try again.",
-            accountLocked: "Your account has been locked. Please contact IT support.",
-            serverError: "Unable to connect to server. Please try again later.",
-            sessionExpired: "Your session has expired. Please sign in again.",
-            offline: "You appear to be offline. Please check your connection."
+            // Domino Server Error Codes (reasontype parameter)
+            0: "",  // No error
+            1: "⚠️ Access Denied: You are not authorized to access this application.",
+            2: "❌ Invalid Credentials: The username or password you entered is incorrect.",
+            3: "⏰ Session Expired: Your session has timed out. Please sign in again.",
+            4: "🔄 Server Error: A timing issue occurred. Please try again.",
+            5: "🔒 Account Locked: Too many failed attempts. Contact your administrator.",
+            6: "📧 Password Expired: Your password has expired. Please reset it.",
+            7: "🚫 Account Disabled: Your account has been disabled. Contact IT support.",
+            8: "🔐 Multi-Factor Required: Additional authentication is required.",
+            9: "🌐 Certificate Error: There was an issue with your security certificate.",
+            10: "⏳ Server Busy: The server is currently busy. Please try again later.",
+            
+            // Client-side validation messages
+            emptyUsername: "👤 Please enter your username or email address.",
+            emptyPassword: "🔑 Please enter your password.",
+            shortPassword: "📏 Password must be at least 8 characters long.",
+            invalidEmail: "📧 Please enter a valid email address.",
+            networkError: "📡 Network error. Please check your connection.",
+            offline: "📡 You appear to be offline. Please check your connection.",
+            
+            // Backward compatibility
+            invalidCredentials: "❌ Invalid username or password. Please try again.",
+            accountLocked: "🔒 Your account has been locked. Please contact IT support.",
+            serverError: "🔄 Unable to connect to server. Please try again later.",
+            sessionExpired: "⏰ Your session has expired. Please sign in again.",
+            
+            // Generic fallback
+            generic: "⚠️ An error occurred during login. Please try again."
         },
         
         // =====================================================================
@@ -275,7 +297,9 @@ Option 4: Hide logo
             enableOfflineDetection: true,        // Network status indicator
             enableSessionWarning: true,          // Session timeout warning
             enableKeyboardShortcuts: true,       // Keyboard shortcuts (Alt+U, Alt+P)
-            enableAnimations: true               // UI animations
+            enableAnimations: true,              // UI animations
+            enableTranslations: true,            // Multi-language support
+            enableCaptcha: true                  // CAPTCHA verification
         },
         
         // =====================================================================
@@ -295,6 +319,80 @@ Option 4: Hide logo
             requireLowercase: true,
             requireNumbers: true,
             requireSpecial: false
+        },
+        
+        // =====================================================================
+        // CAPTCHA SETTINGS
+        // =====================================================================
+        captcha: {
+            type: "math",
+            difficulty: "easy",
+            enableAudio: true,
+            maxAttempts: 3
+        },
+        
+        // =====================================================================
+        // TRANSLATIONS (i18n)
+        // =====================================================================
+        i18n: {
+            defaultLanguage: "en",
+            languages: {
+                en: { name: "English", dir: "ltr", strings: {
+                    welcomeTitle: "Welcome Back", welcomeSubtitle: "Sign in to access your email and applications",
+                    usernameLabel: "Username", usernamePlaceholder: "Enter your username or email",
+                    passwordLabel: "Password", passwordPlaceholder: "Enter your password",
+                    rememberMe: "Remember me on this device", forgotPassword: "Forgot Password?", signIn: "Sign In",
+                    captchaTitle: "Security Verification", captchaInstruction: "Solve this math problem",
+                    captchaPlaceholder: "Your answer", captchaAudio: "Listen", captchaRefresh: "New question",
+                    captchaError: "Incorrect answer", offline: "You are offline", backOnline: "Back online",
+                    sessionWarning: "Session Expiring", sessionText: "Your session will expire soon.",
+                    stayLoggedIn: "Stay Logged In", strengthWeak: "Weak", strengthFair: "Fair", strengthGood: "Good", strengthStrong: "Strong"
+                }},
+                es: { name: "Español", dir: "ltr", strings: {
+                    welcomeTitle: "Bienvenido", welcomeSubtitle: "Inicie sesión para acceder a su correo y aplicaciones",
+                    usernameLabel: "Usuario", usernamePlaceholder: "Ingrese su usuario o correo",
+                    passwordLabel: "Contraseña", passwordPlaceholder: "Ingrese su contraseña",
+                    rememberMe: "Recordarme en este dispositivo", forgotPassword: "¿Olvidó su contraseña?", signIn: "Iniciar Sesión",
+                    captchaTitle: "Verificación de Seguridad", captchaInstruction: "Resuelva este problema",
+                    captchaPlaceholder: "Su respuesta", captchaAudio: "Escuchar", captchaRefresh: "Nueva pregunta",
+                    captchaError: "Respuesta incorrecta", offline: "Estás desconectado", backOnline: "Conectado",
+                    sessionWarning: "Sesión Expirando", sessionText: "Su sesión expirará pronto.",
+                    stayLoggedIn: "Continuar", strengthWeak: "Débil", strengthFair: "Regular", strengthGood: "Buena", strengthStrong: "Fuerte"
+                }},
+                fr: { name: "Français", dir: "ltr", strings: {
+                    welcomeTitle: "Bienvenue", welcomeSubtitle: "Connectez-vous pour accéder à vos applications",
+                    usernameLabel: "Nom d'utilisateur", usernamePlaceholder: "Entrez votre nom d'utilisateur",
+                    passwordLabel: "Mot de passe", passwordPlaceholder: "Entrez votre mot de passe",
+                    rememberMe: "Se souvenir de moi", forgotPassword: "Mot de passe oublié?", signIn: "Se Connecter",
+                    captchaTitle: "Vérification", captchaInstruction: "Résolvez ce problème",
+                    captchaPlaceholder: "Votre réponse", captchaAudio: "Écouter", captchaRefresh: "Nouvelle question",
+                    captchaError: "Réponse incorrecte", offline: "Hors ligne", backOnline: "En ligne",
+                    sessionWarning: "Session Expirante", sessionText: "Votre session expirera bientôt.",
+                    stayLoggedIn: "Rester Connecté", strengthWeak: "Faible", strengthFair: "Moyen", strengthGood: "Bon", strengthStrong: "Fort"
+                }},
+                de: { name: "Deutsch", dir: "ltr", strings: {
+                    welcomeTitle: "Willkommen", welcomeSubtitle: "Melden Sie sich an",
+                    usernameLabel: "Benutzername", usernamePlaceholder: "Benutzername eingeben",
+                    passwordLabel: "Passwort", passwordPlaceholder: "Passwort eingeben",
+                    rememberMe: "Angemeldet bleiben", forgotPassword: "Passwort vergessen?", signIn: "Anmelden",
+                    captchaTitle: "Sicherheit", captchaInstruction: "Lösen Sie diese Aufgabe",
+                    captchaPlaceholder: "Ihre Antwort", captchaAudio: "Anhören", captchaRefresh: "Neue Frage",
+                    captchaError: "Falsche Antwort", offline: "Offline", backOnline: "Online",
+                    sessionWarning: "Sitzung läuft ab", sessionText: "Ihre Sitzung läuft bald ab.",
+                    stayLoggedIn: "Angemeldet Bleiben", strengthWeak: "Schwach", strengthFair: "Mäßig", strengthGood: "Gut", strengthStrong: "Stark"
+                }},
+                ar: { name: "العربية", dir: "rtl", strings: {
+                    welcomeTitle: "مرحباً بعودتك", welcomeSubtitle: "سجل الدخول للوصول إلى تطبيقاتك",
+                    usernameLabel: "اسم المستخدم", usernamePlaceholder: "أدخل اسم المستخدم",
+                    passwordLabel: "كلمة المرور", passwordPlaceholder: "أدخل كلمة المرور",
+                    rememberMe: "تذكرني", forgotPassword: "نسيت كلمة المرور؟", signIn: "تسجيل الدخول",
+                    captchaTitle: "التحقق الأمني", captchaInstruction: "حل هذه المسألة",
+                    captchaPlaceholder: "إجابتك", captchaAudio: "استمع", captchaRefresh: "سؤال جديد",
+                    captchaError: "إجابة خاطئة", offline: "غير متصل", backOnline: "متصل",
+                    sessionWarning: "انتهاء الجلسة", sessionText: "ستنتهي جلستك قريباً.",
+                    stayLoggedIn: "البقاء", strengthWeak: "ضعيفة", strengthFair: "مقبولة", strengthGood: "جيدة", strengthStrong: "قوية"
+                }}
+            }
         }
     };
     </script>
@@ -494,29 +592,90 @@ Option 4: Hide logo
         
         /* ===== Error Display ===== */
         .error-container {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: var(--input-radius);
-            padding: 12px 16px;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+            border: 1px solid var(--error-color);
+            border-left: 4px solid var(--error-color);
+            border-radius: 12px;
+            padding: 16px;
             margin-bottom: 20px;
             display: none;
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
         
         .error-container.show {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            align-items: flex-start;
+            gap: 12px;
         }
         
         .error-icon {
             font-size: 18px;
+            flex-shrink: 0;
         }
         
         .error-message {
             color: var(--error-color);
             font-size: 14px;
             font-weight: 500;
+            flex: 1;
+            line-height: 1.5;
         }
+        
+        .error-dismiss {
+            background: none;
+            border: none;
+            color: var(--error-color);
+            cursor: pointer;
+            padding: 4px;
+            opacity: 0.7;
+            font-size: 16px;
+        }
+        
+        .error-dismiss:hover { opacity: 1; }
+        
+        /* Success & Warning Containers */
+        .success-container {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.05));
+            border: 1px solid var(--success-color);
+            border-left: 4px solid var(--success-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .success-container.show { display: flex; align-items: center; gap: 12px; }
+        .success-message { color: var(--success-color); font-size: 14px; font-weight: 500; }
+        
+        .warning-container {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
+            border: 1px solid var(--warning-color);
+            border-left: 4px solid var(--warning-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .warning-container.show { display: flex; align-items: center; gap: 12px; }
+        .warning-message { color: #b45309; font-size: 14px; font-weight: 500; }
+        
+        /* Input Error State */
+        .form-input.input-error {
+            border-color: var(--error-color);
+            background: rgba(239, 68, 68, 0.05);
+        }
+        .input-error-text {
+            color: var(--error-color);
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        .input-error-text.visible { display: block; }
         
         /* ===== Form Styles ===== */
         .login-form {
@@ -967,14 +1126,65 @@ Option 4: Hide logo
             opacity: 0.7;
             margin-left: auto;
         }
+        
+        /* ===== Language Selector ===== */
+        .lang-selector { position: relative; }
+        .lang-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+        .lang-btn:hover { background: rgba(255,255,255,0.25); }
+        .lang-dropdown { position: absolute; top: 100%; right: 0; margin-top: 8px; background: white; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); min-width: 160px; display: none; z-index: 200; overflow: hidden; }
+        .lang-dropdown.visible { display: block; }
+        .lang-option { display: block; width: 100%; padding: 12px 16px; border: none; background: none; text-align: left; cursor: pointer; font-size: 14px; color: var(--text-primary); }
+        .lang-option:hover, .lang-option:focus { background: var(--primary-light); }
+        .lang-option.active { background: var(--primary-color); color: white; }
+        
+        /* ===== CAPTCHA ===== */
+        .captcha-container { margin: 20px 0; padding: 16px; background: var(--input-bg); border-radius: 12px; border: 1px solid var(--input-border); }
+        .captcha-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+        .captcha-question { font-size: 1.5rem; font-weight: 700; text-align: center; padding: 16px; background: white; border-radius: 8px; margin: 12px 0; letter-spacing: 2px; }
+        [data-theme="dark"] .captcha-question { background: rgba(255,255,255,0.1); }
+        .captcha-input { width: 100%; padding: 12px 16px; border: 2px solid var(--input-border); border-radius: 8px; font-size: 1rem; text-align: center; background: var(--input-bg); color: var(--text-primary); }
+        .captcha-input:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 3px rgba(0,102,204,0.2); }
+        .captcha-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .captcha-btn { flex: 1; padding: 10px; border: 1px solid var(--input-border); background: white; border-radius: 8px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        [data-theme="dark"] .captcha-btn { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+        .captcha-btn:hover { background: var(--primary-light); border-color: var(--primary-color); }
+        .captcha-error { color: var(--error-color); font-size: 0.85rem; margin-top: 8px; display: none; }
+        .captcha-error.visible { display: block; }
+        
+        /* ===== WCAG 2.1 Skip Link ===== */
+        .skip-link { position: absolute; top: -40px; left: 0; background: var(--primary-color); color: white; padding: 12px 24px; z-index: 9999; text-decoration: none; font-weight: 600; border-radius: 0 0 8px 0; }
+        .skip-link:focus { top: 0; }
+        
+        /* ===== WCAG 2.1 Focus & Contrast ===== */
+        *:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 2px; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+        @media (prefers-contrast: high) { .login-card { border: 2px solid var(--text-primary); } .form-input { border-width: 2px; } }
+        
+        /* ===== RTL Support ===== */
+        [dir="rtl"] .form-label, [dir="rtl"] .input-wrapper { flex-direction: row-reverse; }
+        [dir="rtl"] .top-bar { left: 0; right: auto; }
+        [dir="rtl"] .lang-dropdown { left: 0; right: auto; }
     </style>
 </head>
 <body>
+    <!-- WCAG 2.1: Skip Link -->
+    <a href="#loginForm" class="skip-link">Skip to login form</a>
+    
     <!-- Background -->
     <div class="page-background" id="pageBackground"></div>
     
-    <!-- Top Bar with Theme Toggle -->
-    <div class="top-bar" id="topBar">
+    <!-- Top Bar with Theme Toggle and Language Selector -->
+    <div class="top-bar" id="topBar" role="toolbar" aria-label="Page settings">
+        <!-- Language Selector -->
+        <div class="lang-selector" id="langSelector">
+            <button class="lang-btn" id="langBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Select language">
+                <span>🌐</span>
+                <span id="langText">EN</span>
+            </button>
+            <div class="lang-dropdown" id="langDropdown" role="listbox"></div>
+        </div>
+        
+        <!-- Theme Toggle -->
         <button class="top-bar-btn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme (Alt+T)">
             <span id="themeIcon">🌙</span>
             <span id="themeText">Dark</span>
@@ -1021,9 +1231,22 @@ Option 4: Hide logo
                 </div>
                 
                 <!-- Error Display -->
-                <div class="error-container" id="errorContainer" role="alert" aria-live="polite">
+                <div class="error-container" id="errorContainer" role="alert" aria-live="assertive">
                     <span class="error-icon">⚠️</span>
                     <span class="error-message" id="errorMessage"></span>
+                    <button type="button" class="error-dismiss" id="errorDismiss" aria-label="Dismiss error">✕</button>
+                </div>
+                
+                <!-- Success Display -->
+                <div class="success-container" id="successContainer" role="status">
+                    <span>✓</span>
+                    <span class="success-message" id="successMessage"></span>
+                </div>
+                
+                <!-- Warning Display -->
+                <div class="warning-container" id="warningContainer" role="status">
+                    <span>⚠️</span>
+                    <span class="warning-message" id="warningMessage"></span>
                 </div>
                 
                 <!-- Login Form -->
@@ -1044,8 +1267,10 @@ Option 4: Hide logo
                                 autocomplete="username"
                                 required
                                 aria-required="true"
+                                aria-describedby="usernameError"
                             >
                         </div>
+                        <div class="input-error-text" id="usernameError" role="alert"></div>
                     </div>
                     
                     <!-- Password Field -->
@@ -1064,11 +1289,13 @@ Option 4: Hide logo
                                 autocomplete="current-password"
                                 required
                                 aria-required="true"
+                                aria-describedby="passwordError"
                             >
                             <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
                                 👁️
                             </button>
                         </div>
+                        <div class="input-error-text" id="passwordError" role="alert"></div>
                         <!-- Password Strength Meter -->
                         <div class="password-strength" id="passwordStrength">
                             <div class="strength-bar">
@@ -1089,6 +1316,32 @@ Option 4: Hide logo
                     
                     <!-- Hidden Domino Fields -->
                     <input type="hidden" name="RedirectTo" id="RedirectTo" value="/">
+                    
+                    <!-- CAPTCHA Section (WCAG 2.1 Accessible) -->
+                    <div class="captcha-container" id="captchaContainer" role="group" aria-labelledby="captchaTitle" style="display: none;">
+                        <div class="captcha-title" id="captchaTitle">
+                            <span>🔒</span>
+                            <span id="captchaTitleText">Security Verification</span>
+                        </div>
+                        <p class="sr-only" id="captchaInstructionSR" aria-live="polite"></p>
+                        <p id="captchaInstruction" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">Solve this math problem</p>
+                        <div class="captcha-question" id="captchaQuestion" role="img" aria-label="Math problem">3 + 5 = ?</div>
+                        <label for="captchaAnswer" class="sr-only">Enter your answer</label>
+                        <input type="text" id="captchaAnswer" name="captchaAnswer" class="captcha-input" 
+                               placeholder="Your answer" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+                        <input type="hidden" id="captchaExpected" value="">
+                        <div class="captcha-actions">
+                            <button type="button" class="captcha-btn" id="captchaAudioBtn" aria-label="Listen to audio version">
+                                <span>🔊</span>
+                                <span id="captchaAudioText">Listen</span>
+                            </button>
+                            <button type="button" class="captcha-btn" id="captchaRefreshBtn" aria-label="Get new question">
+                                <span>🔄</span>
+                                <span id="captchaRefreshText">New question</span>
+                            </button>
+                        </div>
+                        <div class="captcha-error" id="captchaError" role="alert" aria-live="assertive">Incorrect answer</div>
+                    </div>
                     
                     <!-- Submit Button -->
                     <button type="submit" class="submit-button" id="submitButton">
@@ -1437,6 +1690,7 @@ Option 4: Hide logo
             if (container && messageEl) {
                 messageEl.textContent = message;
                 container.classList.add('show');
+                container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }
         }
         
@@ -1445,6 +1699,113 @@ Option 4: Hide logo
             if (container) {
                 container.classList.remove('show');
             }
+        }
+        
+        // Show inline field error
+        function showFieldError(fieldId, message) {
+            const field = document.getElementById(fieldId);
+            const errorEl = document.getElementById(fieldId + 'Error');
+            if (field) {
+                field.classList.add('input-error');
+                field.setAttribute('aria-invalid', 'true');
+            }
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.classList.add('visible');
+            }
+        }
+        
+        // Clear inline field error
+        function clearFieldError(fieldId) {
+            const field = document.getElementById(fieldId);
+            const errorEl = document.getElementById(fieldId + 'Error');
+            if (field) {
+                field.classList.remove('input-error');
+                field.removeAttribute('aria-invalid');
+            }
+            if (errorEl) {
+                errorEl.textContent = '';
+                errorEl.classList.remove('visible');
+            }
+        }
+        
+        // Clear all errors
+        function clearAllErrors() {
+            hideError();
+            clearFieldError('Username');
+            clearFieldError('Password');
+        }
+        
+        // Check URL for Domino reasontype error codes
+        function checkForDominoErrors() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const reasonType = urlParams.get('reasontype');
+            
+            if (reasonType && parseInt(reasonType, 10) > 0) {
+                const errorCode = parseInt(reasonType, 10);
+                const message = CONFIG.errorMessages[errorCode] || CONFIG.errorMessages.generic;
+                showError(message);
+            }
+        }
+        
+        // Initialize error dismiss button
+        function initErrorDismiss() {
+            const dismissBtn = document.getElementById('errorDismiss');
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', hideError);
+            }
+        }
+        
+        // Initialize form validation with error messages
+        function initFormValidation() {
+            const form = document.getElementById('loginForm');
+            
+            if (!form || !CONFIG.form?.enableValidation) return;
+            
+            form.addEventListener('submit', function(e) {
+                clearAllErrors();
+                
+                const username = document.getElementById('Username');
+                const password = document.getElementById('Password');
+                let isValid = true;
+                
+                // Validate username
+                if (!username.value.trim()) {
+                    showFieldError('Username', CONFIG.errorMessages.emptyUsername || 'Please enter your username');
+                    showError(CONFIG.errorMessages.emptyUsername || 'Please enter your username');
+                    username.focus();
+                    e.preventDefault();
+                    isValid = false;
+                }
+                
+                // Validate password
+                if (isValid && !password.value) {
+                    showFieldError('Password', CONFIG.errorMessages.emptyPassword || 'Please enter your password');
+                    showError(CONFIG.errorMessages.emptyPassword || 'Please enter your password');
+                    password.focus();
+                    e.preventDefault();
+                    isValid = false;
+                }
+                
+                // Validate password length
+                if (isValid && CONFIG.passwordStrength?.minLength && password.value.length < CONFIG.passwordStrength.minLength) {
+                    showFieldError('Password', CONFIG.errorMessages.shortPassword || 'Password is too short');
+                    showError(CONFIG.errorMessages.shortPassword || 'Password is too short');
+                    password.focus();
+                    e.preventDefault();
+                    isValid = false;
+                }
+                
+                return isValid;
+            });
+            
+            // Clear errors on input
+            ['Username', 'Password'].forEach(id => {
+                const field = document.getElementById(id);
+                if (field) {
+                    field.addEventListener('input', () => clearFieldError(id));
+                }
+            });
         }
         
         // =====================================================================
@@ -1680,6 +2041,220 @@ Option 4: Hide logo
         }
         
         // =====================================================================
+        // TRANSLATIONS (i18n)
+        // =====================================================================
+        let currentLang = 'en';
+        let currentStrings = {};
+        
+        function setupTranslations() {
+            if (!CONFIG.features?.enableTranslations || !CONFIG.i18n) {
+                document.getElementById('langSelector').style.display = 'none';
+                return;
+            }
+            
+            const langBtn = document.getElementById('langBtn');
+            const langDropdown = document.getElementById('langDropdown');
+            
+            // Build language options
+            let html = '';
+            Object.keys(CONFIG.i18n.languages).forEach(code => {
+                html += `<button class="lang-option" data-lang="${code}" role="option">${CONFIG.i18n.languages[code].name}</button>`;
+            });
+            langDropdown.innerHTML = html;
+            
+            // Toggle dropdown
+            langBtn.addEventListener('click', () => {
+                langDropdown.classList.toggle('visible');
+                langBtn.setAttribute('aria-expanded', langDropdown.classList.contains('visible'));
+            });
+            
+            // Close on outside click
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.lang-selector')) {
+                    langDropdown.classList.remove('visible');
+                    langBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+            
+            // Language selection
+            langDropdown.querySelectorAll('.lang-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setLanguage(btn.dataset.lang);
+                    langDropdown.classList.remove('visible');
+                    localStorage.setItem('preferredLang', btn.dataset.lang);
+                });
+            });
+            
+            // Load saved language
+            const savedLang = localStorage.getItem('preferredLang') || CONFIG.i18n.defaultLanguage || 'en';
+            setLanguage(savedLang);
+        }
+        
+        function setLanguage(code) {
+            const lang = CONFIG.i18n?.languages?.[code];
+            if (!lang) return;
+            
+            currentLang = code;
+            currentStrings = lang.strings;
+            
+            document.documentElement.setAttribute('dir', lang.dir || 'ltr');
+            document.documentElement.setAttribute('lang', code);
+            document.getElementById('langText').textContent = code.toUpperCase();
+            
+            document.querySelectorAll('.lang-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === code);
+            });
+            
+            applyTranslations(lang.strings);
+        }
+        
+        function applyTranslations(s) {
+            if (!s) return;
+            setText('welcomeTitle', s.welcomeTitle);
+            setText('welcomeSubtitle', s.welcomeSubtitle);
+            setText('usernameLabel', s.usernameLabel);
+            setText('passwordLabel', s.passwordLabel);
+            setText('rememberMeLabel', s.rememberMe);
+            setText('forgotPasswordLink', s.forgotPassword);
+            setText('buttonText', s.signIn);
+            setText('captchaTitleText', s.captchaTitle);
+            setText('captchaInstruction', s.captchaInstruction);
+            setText('captchaAudioText', s.captchaAudio);
+            setText('captchaRefreshText', s.captchaRefresh);
+            setText('extendSessionBtn', s.stayLoggedIn);
+            
+            const uInput = document.getElementById('Username');
+            const pInput = document.getElementById('Password');
+            const cInput = document.getElementById('captchaAnswer');
+            if (uInput && s.usernamePlaceholder) uInput.placeholder = s.usernamePlaceholder;
+            if (pInput && s.passwordPlaceholder) pInput.placeholder = s.passwordPlaceholder;
+            if (cInput && s.captchaPlaceholder) cInput.placeholder = s.captchaPlaceholder;
+        }
+        
+        function t(key) { return currentStrings[key] || key; }
+        
+        // =====================================================================
+        // CAPTCHA (Accessible Math CAPTCHA with Audio)
+        // =====================================================================
+        let captchaAnswer = 0;
+        let captchaAttempts = 0;
+        
+        function setupCaptcha() {
+            if (!CONFIG.features?.enableCaptcha) return;
+            
+            const container = document.getElementById('captchaContainer');
+            if (!container) return;
+            
+            container.style.display = 'block';
+            generateCaptcha();
+            
+            document.getElementById('captchaAudioBtn')?.addEventListener('click', speakCaptcha);
+            document.getElementById('captchaRefreshBtn')?.addEventListener('click', generateCaptcha);
+            document.getElementById('loginForm')?.addEventListener('submit', validateCaptcha);
+        }
+        
+        function generateCaptcha() {
+            const difficulty = CONFIG.captcha?.difficulty || 'easy';
+            let num1, num2, operator;
+            
+            if (difficulty === 'easy') {
+                num1 = Math.floor(Math.random() * 10) + 1;
+                num2 = Math.floor(Math.random() * 10) + 1;
+                operator = '+';
+                captchaAnswer = num1 + num2;
+            } else if (difficulty === 'medium') {
+                num1 = Math.floor(Math.random() * 20) + 1;
+                num2 = Math.floor(Math.random() * 10) + 1;
+                operator = Math.random() > 0.5 ? '+' : '-';
+                captchaAnswer = operator === '+' ? num1 + num2 : num1 - num2;
+            } else {
+                num1 = Math.floor(Math.random() * 12) + 1;
+                num2 = Math.floor(Math.random() * 12) + 1;
+                operator = '×';
+                captchaAnswer = num1 * num2;
+            }
+            
+            const question = `${num1} ${operator} ${num2} = ?`;
+            const questionEl = document.getElementById('captchaQuestion');
+            const srEl = document.getElementById('captchaInstructionSR');
+            
+            if (questionEl) {
+                questionEl.textContent = question;
+                questionEl.setAttribute('aria-label', `Math problem: ${num1} ${operator === '×' ? 'times' : operator} ${num2}`);
+            }
+            document.getElementById('captchaExpected').value = captchaAnswer;
+            if (srEl) srEl.textContent = `New problem: ${num1} ${operator === '×' ? 'times' : operator} ${num2}`;
+            
+            document.getElementById('captchaAnswer').value = '';
+            document.getElementById('captchaError')?.classList.remove('visible');
+        }
+        
+        function speakCaptcha() {
+            if (!CONFIG.captcha?.enableAudio) return;
+            const questionEl = document.getElementById('captchaQuestion');
+            if (!questionEl) return;
+            
+            const text = questionEl.textContent.replace('×', 'times').replace('= ?', 'equals what?');
+            
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.8;
+                speechSynthesis.cancel();
+                speechSynthesis.speak(utterance);
+            } else {
+                alert('Audio: ' + text);
+            }
+        }
+        
+        function validateCaptcha(e) {
+            if (!CONFIG.features?.enableCaptcha) return true;
+            
+            const answerEl = document.getElementById('captchaAnswer');
+            const errorEl = document.getElementById('captchaError');
+            const userAnswer = parseInt(answerEl?.value, 10);
+            
+            if (isNaN(userAnswer) || userAnswer !== captchaAnswer) {
+                e.preventDefault();
+                captchaAttempts++;
+                
+                if (errorEl) {
+                    errorEl.textContent = t('captchaError') || 'Incorrect answer';
+                    errorEl.classList.add('visible');
+                }
+                
+                if (captchaAttempts >= (CONFIG.captcha?.maxAttempts || 3)) {
+                    captchaAttempts = 0;
+                    generateCaptcha();
+                }
+                
+                answerEl?.focus();
+                return false;
+            }
+            
+            errorEl?.classList.remove('visible');
+            return true;
+        }
+        
+        // =====================================================================
+        // WCAG 2.1 Enhancements
+        // =====================================================================
+        function setupWCAG() {
+            const main = document.querySelector('.login-card');
+            if (main) {
+                main.setAttribute('role', 'main');
+                main.setAttribute('aria-label', 'Login form');
+            }
+            
+            // Escape closes dropdowns
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    document.getElementById('langDropdown')?.classList.remove('visible');
+                    document.getElementById('langBtn')?.setAttribute('aria-expanded', 'false');
+                }
+            });
+        }
+        
+        // =====================================================================
         // Initialize all new features
         // =====================================================================
         function initializeNewFeatures() {
@@ -1689,6 +2264,14 @@ Option 4: Hide logo
             setupOfflineDetection();
             setupSessionWarning();
             setupKeyboardShortcuts();
+            setupTranslations();
+            setupCaptcha();
+            setupWCAG();
+            
+            // Error handling
+            initErrorDismiss();
+            initFormValidation();
+            checkForDominoErrors();
         }
         
         // =====================================================================
