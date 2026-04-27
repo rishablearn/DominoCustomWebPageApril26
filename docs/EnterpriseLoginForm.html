@@ -1,0 +1,1279 @@
+<!--
+================================================================================
+ENTERPRISE DOMINO LOGIN FORM - FULLY SELF-CONTAINED
+================================================================================
+Inspired by enterprise login pages like ONGC Verse and UIIC Mail.
+
+✅ NO MIME ISSUES - All CSS and JavaScript are embedded inline
+✅ NO EXTERNAL FILES NEEDED - Works immediately after deployment
+✅ ENTERPRISE FEATURES - Quick links, security notice, support info
+
+DEPLOYMENT STEPS:
+================================================================================
+1. Open DOMCFG.NSF in HCL Domino Designer
+
+2. Create a new form:
+   - Right-click "Forms" → "New Form"
+   
+3. Set form name:
+   - Design menu → Form Properties
+   - Name: "CustomLoginForm"
+   - Close Properties
+
+4. Add this HTML as Pass-Thru HTML:
+   - Copy ALL content of this file (Ctrl+A, Ctrl+C)
+   - Click in the form design area
+   - Paste (Ctrl+V)
+   - Select all pasted content (Ctrl+A)
+   - Go to: Text menu → Pass-Thru HTML
+   - Text should turn GREEN
+   - Save (Ctrl+S)
+
+5. Create Sign In Form Mapping:
+   - Open DOMCFG.NSF in Notes Client
+   - Open "Sign In Form Mappings" view
+   - Click "Add Mapping"
+   - Set Target Database: DOMCFG.NSF
+   - Set Target Form: CustomLoginForm
+   - Save
+
+6. Restart HTTP:
+   - Run on Domino console: tell http restart
+
+WHY THIS AVOIDS MIME ERRORS:
+================================================================================
+- All CSS is embedded in <style> tags (no external .css files)
+- All JavaScript is embedded in <script> tags (no external .js files)
+- Only external dependency is Google Fonts (optional, has fallback)
+- Logo can be base64 encoded or uploaded separately
+
+CUSTOMIZATION:
+================================================================================
+Edit the CONFIG object below (around line 70) to customize:
+- Company name and logo
+- Colors and theme
+- Quick links URLs
+- Security notice text
+- Support contact information
+
+LOGO OPTIONS:
+================================================================================
+Option 1: Base64 encoded (recommended - no file upload needed)
+   logoUrl: "data:image/png;base64,iVBORw0KGgo..."
+
+Option 2: Upload to DOMCFG.NSF as file resource
+   logoUrl: "/domcfg.nsf/logo.png"
+   NOTE: Set MIME type to "image/png" in Web Properties tab!
+   NOTE: Domino does NOT support SVG - use PNG, JPG, or GIF
+
+Option 3: External URL
+   logoUrl: "https://your-cdn.com/logo.png"
+
+Option 4: Hide logo
+   logoUrl: ""
+
+================================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Secure Enterprise Login Portal">
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    
+    <title>Enterprise Login Portal</title>
+    
+    <!-- Google Fonts with fallback -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- ========================================================================
+         CONFIGURATION - EDIT THIS SECTION TO CUSTOMIZE YOUR LOGIN PAGE
+         ======================================================================== -->
+    <script>
+    const CONFIG = {
+        // =====================================================================
+        // COMPANY BRANDING
+        // =====================================================================
+        branding: {
+            companyName: "Your Organization",
+            companyTagline: "Enterprise Collaboration Portal",
+            
+            // Logo URL - See options in header comments above
+            // Recommended: Use base64 to avoid MIME issues completely
+            logoUrl: "",
+            logoAlt: "Organization Logo",
+            logoWidth: 180,
+            logoHeight: 60,
+            
+            // Page titles
+            pageTitle: "Enterprise Login Portal",
+            welcomeTitle: "Welcome",
+            welcomeSubtitle: "Sign in to access your email and applications",
+            
+            // Footer
+            footerText: "© 2026 Your Organization. All rights reserved.",
+            showPoweredBy: true
+        },
+        
+        // =====================================================================
+        // QUICK LINKS - Shown in the sidebar/footer
+        // Set url to "" to hide a link
+        // =====================================================================
+        quickLinks: {
+            forgotPassword: {
+                show: true,
+                text: "Forgot Password",
+                url: "#",  // e.g., "https://pwdreset.yourorg.com/"
+                icon: "🔑"
+            },
+            unlockAccount: {
+                show: true,
+                text: "Unlock Account",
+                url: "#",  // e.g., "/domcfg.nsf/unlock.nsf"
+                icon: "🔓"
+            },
+            userGuide: {
+                show: true,
+                text: "User Guide",
+                url: "#",  // e.g., "/domcfg.nsf/UserGuide.pdf"
+                icon: "📖"
+            },
+            faq: {
+                show: true,
+                text: "FAQ",
+                url: "#",  // e.g., "/domcfg.nsf/FAQ.pdf"
+                icon: "❓"
+            },
+            itSupport: {
+                show: true,
+                text: "IT Support",
+                url: "mailto:itsupport@yourorg.com",
+                icon: "📧"
+            }
+        },
+        
+        // =====================================================================
+        // SECURITY NOTICE - Shown at bottom of login card
+        // =====================================================================
+        securityNotice: {
+            show: true,
+            title: "Security Notice",
+            text: "This system is for authorized users only. By logging in, you agree to comply with organizational policies. Unauthorized access attempts will be logged and may result in disciplinary action."
+        },
+        
+        // =====================================================================
+        // SYSTEM ANNOUNCEMENT - Optional banner for maintenance notices etc.
+        // =====================================================================
+        announcement: {
+            show: false,
+            type: "info",  // "info", "warning", "error"
+            text: "Scheduled maintenance on Sunday, 2:00 AM - 4:00 AM IST"
+        },
+        
+        // =====================================================================
+        // THEME COLORS
+        // =====================================================================
+        theme: {
+            // Primary brand color
+            primaryColor: "#0066CC",
+            primaryColorHover: "#0052A3",
+            primaryColorLight: "#e6f0ff",
+            
+            // Background
+            backgroundType: "gradient",  // "gradient", "solid", "image"
+            backgroundGradientStart: "#1a1a2e",
+            backgroundGradientEnd: "#16213e",
+            backgroundGradientAngle: 135,
+            backgroundSolid: "#1a1a2e",
+            backgroundImage: "",
+            backgroundOverlay: "rgba(0,0,0,0.3)",
+            
+            // Card styling
+            cardBackground: "rgba(255, 255, 255, 0.98)",
+            cardBorderRadius: 16,
+            cardShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            
+            // Text colors
+            textPrimary: "#1a1a2e",
+            textSecondary: "#6c757d",
+            textOnPrimary: "#ffffff",
+            
+            // Input styling
+            inputBackground: "#f8f9fa",
+            inputBorder: "#dee2e6",
+            inputBorderFocus: "#0066CC",
+            inputBorderRadius: 8,
+            
+            // Status colors
+            errorColor: "#dc3545",
+            successColor: "#28a745",
+            warningColor: "#f59e0b",
+            infoColor: "#3b82f6"
+        },
+        
+        // =====================================================================
+        // FORM SETTINGS
+        // =====================================================================
+        form: {
+            usernameLabel: "Username",
+            usernamePlaceholder: "Enter your username or email",
+            usernameIcon: "👤",
+            
+            passwordLabel: "Password",
+            passwordPlaceholder: "Enter your password",
+            passwordIcon: "🔒",
+            
+            loginButtonText: "Sign In",
+            loginButtonIcon: "→",
+            
+            showPasswordToggle: true,
+            showRememberMe: false,
+            rememberMeLabel: "Remember me on this device",
+            
+            showForgotPasswordInForm: true,
+            
+            // Validation
+            enableValidation: true,
+            minUsernameLength: 1,
+            minPasswordLength: 1
+        },
+        
+        // =====================================================================
+        // DOMINO SETTINGS - Usually don't need to change these
+        // =====================================================================
+        domino: {
+            loginActionUrl: "/names.nsf?Login",
+            redirectTo: "/",
+            formMethod: "POST"
+        },
+        
+        // =====================================================================
+        // ERROR MESSAGES
+        // =====================================================================
+        errorMessages: {
+            emptyUsername: "Please enter your username",
+            emptyPassword: "Please enter your password",
+            invalidCredentials: "Invalid username or password. Please try again.",
+            accountLocked: "Your account has been locked. Please contact IT support.",
+            serverError: "Unable to connect to server. Please try again later.",
+            sessionExpired: "Your session has expired. Please sign in again."
+        }
+    };
+    </script>
+    
+    <!-- ========================================================================
+         EMBEDDED STYLES - No external CSS files needed (avoids MIME issues)
+         ======================================================================== -->
+    <style>
+        /* ===== CSS Variables from Config ===== */
+        :root {
+            --primary-color: #0066CC;
+            --primary-hover: #0052A3;
+            --primary-light: #e6f0ff;
+            --bg-gradient-start: #1a1a2e;
+            --bg-gradient-end: #16213e;
+            --card-bg: rgba(255, 255, 255, 0.98);
+            --card-radius: 16px;
+            --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            --text-primary: #1a1a2e;
+            --text-secondary: #6c757d;
+            --text-on-primary: #ffffff;
+            --input-bg: #f8f9fa;
+            --input-border: #dee2e6;
+            --input-focus: #0066CC;
+            --input-radius: 8px;
+            --error-color: #dc3545;
+            --success-color: #28a745;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+        }
+        
+        /* ===== Reset & Base ===== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* ===== Background ===== */
+        .page-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            z-index: -1;
+        }
+        
+        .page-background::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+        
+        /* ===== Announcement Banner ===== */
+        .announcement-banner {
+            background: var(--info-color);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+        }
+        
+        .announcement-banner.warning {
+            background: var(--warning-color);
+            color: #1a1a2e;
+        }
+        
+        .announcement-banner.error {
+            background: var(--error-color);
+        }
+        
+        .announcement-banner.show {
+            display: block;
+        }
+        
+        /* ===== Main Container ===== */
+        .main-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        
+        /* ===== Login Card ===== */
+        .login-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow);
+            width: 100%;
+            max-width: 440px;
+            overflow: hidden;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* ===== Card Header ===== */
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            padding: 32px 40px;
+            text-align: center;
+            color: white;
+        }
+        
+        .logo-container {
+            margin-bottom: 16px;
+        }
+        
+        .logo-container img {
+            max-width: 180px;
+            max-height: 60px;
+            object-fit: contain;
+        }
+        
+        .company-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+        
+        .company-tagline {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 400;
+        }
+        
+        /* ===== Card Body ===== */
+        .card-body {
+            padding: 32px 40px;
+        }
+        
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        
+        .welcome-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .welcome-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        /* ===== Error Display ===== */
+        .error-container {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: var(--input-radius);
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error-container.show {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .error-icon {
+            font-size: 18px;
+        }
+        
+        .error-message {
+            color: var(--error-color);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        /* ===== Form Styles ===== */
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .label-icon {
+            font-size: 14px;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-family: inherit;
+            background: var(--input-bg);
+            border: 2px solid var(--input-border);
+            border-radius: var(--input-radius);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+        
+        .form-input:focus {
+            border-color: var(--input-focus);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.1);
+        }
+        
+        .form-input::placeholder {
+            color: #adb5bd;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        
+        .password-toggle:hover {
+            opacity: 1;
+        }
+        
+        /* ===== Form Options Row ===== */
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .remember-me input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+        }
+        
+        .remember-me span {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .forgot-password {
+            font-size: 14px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .forgot-password:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+        
+        /* ===== Submit Button ===== */
+        .submit-button {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            color: white;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+            border: none;
+            border-radius: var(--input-radius);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 102, 204, 0.3);
+        }
+        
+        .submit-button:active {
+            transform: translateY(0);
+        }
+        
+        .submit-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .button-icon {
+            font-size: 18px;
+            transition: transform 0.2s;
+        }
+        
+        .submit-button:hover .button-icon {
+            transform: translateX(4px);
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+        
+        .submit-button.loading .spinner {
+            display: block;
+        }
+        
+        .submit-button.loading .button-text,
+        .submit-button.loading .button-icon {
+            display: none;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* ===== Quick Links Section ===== */
+        .quick-links-section {
+            background: #f8f9fa;
+            padding: 24px 40px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .quick-links-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+        
+        .quick-links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+        
+        .quick-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-link:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 102, 204, 0.15);
+        }
+        
+        .quick-link-icon {
+            font-size: 16px;
+        }
+        
+        /* ===== Security Notice ===== */
+        .security-notice {
+            padding: 20px 40px;
+            background: #fff8e6;
+            border-top: 1px solid #ffeeba;
+        }
+        
+        .security-notice-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .security-notice-text {
+            font-size: 12px;
+            color: #856404;
+            line-height: 1.6;
+        }
+        
+        /* ===== Footer ===== */
+        .page-footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+        }
+        
+        .footer-text {
+            margin-bottom: 8px;
+        }
+        
+        .powered-by {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .powered-by a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+        }
+        
+        .powered-by a:hover {
+            text-decoration: underline;
+        }
+        
+        /* ===== Responsive ===== */
+        @media (max-width: 480px) {
+            .main-container {
+                padding: 20px 16px;
+            }
+            
+            .card-header,
+            .card-body,
+            .quick-links-section,
+            .security-notice {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+            
+            .company-name {
+                font-size: 20px;
+            }
+            
+            .welcome-title {
+                font-size: 20px;
+            }
+            
+            .quick-links-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        /* ===== Accessibility ===== */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        
+        *:focus-visible {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+        }
+        
+        /* ===== Print Styles ===== */
+        @media print {
+            .page-background,
+            .quick-links-section,
+            .security-notice {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background -->
+    <div class="page-background" id="pageBackground"></div>
+    
+    <!-- Announcement Banner -->
+    <div class="announcement-banner" id="announcementBanner">
+        <span id="announcementText"></span>
+    </div>
+    
+    <!-- Main Container -->
+    <main class="main-container">
+        <div class="login-card" role="main">
+            <!-- Card Header with Branding -->
+            <header class="card-header">
+                <div class="logo-container" id="logoContainer">
+                    <!-- Logo will be inserted by JavaScript if configured -->
+                </div>
+                <h1 class="company-name" id="companyName">Your Organization</h1>
+                <p class="company-tagline" id="companyTagline">Enterprise Collaboration Portal</p>
+            </header>
+            
+            <!-- Card Body with Form -->
+            <div class="card-body">
+                <div class="welcome-section">
+                    <h2 class="welcome-title" id="welcomeTitle">Welcome</h2>
+                    <p class="welcome-subtitle" id="welcomeSubtitle">Sign in to access your email and applications</p>
+                </div>
+                
+                <!-- Error Display -->
+                <div class="error-container" id="errorContainer" role="alert" aria-live="polite">
+                    <span class="error-icon">⚠️</span>
+                    <span class="error-message" id="errorMessage"></span>
+                </div>
+                
+                <!-- Login Form -->
+                <form class="login-form" id="loginForm" method="POST" action="/names.nsf?Login" autocomplete="on">
+                    <!-- Username Field -->
+                    <div class="form-group">
+                        <label class="form-label" for="Username">
+                            <span class="label-icon" id="usernameIcon">👤</span>
+                            <span id="usernameLabel">Username</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                class="form-input" 
+                                id="Username" 
+                                name="Username" 
+                                placeholder="Enter your username or email"
+                                autocomplete="username"
+                                required
+                                aria-required="true"
+                            >
+                        </div>
+                    </div>
+                    
+                    <!-- Password Field -->
+                    <div class="form-group">
+                        <label class="form-label" for="Password">
+                            <span class="label-icon" id="passwordIcon">🔒</span>
+                            <span id="passwordLabel">Password</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="password" 
+                                class="form-input" 
+                                id="Password" 
+                                name="Password" 
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                required
+                                aria-required="true"
+                            >
+                            <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
+                                👁️
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Options -->
+                    <div class="form-options" id="formOptions">
+                        <label class="remember-me" id="rememberMeContainer" style="display: none;">
+                            <input type="checkbox" name="rememberMe" id="rememberMe">
+                            <span id="rememberMeLabel">Remember me</span>
+                        </label>
+                        <a href="#" class="forgot-password" id="forgotPasswordLink">Forgot Password?</a>
+                    </div>
+                    
+                    <!-- Hidden Domino Fields -->
+                    <input type="hidden" name="RedirectTo" id="RedirectTo" value="/">
+                    
+                    <!-- Submit Button -->
+                    <button type="submit" class="submit-button" id="submitButton">
+                        <span class="spinner"></span>
+                        <span class="button-text" id="buttonText">Sign In</span>
+                        <span class="button-icon" id="buttonIcon">→</span>
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Quick Links Section -->
+            <section class="quick-links-section" id="quickLinksSection">
+                <h3 class="quick-links-title">Quick Links</h3>
+                <div class="quick-links-grid" id="quickLinksGrid">
+                    <!-- Links will be inserted by JavaScript -->
+                </div>
+            </section>
+            
+            <!-- Security Notice -->
+            <section class="security-notice" id="securityNotice">
+                <h4 class="security-notice-title">
+                    <span>🔐</span>
+                    <span id="securityNoticeTitle">Security Notice</span>
+                </h4>
+                <p class="security-notice-text" id="securityNoticeText">
+                    This system is for authorized users only.
+                </p>
+            </section>
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="page-footer">
+        <p class="footer-text" id="footerText">© 2026 Your Organization. All rights reserved.</p>
+        <p class="powered-by" id="poweredBy">
+            Powered by <a href="https://www.hcl-software.com/domino" target="_blank" rel="noopener">HCL Domino</a>
+        </p>
+    </footer>
+    
+    <!-- ========================================================================
+         EMBEDDED JAVASCRIPT - No external JS files needed (avoids MIME issues)
+         ======================================================================== -->
+    <script>
+    (function() {
+        'use strict';
+        
+        // =====================================================================
+        // Initialize page with configuration
+        // =====================================================================
+        function initializePage() {
+            applyBranding();
+            applyTheme();
+            setupQuickLinks();
+            setupSecurityNotice();
+            setupAnnouncement();
+            setupForm();
+            setupPasswordToggle();
+            checkForErrors();
+        }
+        
+        // =====================================================================
+        // Apply branding from config
+        // =====================================================================
+        function applyBranding() {
+            const b = CONFIG.branding;
+            
+            // Page title
+            document.title = b.pageTitle || 'Enterprise Login Portal';
+            
+            // Company info
+            setText('companyName', b.companyName);
+            setText('companyTagline', b.companyTagline);
+            setText('welcomeTitle', b.welcomeTitle);
+            setText('welcomeSubtitle', b.welcomeSubtitle);
+            setText('footerText', b.footerText);
+            
+            // Logo
+            const logoContainer = document.getElementById('logoContainer');
+            if (b.logoUrl && logoContainer) {
+                const img = document.createElement('img');
+                img.src = b.logoUrl;
+                img.alt = b.logoAlt || 'Logo';
+                if (b.logoWidth) img.style.maxWidth = b.logoWidth + 'px';
+                if (b.logoHeight) img.style.maxHeight = b.logoHeight + 'px';
+                img.onerror = function() {
+                    // Hide logo container if image fails to load
+                    logoContainer.style.display = 'none';
+                };
+                logoContainer.innerHTML = '';
+                logoContainer.appendChild(img);
+            } else {
+                logoContainer.style.display = 'none';
+            }
+            
+            // Powered by
+            const poweredBy = document.getElementById('poweredBy');
+            if (poweredBy && !b.showPoweredBy) {
+                poweredBy.style.display = 'none';
+            }
+        }
+        
+        // =====================================================================
+        // Apply theme colors
+        // =====================================================================
+        function applyTheme() {
+            const t = CONFIG.theme;
+            const root = document.documentElement;
+            
+            // Set CSS variables
+            if (t.primaryColor) root.style.setProperty('--primary-color', t.primaryColor);
+            if (t.primaryColorHover) root.style.setProperty('--primary-hover', t.primaryColorHover);
+            if (t.primaryColorLight) root.style.setProperty('--primary-light', t.primaryColorLight);
+            if (t.backgroundGradientStart) root.style.setProperty('--bg-gradient-start', t.backgroundGradientStart);
+            if (t.backgroundGradientEnd) root.style.setProperty('--bg-gradient-end', t.backgroundGradientEnd);
+            if (t.cardBackground) root.style.setProperty('--card-bg', t.cardBackground);
+            if (t.textPrimary) root.style.setProperty('--text-primary', t.textPrimary);
+            if (t.textSecondary) root.style.setProperty('--text-secondary', t.textSecondary);
+            if (t.inputBackground) root.style.setProperty('--input-bg', t.inputBackground);
+            if (t.inputBorder) root.style.setProperty('--input-border', t.inputBorder);
+            if (t.inputBorderFocus) root.style.setProperty('--input-focus', t.inputBorderFocus);
+            if (t.errorColor) root.style.setProperty('--error-color', t.errorColor);
+            
+            // Background type
+            const bg = document.getElementById('pageBackground');
+            if (bg && t.backgroundType === 'solid' && t.backgroundSolid) {
+                bg.style.background = t.backgroundSolid;
+            } else if (bg && t.backgroundType === 'image' && t.backgroundImage) {
+                bg.style.background = `url('${t.backgroundImage}') center/cover no-repeat`;
+            }
+        }
+        
+        // =====================================================================
+        // Setup quick links
+        // =====================================================================
+        function setupQuickLinks() {
+            const container = document.getElementById('quickLinksGrid');
+            const section = document.getElementById('quickLinksSection');
+            const links = CONFIG.quickLinks;
+            
+            if (!container || !links) return;
+            
+            let hasLinks = false;
+            let html = '';
+            
+            Object.keys(links).forEach(function(key) {
+                const link = links[key];
+                if (link.show && link.url && link.url !== '#') {
+                    hasLinks = true;
+                    html += `
+                        <a href="${escapeHtml(link.url)}" class="quick-link" target="${link.url.startsWith('mailto:') ? '_self' : '_blank'}" rel="noopener">
+                            <span class="quick-link-icon">${link.icon || '🔗'}</span>
+                            <span>${escapeHtml(link.text)}</span>
+                        </a>
+                    `;
+                }
+            });
+            
+            if (hasLinks) {
+                container.innerHTML = html;
+            } else {
+                section.style.display = 'none';
+            }
+        }
+        
+        // =====================================================================
+        // Setup security notice
+        // =====================================================================
+        function setupSecurityNotice() {
+            const section = document.getElementById('securityNotice');
+            const notice = CONFIG.securityNotice;
+            
+            if (!section || !notice || !notice.show) {
+                if (section) section.style.display = 'none';
+                return;
+            }
+            
+            setText('securityNoticeTitle', notice.title);
+            setText('securityNoticeText', notice.text);
+        }
+        
+        // =====================================================================
+        // Setup announcement banner
+        // =====================================================================
+        function setupAnnouncement() {
+            const banner = document.getElementById('announcementBanner');
+            const announcement = CONFIG.announcement;
+            
+            if (!banner || !announcement || !announcement.show) return;
+            
+            setText('announcementText', announcement.text);
+            banner.classList.add('show');
+            
+            if (announcement.type) {
+                banner.classList.add(announcement.type);
+            }
+        }
+        
+        // =====================================================================
+        // Setup form
+        // =====================================================================
+        function setupForm() {
+            const f = CONFIG.form;
+            const d = CONFIG.domino;
+            
+            // Labels and placeholders
+            setText('usernameLabel', f.usernameLabel);
+            setText('passwordLabel', f.passwordLabel);
+            setText('buttonText', f.loginButtonText);
+            
+            const usernameInput = document.getElementById('Username');
+            const passwordInput = document.getElementById('Password');
+            
+            if (usernameInput && f.usernamePlaceholder) {
+                usernameInput.placeholder = f.usernamePlaceholder;
+            }
+            if (passwordInput && f.passwordPlaceholder) {
+                passwordInput.placeholder = f.passwordPlaceholder;
+            }
+            
+            // Icons
+            setText('usernameIcon', f.usernameIcon);
+            setText('passwordIcon', f.passwordIcon);
+            setText('buttonIcon', f.loginButtonIcon);
+            
+            // Remember me
+            const rememberMeContainer = document.getElementById('rememberMeContainer');
+            if (rememberMeContainer) {
+                rememberMeContainer.style.display = f.showRememberMe ? 'flex' : 'none';
+                setText('rememberMeLabel', f.rememberMeLabel);
+            }
+            
+            // Forgot password link in form
+            const forgotLink = document.getElementById('forgotPasswordLink');
+            if (forgotLink) {
+                if (f.showForgotPasswordInForm && CONFIG.quickLinks.forgotPassword.url !== '#') {
+                    forgotLink.href = CONFIG.quickLinks.forgotPassword.url;
+                    forgotLink.textContent = CONFIG.quickLinks.forgotPassword.text || 'Forgot Password?';
+                } else {
+                    forgotLink.style.display = 'none';
+                }
+            }
+            
+            // Password toggle
+            const toggleBtn = document.getElementById('passwordToggle');
+            if (toggleBtn && !f.showPasswordToggle) {
+                toggleBtn.style.display = 'none';
+            }
+            
+            // Domino settings
+            const form = document.getElementById('loginForm');
+            const redirectInput = document.getElementById('RedirectTo');
+            
+            if (form && d.loginActionUrl) {
+                form.action = d.loginActionUrl;
+            }
+            if (redirectInput && d.redirectTo) {
+                redirectInput.value = d.redirectTo;
+            }
+            
+            // Form submission
+            if (form) {
+                form.addEventListener('submit', handleSubmit);
+            }
+            
+            // Auto-focus
+            if (usernameInput) {
+                usernameInput.focus();
+            }
+        }
+        
+        // =====================================================================
+        // Setup password toggle
+        // =====================================================================
+        function setupPasswordToggle() {
+            const toggle = document.getElementById('passwordToggle');
+            const passwordInput = document.getElementById('Password');
+            
+            if (!toggle || !passwordInput) return;
+            
+            toggle.addEventListener('click', function() {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                toggle.textContent = isPassword ? '🙈' : '👁️';
+                toggle.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            });
+        }
+        
+        // =====================================================================
+        // Handle form submission
+        // =====================================================================
+        function handleSubmit(e) {
+            const form = e.target;
+            const username = document.getElementById('Username');
+            const password = document.getElementById('Password');
+            const submitBtn = document.getElementById('submitButton');
+            const errorContainer = document.getElementById('errorContainer');
+            
+            // Clear previous errors
+            hideError();
+            
+            // Validation
+            if (CONFIG.form.enableValidation) {
+                if (!username.value.trim()) {
+                    e.preventDefault();
+                    showError(CONFIG.errorMessages.emptyUsername);
+                    username.focus();
+                    return;
+                }
+                
+                if (!password.value) {
+                    e.preventDefault();
+                    showError(CONFIG.errorMessages.emptyPassword);
+                    password.focus();
+                    return;
+                }
+            }
+            
+            // Show loading state
+            if (submitBtn) {
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+            }
+        }
+        
+        // =====================================================================
+        // Check for login errors in URL
+        // =====================================================================
+        function checkForErrors() {
+            const params = new URLSearchParams(window.location.search);
+            const error = params.get('error') || params.get('Error');
+            
+            if (error) {
+                const errorCode = parseInt(error, 10);
+                const message = CONFIG.errorMessages[errorCode] || CONFIG.errorMessages.invalidCredentials;
+                showError(message);
+            }
+        }
+        
+        // =====================================================================
+        // Error display helpers
+        // =====================================================================
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            const messageEl = document.getElementById('errorMessage');
+            
+            if (container && messageEl) {
+                messageEl.textContent = message;
+                container.classList.add('show');
+            }
+        }
+        
+        function hideError() {
+            const container = document.getElementById('errorContainer');
+            if (container) {
+                container.classList.remove('show');
+            }
+        }
+        
+        // =====================================================================
+        // Utility functions
+        // =====================================================================
+        function setText(id, text) {
+            const el = document.getElementById(id);
+            if (el && text !== undefined) {
+                el.textContent = text;
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // =====================================================================
+        // Initialize when DOM is ready
+        // =====================================================================
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializePage);
+        } else {
+            initializePage();
+        }
+    })();
+    </script>
+</body>
+</html>

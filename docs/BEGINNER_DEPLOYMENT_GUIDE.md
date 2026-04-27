@@ -10,8 +10,8 @@ This guide assumes you have never deployed a custom login page before. Follow ea
 
 1. [What You Need Before Starting](#what-you-need-before-starting)
 2. [Understanding the Basics](#understanding-the-basics)
-3. [Method 1: Using DXL Import (Easiest)](#method-1-using-dxl-import-easiest)
-4. [Method 2: Manual Setup in Domino Designer](#method-2-manual-setup-in-domino-designer)
+3. [Choosing Your Deployment Option](#choosing-your-deployment-option) ⭐ **Start Here**
+4. [Method 1: Manual Setup in Domino Designer](#method-1-create-form-manually-in-domino-designer-recommended)
 5. [Configuring Your Login Page](#configuring-your-login-page)
 6. [Testing Your Login Page](#testing-your-login-page)
 7. [Troubleshooting Common Problems](#troubleshooting-common-problems)
@@ -43,12 +43,18 @@ To check if you have admin access:
 ### Files You'll Need
 
 Download or locate these files from this project:
-- `CustomLoginForm.html` - The main login page
+
+**✅ RECOMMENDED (No MIME issues):**
+- `docs/EnterpriseLoginForm.html` - **Enterprise login with all CSS/JS inline**
+- `docs/DominoEmbeddedForm.html` - Simple login with all CSS/JS inline
+
+**For modular deployment (requires MIME setup):**
+- `CustomLoginForm-Domino.html` - Login page for Domino (uses external files)
 - `config.js` - Configuration settings
 - `css/login.css` - Styling
 - `js/login.js` - Functionality
 - `i18n/translations.js` - Language translations
-- `images/logo-placeholder.svg` - Placeholder logo (replace with yours)
+- Your logo file (PNG, JPG, or GIF - **Domino does NOT support SVG**)
 
 ---
 
@@ -67,6 +73,52 @@ Session authentication means users log in once, and Domino remembers them for a 
 ### What is a Form in Domino?
 
 A form is like a template. In our case, it's a template for the login page that Domino shows to users.
+
+---
+
+## Choosing Your Deployment Option
+
+### 🎯 Quick Decision Guide
+
+| If You Want... | Use This File | MIME Issues? |
+|----------------|---------------|--------------|
+| **Simplest deployment, no MIME issues** | `EnterpriseLoginForm.html` | ✅ **NONE** |
+| Self-contained, all-in-one | `DominoEmbeddedForm.html` | ✅ **NONE** |
+| Modular with external files | `CustomLoginForm-Domino.html` | ⚠️ Requires MIME setup |
+
+### ✅ RECOMMENDED: EnterpriseLoginForm.html (Zero MIME Issues)
+
+**This is the best option for most users.** The `EnterpriseLoginForm.html` file:
+- Has ALL CSS and JavaScript embedded inline
+- Requires NO external file resources
+- **Completely avoids MIME type errors**
+- Includes enterprise features (quick links, security notice, support info)
+- Inspired by corporate login pages like ONGC Verse and UIIC Mail
+
+**Location:** `docs/EnterpriseLoginForm.html`
+
+### Why MIME Errors Happen
+
+When you use external files (`.js`, `.css`), Domino must serve them with the correct MIME type:
+- `.js` files need `text/javascript`
+- `.css` files need `text/css`
+
+If Domino serves them as `text/html` (the default), browsers refuse to load them:
+```
+Refused to execute script from 'config.js' because its MIME type ('text/html') is not executable
+```
+
+### How to Avoid MIME Errors
+
+**Option A: Use Self-Contained HTML (Recommended)**
+- Use `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html`
+- All CSS/JS is inline - no external files needed
+- **Zero MIME configuration required**
+
+**Option B: If Using External Files**
+- Must set MIME types manually in Domino Designer
+- See Step 1.4.4 below for detailed instructions
+- Reference: [HCL Documentation - File Resource Web Properties](https://help.hcl-software.com/dom_designer/11.0.1/basic/H_TO_DEPLOY_A_FILE_RESOURCE_ON_THE_WEB_STEPS.html)
 
 ---
 
