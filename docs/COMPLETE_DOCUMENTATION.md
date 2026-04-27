@@ -3,19 +3,21 @@
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Features](#features)
-3. [Project Structure](#project-structure)
-4. [Quick Start](#quick-start)
-5. [Configuration Guide](#configuration-guide)
-6. [Customization Options](#customization-options)
-7. [Sample Themes](#sample-themes)
-8. [HCL Domino Deployment](#hcl-domino-deployment)
-9. [Responsive Design](#responsive-design)
-10. [Accessibility](#accessibility)
-11. [Troubleshooting](#troubleshooting)
-12. [API Reference](#api-reference)
-13. [Best Practices](#best-practices)
-14. [FAQ](#faq)
+2. [⭐ Deployment Options](#deployment-options) - **START HERE**
+3. [MIME Type Issues - Solved](#mime-type-issues---solved)
+4. [Features](#features)
+5. [Project Structure](#project-structure)
+6. [Quick Start](#quick-start)
+7. [Configuration Guide](#configuration-guide)
+8. [Customization Options](#customization-options)
+9. [Sample Themes](#sample-themes)
+10. [HCL Domino Deployment](#hcl-domino-deployment)
+11. [Responsive Design](#responsive-design)
+12. [Accessibility](#accessibility)
+13. [Troubleshooting](#troubleshooting)
+14. [API Reference](#api-reference)
+15. [Best Practices](#best-practices)
+16. [FAQ](#faq)
 
 ---
 
@@ -28,9 +30,124 @@ DominoCustomWebPageApril26 is a modern, fully customizable login page designed s
 - **Modern Design**: Clean, professional UI following 2024+ design trends
 - **Easy Customization**: Single configuration file controls everything
 - **Domino Ready**: Built with Domino session authentication in mind
+- **Zero MIME Issues**: Self-contained versions require no external files
 - **Responsive**: Works on all devices from mobile to desktop
 - **Accessible**: WCAG 2.1 compliant with keyboard navigation
 - **Secure**: Follows security best practices
+
+---
+
+## Deployment Options
+
+### ⭐ Quick Decision Guide
+
+| If You Need... | Use This File | MIME Config Required? |
+|----------------|---------------|-----------------------|
+| **Enterprise features** (quick links, security notice) | `EnterpriseLoginForm.html` | ❌ **NO** |
+| **Simple clean login** | `DominoEmbeddedForm.html` | ❌ **NO** |
+| **Full modularity** with separate files | `CustomLoginForm-Domino.html` | ⚠️ **YES** |
+
+### EnterpriseLoginForm.html (Recommended)
+
+**Location:** `docs/EnterpriseLoginForm.html`
+
+**Features:**
+- ✅ All CSS/JS embedded inline - no external files
+- ✅ Quick links (Forgot Password, Unlock Account, FAQ, IT Support)
+- ✅ Security notice banner
+- ✅ System announcement support
+- ✅ Fully configurable theme and branding
+- ✅ Logo support (PNG, JPG, GIF - **NOT SVG**)
+- ✅ **Zero MIME configuration required**
+
+**Inspired by:** ONGC Verse and UIIC Mail corporate login pages
+
+### DominoEmbeddedForm.html
+
+**Location:** `docs/DominoEmbeddedForm.html`
+
+**Features:**
+- ✅ All CSS/JS embedded inline - no external files
+- ✅ Clean, minimal design
+- ✅ Configurable theme and branding
+- ✅ Logo support (PNG, JPG, GIF - **NOT SVG**)
+- ✅ **Zero MIME configuration required**
+
+**Best for:** Simple deployments without extra enterprise features
+
+### CustomLoginForm-Domino.html
+
+**Location:** `CustomLoginForm-Domino.html`
+
+**Features:**
+- ✅ Modular architecture with separate CSS/JS files
+- ✅ Full feature set including i18n
+- ⚠️ Requires file resource imports
+- ⚠️ **Requires MIME type configuration**
+
+**Best for:** Advanced users who need full modularity
+
+---
+
+## MIME Type Issues - Solved
+
+### Common Errors
+
+```
+Uncaught SyntaxError: Unexpected token '<'
+Refused to execute script because its MIME type ('text/html') is not executable
+```
+
+### Why This Happens
+
+When you use external JavaScript/CSS files, Domino must serve them with the correct MIME type. If not configured properly, Domino serves them as `text/html`, causing browsers to reject them.
+
+### Solution 1: Use Self-Contained HTML (Recommended)
+
+Use `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` - they have all CSS/JS embedded inline, so **no external files are needed and no MIME configuration is required**.
+
+### Solution 2: Configure MIME Types Manually
+
+If you must use external files, set MIME types in **Web Properties** tab (not Basic tab):
+
+| File Type | MIME Type |
+|-----------|-----------|
+| `.js` | `text/javascript` |
+| `.css` | `text/css` |
+| `.png` | `image/png` |
+| `.jpg` | `image/jpeg` |
+
+**Reference:** [HCL Documentation - File Resource Web Properties](https://help.hcl-software.com/dom_designer/11.0.1/basic/H_TO_DEPLOY_A_FILE_RESOURCE_ON_THE_WEB_STEPS.html)
+
+---
+
+## Logo Support
+
+### ⚠️ IMPORTANT: Domino does NOT support SVG files
+
+**Supported formats:** PNG, JPG, GIF only
+
+### Options
+
+1. **Base64 Data URI** (no file upload needed):
+   ```javascript
+   logoUrl: "data:image/png;base64,iVBORw0KGgo..."
+   ```
+
+2. **File Resource** (must set MIME type):
+   ```javascript
+   logoUrl: "/domcfg.nsf/logo.png"
+   ```
+
+3. **External URL**:
+   ```javascript
+   logoUrl: "https://cdn.example.com/logo.png"
+   ```
+
+4. **Hide logo**:
+   ```javascript
+   logoUrl: ""
+   ```
 
 ---
 
@@ -65,26 +182,42 @@ DominoCustomWebPageApril26 is a modern, fully customizable login page designed s
 
 ```
 DominoCustomWebPageApril26/
-├── CustomLoginForm.html      # Main login page (modular version)
-├── config.js                 # Configuration file
+│
+├── docs/
+│   ├── EnterpriseLoginForm.html    ⭐ RECOMMENDED - All-in-one with enterprise features
+│   ├── DominoEmbeddedForm.html     ⭐ All-in-one simple version
+│   ├── BEGINNER_DEPLOYMENT_GUIDE.md   Step-by-step for first-time admins
+│   ├── DEPLOYMENT_GUIDE.md            Technical deployment reference
+│   └── COMPLETE_DOCUMENTATION.md      This file
+│
+├── CustomLoginForm.html            # For local development only
+├── CustomLoginForm-Domino.html     # For Domino with external files (advanced)
+├── config.js                       # Configuration (for modular version)
 ├── css/
-│   └── login.css             # Stylesheet
+│   └── login.css                   # Stylesheet (for modular version)
 ├── js/
-│   └── login.js              # JavaScript functionality
-├── images/
-│   └── logo-placeholder.svg  # Sample logo
-├── samples/
+│   └── login.js                    # JavaScript (for modular version)
+├── i18n/
+│   └── translations.js             # Translations (for modular version)
+│
+├── samples/                        # Pre-built theme configurations
 │   ├── config-corporate-blue.js
 │   ├── config-modern-gradient.js
 │   ├── config-dark-elegant.js
 │   └── config-healthcare.js
-├── docs/
-│   ├── DEPLOYMENT_GUIDE.md
-│   ├── COMPLETE_DOCUMENTATION.md
-│   └── DominoEmbeddedForm.html
-├── preview-server.js         # Local testing server
+│
+├── preview-server.js               # Local testing server
 └── README.md
 ```
+
+### File Descriptions
+
+| File | Purpose | MIME Config |
+|------|---------|-------------|
+| `docs/EnterpriseLoginForm.html` | Enterprise login with quick links, security notice | ❌ None |
+| `docs/DominoEmbeddedForm.html` | Simple clean login page | ❌ None |
+| `CustomLoginForm-Domino.html` | Modular version for Domino | ⚠️ Required |
+| `CustomLoginForm.html` | Local development only | N/A |
 
 ---
 
