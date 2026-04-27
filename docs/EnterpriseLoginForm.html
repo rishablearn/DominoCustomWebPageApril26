@@ -261,7 +261,40 @@ Option 4: Hide logo
             invalidCredentials: "Invalid username or password. Please try again.",
             accountLocked: "Your account has been locked. Please contact IT support.",
             serverError: "Unable to connect to server. Please try again later.",
-            sessionExpired: "Your session has expired. Please sign in again."
+            sessionExpired: "Your session has expired. Please sign in again.",
+            offline: "You appear to be offline. Please check your connection."
+        },
+        
+        // =====================================================================
+        // FEATURE TOGGLES (NEW)
+        // =====================================================================
+        features: {
+            enableThemeSwitcher: true,           // Light/Dark mode toggle
+            enablePasswordStrength: true,        // Password strength meter
+            enableRememberUsername: true,        // Remember last username
+            enableOfflineDetection: true,        // Network status indicator
+            enableSessionWarning: true,          // Session timeout warning
+            enableKeyboardShortcuts: true,       // Keyboard shortcuts (Alt+U, Alt+P)
+            enableAnimations: true               // UI animations
+        },
+        
+        // =====================================================================
+        // SESSION SETTINGS (NEW)
+        // =====================================================================
+        session: {
+            warningMinutes: 25,                  // Show warning at this time
+            timeoutMinutes: 30                   // Total session timeout
+        },
+        
+        // =====================================================================
+        // PASSWORD STRENGTH SETTINGS (NEW)
+        // =====================================================================
+        passwordStrength: {
+            minLength: 8,
+            requireUppercase: true,
+            requireLowercase: true,
+            requireNumbers: true,
+            requireSpecial: false
         }
     };
     </script>
@@ -291,6 +324,20 @@ Option 4: Hide logo
             --success-color: #28a745;
             --warning-color: #f59e0b;
             --info-color: #3b82f6;
+        }
+        
+        /* ===== Dark Mode ===== */
+        [data-theme="dark"] {
+            --card-bg: rgba(30, 30, 46, 0.98);
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --input-bg: rgba(255, 255, 255, 0.1);
+            --input-border: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* ===== Reduced Motion ===== */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
         }
         
         /* ===== Reset & Base ===== */
@@ -799,11 +846,155 @@ Option 4: Hide logo
                 display: none;
             }
         }
+        
+        /* ===== Top Bar (Theme Toggle) ===== */
+        .top-bar {
+            position: fixed;
+            top: 0; right: 0;
+            padding: 16px 24px;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .top-bar-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        
+        .top-bar-btn:hover { background: rgba(255, 255, 255, 0.25); }
+        
+        /* ===== Password Strength Meter ===== */
+        .password-strength { margin-top: 12px; display: none; }
+        .password-strength.visible { display: block; }
+        
+        .strength-bar {
+            height: 4px;
+            background: var(--input-border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        
+        .strength-fill {
+            height: 100%;
+            width: 0;
+            transition: width 0.3s, background 0.3s;
+        }
+        
+        .strength-fill.weak { width: 25%; background: var(--error-color); }
+        .strength-fill.fair { width: 50%; background: var(--warning-color); }
+        .strength-fill.good { width: 75%; background: var(--info-color); }
+        .strength-fill.strong { width: 100%; background: var(--success-color); }
+        
+        .strength-text { font-size: 12px; color: var(--text-secondary); }
+        
+        /* ===== Network Status ===== */
+        .network-status {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--error-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+            animation: slideDown 0.3s ease;
+        }
+        
+        .network-status.online { background: var(--success-color); }
+        .network-status.visible { display: flex; align-items: center; gap: 8px; }
+        
+        @keyframes slideDown {
+            from { transform: translate(-50%, -100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        /* ===== Session Warning Modal ===== */
+        .session-warning {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        
+        .session-warning.visible { display: flex; }
+        
+        .session-warning-content {
+            background: white;
+            padding: 32px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+        
+        .session-warning-content h3 { margin-bottom: 12px; color: var(--warning-color); font-size: 1.25rem; }
+        .session-warning-content p { margin-bottom: 20px; color: var(--text-secondary); }
+        
+        .session-btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .session-btn:hover { background: var(--primary-hover); }
+        
+        /* ===== Keyboard Shortcut Hints ===== */
+        .shortcut-hint {
+            font-size: 11px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+            margin-left: auto;
+        }
     </style>
 </head>
 <body>
     <!-- Background -->
     <div class="page-background" id="pageBackground"></div>
+    
+    <!-- Top Bar with Theme Toggle -->
+    <div class="top-bar" id="topBar">
+        <button class="top-bar-btn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme (Alt+T)">
+            <span id="themeIcon">🌙</span>
+            <span id="themeText">Dark</span>
+        </button>
+    </div>
+    
+    <!-- Network Status Indicator -->
+    <div class="network-status" id="networkStatus" role="status" aria-live="polite">
+        <span id="networkIcon">⚠️</span>
+        <span id="networkText">You are offline</span>
+    </div>
+    
+    <!-- Session Warning Modal -->
+    <div class="session-warning" id="sessionWarning" role="dialog" aria-modal="true" aria-labelledby="sessionTitle">
+        <div class="session-warning-content">
+            <h3 id="sessionTitle">⏰ Session Expiring</h3>
+            <p id="sessionText">Your session will expire soon. Click below to stay logged in.</p>
+            <button class="session-btn" id="extendSessionBtn">Stay Logged In</button>
+        </div>
+    </div>
     
     <!-- Announcement Banner -->
     <div class="announcement-banner" id="announcementBanner">
@@ -877,6 +1068,13 @@ Option 4: Hide logo
                             <button type="button" class="password-toggle" id="passwordToggle" aria-label="Toggle password visibility">
                                 👁️
                             </button>
+                        </div>
+                        <!-- Password Strength Meter -->
+                        <div class="password-strength" id="passwordStrength">
+                            <div class="strength-bar">
+                                <div class="strength-fill" id="strengthFill"></div>
+                            </div>
+                            <div class="strength-text" id="strengthText">Password strength: Weak</div>
                         </div>
                     </div>
                     
@@ -1266,12 +1464,244 @@ Option 4: Hide logo
         }
         
         // =====================================================================
+        // Theme Switcher
+        // =====================================================================
+        function setupThemeSwitcher() {
+            if (!CONFIG.features || !CONFIG.features.enableThemeSwitcher) {
+                const topBar = document.getElementById('topBar');
+                if (topBar) topBar.style.display = 'none';
+                return;
+            }
+            
+            const toggle = document.getElementById('themeToggle');
+            const icon = document.getElementById('themeIcon');
+            const text = document.getElementById('themeText');
+            
+            // Check saved theme or system preference
+            let theme = localStorage.getItem('theme');
+            if (!theme) {
+                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            
+            applyTheme(theme);
+            
+            if (toggle) {
+                toggle.addEventListener('click', function() {
+                    const current = document.documentElement.getAttribute('data-theme');
+                    const newTheme = current === 'dark' ? 'light' : 'dark';
+                    applyTheme(newTheme);
+                    localStorage.setItem('theme', newTheme);
+                });
+            }
+            
+            function applyTheme(t) {
+                document.documentElement.setAttribute('data-theme', t);
+                if (icon) icon.textContent = t === 'dark' ? '☀️' : '🌙';
+                if (text) text.textContent = t === 'dark' ? 'Light' : 'Dark';
+            }
+        }
+        
+        // =====================================================================
+        // Password Strength Meter
+        // =====================================================================
+        function setupPasswordStrength() {
+            if (!CONFIG.features || !CONFIG.features.enablePasswordStrength) return;
+            
+            const password = document.getElementById('Password');
+            const container = document.getElementById('passwordStrength');
+            const fill = document.getElementById('strengthFill');
+            const text = document.getElementById('strengthText');
+            
+            if (!password || !container) return;
+            
+            password.addEventListener('input', function() {
+                const val = password.value;
+                if (!val) {
+                    container.classList.remove('visible');
+                    return;
+                }
+                
+                container.classList.add('visible');
+                const score = calculateStrength(val);
+                
+                fill.className = 'strength-fill';
+                if (score >= 75) { fill.classList.add('strong'); text.textContent = 'Password strength: Strong'; }
+                else if (score >= 50) { fill.classList.add('good'); text.textContent = 'Password strength: Good'; }
+                else if (score >= 25) { fill.classList.add('fair'); text.textContent = 'Password strength: Fair'; }
+                else { fill.classList.add('weak'); text.textContent = 'Password strength: Weak'; }
+            });
+            
+            function calculateStrength(pwd) {
+                let score = 0;
+                const cfg = CONFIG.passwordStrength || {};
+                
+                if (pwd.length >= (cfg.minLength || 8)) score += 25;
+                if (/[A-Z]/.test(pwd)) score += 25;
+                if (/[a-z]/.test(pwd)) score += 25;
+                if (/[0-9]/.test(pwd)) score += 15;
+                if (/[^A-Za-z0-9]/.test(pwd)) score += 10;
+                
+                return Math.min(100, score);
+            }
+        }
+        
+        // =====================================================================
+        // Remember Username
+        // =====================================================================
+        function setupRememberUsername() {
+            if (!CONFIG.features || !CONFIG.features.enableRememberUsername) return;
+            
+            const username = document.getElementById('Username');
+            if (!username) return;
+            
+            const saved = localStorage.getItem('rememberedUsername');
+            if (saved) {
+                username.value = saved;
+                const password = document.getElementById('Password');
+                if (password) password.focus();
+            }
+            
+            const form = document.getElementById('loginForm');
+            if (form) {
+                form.addEventListener('submit', function() {
+                    localStorage.setItem('rememberedUsername', username.value);
+                });
+            }
+        }
+        
+        // =====================================================================
+        // Offline Detection
+        // =====================================================================
+        function setupOfflineDetection() {
+            if (!CONFIG.features || !CONFIG.features.enableOfflineDetection) return;
+            
+            const status = document.getElementById('networkStatus');
+            const icon = document.getElementById('networkIcon');
+            const text = document.getElementById('networkText');
+            
+            if (!status) return;
+            
+            function updateStatus() {
+                if (!navigator.onLine) {
+                    status.classList.add('visible');
+                    status.classList.remove('online');
+                    icon.textContent = '⚠️';
+                    text.textContent = CONFIG.errorMessages.offline || 'You are offline';
+                }
+            }
+            
+            window.addEventListener('offline', function() {
+                status.classList.add('visible');
+                status.classList.remove('online');
+                icon.textContent = '⚠️';
+                text.textContent = 'You are offline';
+            });
+            
+            window.addEventListener('online', function() {
+                status.classList.add('visible', 'online');
+                icon.textContent = '✓';
+                text.textContent = 'Back online';
+                setTimeout(function() { status.classList.remove('visible'); }, 3000);
+            });
+            
+            updateStatus();
+        }
+        
+        // =====================================================================
+        // Session Warning
+        // =====================================================================
+        function setupSessionWarning() {
+            if (!CONFIG.features || !CONFIG.features.enableSessionWarning) return;
+            
+            const modal = document.getElementById('sessionWarning');
+            const btn = document.getElementById('extendSessionBtn');
+            const cfg = CONFIG.session || { warningMinutes: 25, timeoutMinutes: 30 };
+            
+            if (!modal || !btn) return;
+            
+            let warningTimeout, logoutTimeout;
+            
+            function resetTimers() {
+                clearTimeout(warningTimeout);
+                clearTimeout(logoutTimeout);
+                
+                warningTimeout = setTimeout(function() {
+                    modal.classList.add('visible');
+                }, cfg.warningMinutes * 60 * 1000);
+                
+                logoutTimeout = setTimeout(function() {
+                    window.location.reload();
+                }, cfg.timeoutMinutes * 60 * 1000);
+            }
+            
+            btn.addEventListener('click', function() {
+                modal.classList.remove('visible');
+                resetTimers();
+            });
+            
+            // Reset on any activity
+            ['click', 'keypress', 'scroll'].forEach(function(evt) {
+                document.addEventListener(evt, function() {
+                    if (!modal.classList.contains('visible')) resetTimers();
+                });
+            });
+            
+            resetTimers();
+        }
+        
+        // =====================================================================
+        // Keyboard Shortcuts
+        // =====================================================================
+        function setupKeyboardShortcuts() {
+            if (!CONFIG.features || !CONFIG.features.enableKeyboardShortcuts) return;
+            
+            document.addEventListener('keydown', function(e) {
+                // Alt+U = Focus username
+                if (e.altKey && e.key === 'u') {
+                    e.preventDefault();
+                    document.getElementById('Username')?.focus();
+                }
+                // Alt+P = Focus password
+                if (e.altKey && e.key === 'p') {
+                    e.preventDefault();
+                    document.getElementById('Password')?.focus();
+                }
+                // Alt+T = Toggle theme
+                if (e.altKey && e.key === 't') {
+                    e.preventDefault();
+                    document.getElementById('themeToggle')?.click();
+                }
+                // Ctrl+Enter = Submit
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('loginForm')?.submit();
+                }
+            });
+        }
+        
+        // =====================================================================
+        // Initialize all new features
+        // =====================================================================
+        function initializeNewFeatures() {
+            setupThemeSwitcher();
+            setupPasswordStrength();
+            setupRememberUsername();
+            setupOfflineDetection();
+            setupSessionWarning();
+            setupKeyboardShortcuts();
+        }
+        
+        // =====================================================================
         // Initialize when DOM is ready
         // =====================================================================
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializePage);
+            document.addEventListener('DOMContentLoaded', function() {
+                initializePage();
+                initializeNewFeatures();
+            });
         } else {
             initializePage();
+            initializeNewFeatures();
         }
     })();
     </script>
