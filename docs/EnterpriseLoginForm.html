@@ -2402,7 +2402,7 @@ Option 4: Hide logo
             
             document.getElementById('captchaAudioBtn')?.addEventListener('click', speakCaptcha);
             document.getElementById('captchaRefreshBtn')?.addEventListener('click', generateCaptcha);
-            document.getElementById('loginForm')?.addEventListener('submit', validateCaptcha);
+            // Form submit validation is handled by initFormValidation()
         }
         
         function generateCaptcha() {

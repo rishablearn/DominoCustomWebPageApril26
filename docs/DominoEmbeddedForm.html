@@ -782,7 +782,6 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
     .welcome-subtitle { font-size: 0.875rem; color: var(--text-secondary); }
     
     .error-container { 
-        display: none;
         margin-bottom: 24px; 
         animation: shake 0.5s var(--animation-easing);
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
@@ -1673,8 +1672,9 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 }
                 
                 // Validate password length
-                if (password && password.value && c.form?.minPasswordLength && password.value.length < c.form.minPasswordLength) {
-                    const msg = c.errorMessages?.shortPassword || '📏 Password must be at least ' + c.form.minPasswordLength + ' characters';
+                const minPwdLen = c.passwordStrength?.minLength || c.form?.minPasswordLength || 8;
+                if (password && password.value && password.value.length < minPwdLen) {
+                    const msg = c.errorMessages?.shortPassword || '📏 Password must be at least ' + minPwdLen + ' characters';
                     showFieldError('Password', msg);
                     errorMessages.push(msg);
                     if (!firstInvalidField) firstInvalidField = password;
@@ -2093,8 +2093,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             // Refresh button
             document.getElementById('captchaRefreshBtn')?.addEventListener('click', generateCaptcha);
             
-            // Validate on form submit
-            document.getElementById('loginForm')?.addEventListener('submit', validateCaptcha);
+            // Form submit validation is handled by initFormValidation()
         }
         
         function generateCaptcha() {
