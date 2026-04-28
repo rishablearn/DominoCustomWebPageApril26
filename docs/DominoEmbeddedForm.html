@@ -80,7 +80,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
      */
     const DominoLoginConfig = {
         // Version info - displayed at bottom of page
-        version: "2.0.0",
+        version: "2.1.0",
         versionDate: "2026-04-28",
         
         branding: {
@@ -954,8 +954,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         overflow: hidden;
     }
     
-    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(0, 102, 204, 0.4); }
-    .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+    .submit-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 20px -5px rgba(0, 102, 204, 0.4); }
+    .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; background: #9ca3af; box-shadow: none; }
     
     .btn-icon { width: 18px; height: 18px; }
     
@@ -1422,8 +1422,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     <div class="captcha-error" id="captchaError" role="alert" aria-live="assertive">Incorrect answer, please try again</div>
                 </div>
                 
-                <!-- Submit Button -->
-                <button type="submit" class="submit-btn" id="submitBtn">
+                <!-- Submit Button - Disabled until validation passes -->
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>
                     <span class="btn-text" id="btnText">Sign In</span>
                     <span class="btn-loader" id="btnLoader" style="display: none;">
                         <svg class="spinner" viewBox="0 0 24 24">
@@ -1458,7 +1458,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 <strong>HCL Domino</strong>
             </div>
             <div class="version-info" id="versionInfo">
-                <span>Version <span id="versionNumber">2.0.0</span></span>
+                <span>Version <span id="versionNumber">2.1.0</span></span>
                 <span class="version-date" id="versionDate">2026-04-28</span>
             </div>
         </footer>
@@ -2199,6 +2199,11 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             const answerEl = document.getElementById('captchaAnswer');
             if (answerEl) answerEl.value = '';
             document.getElementById('captchaError')?.classList.remove('visible');
+            
+            // Re-validate form since CAPTCHA changed
+            if (typeof validateFormRealtime === 'function') {
+                validateFormRealtime();
+            }
         }
         
         function speakCaptcha() {
@@ -2272,15 +2277,103 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             return { valid: true, message: '' };
         }
         
-        // Legacy function for backward compatibility
-        function validateCaptcha(e) {
-            const result = validateCaptchaInput();
-            if (!result.valid) {
-                e.preventDefault();
-                document.getElementById('captchaAnswer')?.focus();
-                return false;
+        // =====================================================================
+        // REAL-TIME VALIDATION - Enable submit only when all fields are valid
+        // =====================================================================
+        function validateFormRealtime() {
+            const c = DominoLoginConfig;
+            const submitBtn = document.getElementById('submitBtn');
+            const usernameEl = document.getElementById('Username');
+            const passwordEl = document.getElementById('Password');
+            const captchaEl = document.getElementById('captchaAnswer');
+            const captchaErrorEl = document.getElementById('captchaError');
+            const passwordErrorEl = document.getElementById('passwordError');
+            
+            if (!submitBtn) return;
+            
+            let allValid = true;
+            const minPwdLen = c.passwordStrength?.minLength || 8;
+            
+            // Check username
+            const usernameValid = usernameEl && usernameEl.value.trim().length > 0;
+            if (!usernameValid) allValid = false;
+            
+            // Check password - must not be empty and meet minimum length
+            const passwordValue = passwordEl?.value || '';
+            const passwordValid = passwordValue.length >= minPwdLen;
+            
+            if (passwordEl) {
+                if (passwordValue.length > 0 && passwordValue.length < minPwdLen) {
+                    passwordEl.classList.add('input-error');
+                    if (passwordErrorEl) {
+                        passwordErrorEl.textContent = `📏 Password must be at least ${minPwdLen} characters`;
+                        passwordErrorEl.classList.add('visible');
+                    }
+                } else {
+                    passwordEl.classList.remove('input-error');
+                    if (passwordErrorEl) {
+                        passwordErrorEl.textContent = '';
+                        passwordErrorEl.classList.remove('visible');
+                    }
+                }
             }
-            return true;
+            
+            if (!passwordValid) allValid = false;
+            
+            // Check CAPTCHA if enabled
+            if (c.features?.enableCaptcha) {
+                const captchaValue = captchaEl?.value?.trim() || '';
+                const userAnswer = parseInt(captchaValue, 10);
+                const captchaValid = captchaValue !== '' && !isNaN(userAnswer) && userAnswer === captchaAnswer;
+                
+                if (captchaEl && captchaErrorEl) {
+                    if (captchaValue !== '' && !captchaValid) {
+                        captchaEl.classList.add('input-error');
+                        captchaErrorEl.textContent = '❌ Incorrect answer';
+                        captchaErrorEl.style.color = '';
+                        captchaErrorEl.classList.add('visible');
+                    } else if (captchaValid) {
+                        captchaEl.classList.remove('input-error');
+                        captchaErrorEl.textContent = '✅ Correct!';
+                        captchaErrorEl.style.color = 'green';
+                        captchaErrorEl.classList.add('visible');
+                    } else {
+                        captchaEl.classList.remove('input-error');
+                        captchaErrorEl.textContent = '';
+                        captchaErrorEl.classList.remove('visible');
+                    }
+                }
+                
+                if (!captchaValid) allValid = false;
+            }
+            
+            // Enable/disable submit button
+            submitBtn.disabled = !allValid;
+            
+            console.log('[Validation] Username:', usernameValid, 'Password:', passwordValid, 
+                        'CAPTCHA:', c.features?.enableCaptcha ? (allValid ? 'valid' : 'invalid') : 'disabled',
+                        '=> Submit enabled:', allValid);
+            
+            return allValid;
+        }
+        
+        // Setup real-time validation listeners
+        function setupRealtimeValidation() {
+            const fields = ['Username', 'Password', 'captchaAnswer'];
+            
+            fields.forEach(id => {
+                const field = document.getElementById(id);
+                if (field) {
+                    // Validate on every keystroke
+                    field.addEventListener('input', validateFormRealtime);
+                    field.addEventListener('keyup', validateFormRealtime);
+                }
+            });
+            
+            // Initial validation
+            validateFormRealtime();
+            
+            console.log('[Validation] Real-time validation setup complete');
         }
         
         // =====================================================================
@@ -2337,6 +2430,9 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             initTranslations();
             initCaptcha();
             initWCAG();
+            
+            // Real-time validation - enables submit only when all fields valid
+            setupRealtimeValidation();
             
             // Error handling
             initErrorDismiss();
