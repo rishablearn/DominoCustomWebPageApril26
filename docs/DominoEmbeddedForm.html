@@ -1000,30 +1000,127 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         color: white;
     }
     
-    @media (max-width: 480px) {
+    /* ===== RESPONSIVE DESIGN ===== */
+    
+    /* Large tablets and small desktops (1024px - 1200px) */
+    @media (max-width: 1200px) {
+        .login-card { max-width: 420px; }
+    }
+    
+    /* Tablets (768px - 1024px) */
+    @media (max-width: 1024px) {
+        body { padding: 24px; }
+        .login-card { max-width: 400px; padding: 32px; }
+        .top-bar { padding: 12px 16px; }
+        .top-bar-btn { padding: 6px 12px; font-size: 13px; }
+    }
+    
+    /* Large phones / Small tablets (576px - 768px) */
+    @media (max-width: 768px) {
+        body { 
+            padding: 20px; 
+            align-items: flex-start;
+            padding-top: 80px;
+        }
+        .login-card { 
+            max-width: 100%; 
+            width: 100%;
+            padding: 28px; 
+            border-radius: 16px;
+            margin: 0 auto;
+        }
+        .welcome-title { font-size: 1.35rem; }
+        .welcome-subtitle { font-size: 0.85rem; }
+        .form-input { padding: 14px 16px; font-size: 16px; } /* 16px prevents iOS zoom */
+        .submit-btn { padding: 14px 24px; font-size: 1rem; }
+        .top-bar { 
+            width: 100%; 
+            justify-content: flex-end; 
+            padding: 10px 16px;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        .captcha-actions { flex-direction: column; gap: 8px; }
+        .captcha-btn { width: 100%; }
+        .quick-links { flex-direction: column; gap: 12px; text-align: center; }
+    }
+    
+    /* Phones (480px - 576px) */
+    @media (max-width: 576px) {
         body { 
             padding: 16px; 
-            align-items: flex-start;
-            padding-top: 10vh;
+            padding-top: 70px;
         }
-        .login-card { padding: 24px; border-radius: 12px; }
+        .login-card { 
+            padding: 24px; 
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
         .welcome-title { font-size: 1.25rem; }
-        .welcome-subtitle { font-size: 0.75rem; }
+        .welcome-subtitle { font-size: 0.8rem; }
+        .logo-section { margin-bottom: 16px; }
+        .company-logo { max-width: 150px; max-height: 60px; }
+        .form-group { margin-bottom: 16px; }
+        .form-label { font-size: 0.85rem; }
         .bg-shape { display: none; }
         .footer-text { font-size: 0.75rem; }
         .domino-badge { font-size: 0.65rem; padding: 4px 10px; }
+        .security-notice { font-size: 0.75rem; padding: 10px 14px; }
+        .top-bar-btn { padding: 6px 10px; font-size: 12px; gap: 4px; }
+        .lang-dropdown { right: 0; min-width: 140px; }
+        .password-toggle { padding: 8px; }
     }
     
-    @media (max-width: 360px) {
-        body { padding: 12px; padding-top: 5vh; }
+    /* Small phones (< 480px) */
+    @media (max-width: 480px) {
+        body { 
+            padding: 12px; 
+            padding-top: 60px;
+        }
         .login-card { padding: 20px; }
-        .form-input { padding: 12px 14px; font-size: 0.875rem; }
+        .welcome-section { margin-bottom: 20px; }
+        .welcome-title { font-size: 1.15rem; }
+        .form-input { padding: 12px 14px; }
         .submit-btn { padding: 12px 20px; }
+        .captcha-question { font-size: 1.1rem; padding: 12px; }
+        .captcha-input { padding: 10px 12px; }
+        .error-container { padding: 12px; }
+        .error-message { font-size: 0.85rem; }
+    }
+    
+    /* Extra small phones (< 360px) */
+    @media (max-width: 360px) {
+        body { padding: 8px; padding-top: 55px; }
+        .login-card { padding: 16px; border-radius: 10px; }
+        .form-input { padding: 10px 12px; font-size: 14px; }
+        .submit-btn { padding: 10px 16px; font-size: 0.9rem; }
+        .welcome-title { font-size: 1rem; }
+        .company-logo { max-width: 120px; }
+        .top-bar { padding: 8px 12px; }
+        .top-bar-btn { padding: 4px 8px; font-size: 11px; }
+    }
+    
+    /* Landscape orientation on phones */
+    @media (max-height: 500px) and (orientation: landscape) {
+        body { padding-top: 20px; align-items: flex-start; }
+        .login-card { padding: 20px; }
+        .welcome-section { margin-bottom: 16px; }
+        .logo-section { margin-bottom: 12px; }
+        .company-logo { max-height: 40px; }
+        .form-group { margin-bottom: 12px; }
+    }
+    
+    /* Touch device optimizations */
+    @media (hover: none) and (pointer: coarse) {
+        .form-input, .submit-btn, .captcha-btn, .top-bar-btn {
+            min-height: 44px; /* Apple's recommended touch target */
+        }
+        .password-toggle { min-width: 44px; min-height: 44px; }
     }
     
     @media (prefers-reduced-motion: reduce) {
         .bg-shape { animation: none; }
-        * { animation-duration: 0.01ms !important; }
+        * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
     
     /* Top Bar */
