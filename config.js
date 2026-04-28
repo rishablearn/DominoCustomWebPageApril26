@@ -85,9 +85,11 @@ const DominoLoginConfig = {
         //   - Use: "/domcfg.nsf/logo.png" (no subfolders!)
         //   - Domino does NOT support SVG - use PNG, JPG, or GIF only
         //   - Leave empty "" to hide logo and show company name only
+        //   - Use base64 data URI to avoid MIME issues (recommended)
         //
         // Supported formats: PNG, JPG, WEBP, GIF (NO SVG in Domino!)
-        logoUrl: "",  // Set to "/domcfg.nsf/logo.png" for Domino
+        // Default: Enterprise building icon (base64 PNG) - replace with your logo
+        logoUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAYAAADDhn8LAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4B3gqzAAAGaElEQVR4nO3dW3LbOBAFUHqq9v5XnB2EqvxIbJF4NIA+p+qXJJYl0rhsAKRk7u4AAP7hR/UCAHRLIAAS AEgBIASAEgBIASAEgBIASAEsyXDvAvn5eXVS8BUvp4e7u9Dnhp7u4AEbKaJMB/rFYJsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJrQ2eTweN6+f8/HEY3DsqX8n/U72/ThOqxNWskxYzTJhNcuE1SwTVrNMWM0yYTXLhNUsE1azTFjNMmE1y4TVLBNWs0xYzTJhNcuE1SwTVrNMWM0yYTXLhNUsE1azTFjNMmE1y4TVLBNWs0xYzTJhNcuE1SwTVrNMWM0yYTXLhNUsE1azTFjNMqEd++WYr/l9gO/x+u37eS9HegGz/r1qzWuXufXvOeL7v/XxgMt7eHy8e+k8AP7l1d3dNwC+k8cDeAMB/gHgPQAPACxJASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIA+xJIJblgmqWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplQnPDMGQYhuxeB7ws93aAJE/PxpT2AAAJiEmEaJRYnB4AAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDIzLTAxLTAxVDAwOjAwOjAwKzAwOjAwJFBaAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDIzLTAxLTAxVDAwOjAwOjAwKzAwOjAwNI3iwgAAAABJRU5ErkJggg==",
         
         // Fallback logo URL (used if primary fails to load)
         // Useful for providing PNG fallback for SVG logos

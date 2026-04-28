@@ -90,10 +90,12 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             //           NOTE: Domino does NOT support SVG - use PNG, JPG, or GIF
             //
             // Option 2: Use base64 data URI (no file upload needed)
-            //           Set logoUrl to: "data:image/svg+xml;base64,..."
+            //           Set logoUrl to: "data:image/png;base64,..."
             //
             // Option 3: Leave empty "" to hide logo and show company name only
-            logoUrl: "",
+            //
+            // Default: Enterprise building icon (base64 PNG)
+            logoUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAYAAADDhn8LAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF0WlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDUgNzkuMTYzNDk5LCAyMDE4LzA4LzEzLTE2OjQwOjIyICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIi8+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz4B3gqzAAAGaElEQVR4nO3dW3LbOBAFUHqq9v5XnB2EqvxIbJF4NIA+p+qXJJYl0rhsAKRk7u4AAP7hR/UCAHRLIAAS AEgBIASAEgBIASAEgBIASAEsyXDvAvn5eXVS8BUvp4e7u9Dnhp7u4AEbKaJMB/rFYJsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJrQ2eTweN6+f8/HEY3DsqX8n/U72/ThOqxNWskxYzTJhNcuE1SwTVrNMWM0yYTXLhNUsE1azTFjNMmE1y4TVLBNWs0xYzTJhNcuE1SwTVrNMWM0yYTXLhNUsE1azTFjNMmE1y4TVLBNWs0xYzTJhNcuE1SwTVrNMWM0yYTXLhNUsE1azTFjNMqEd++WYr/l9gO/x+u37eS9HegGz/r1qzWuXufXvOeL7v/XxgMt7eHy8e+k8AP7l1d3dNwC+k8cDeAMB/gHgPQAPACxJASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIASAEgBIA+xJIJblgmqWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplwmqWCatZJqxmmbCaZcJqlgmrWSasZpmwmmXCapYJq1kmrGaZsJplQnPDMGQYhuxeB7ws93aAJE/PxpT2AAAJiEmEaJRYnB4AAAAJXRFWHRkYXRlOmNyZWF0ZQAyMDIzLTAxLTAxVDAwOjAwOjAwKzAwOjAwJFBaAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDIzLTAxLTAxVDAwOjAwOjAwKzAwOjAwNI3iwgAAAABJRU5ErkJggg==",
             logoAlt: "Company Logo",
             logoMaxWidth: 200,
             pageTitle: "Secure Login - HCL Domino",
@@ -780,6 +782,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
     .welcome-subtitle { font-size: 0.875rem; color: var(--text-secondary); }
     
     .error-container { 
+        display: none;
         margin-bottom: 24px; 
         animation: shake 0.5s var(--animation-easing);
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
@@ -1157,8 +1160,9 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
     <div class="login-container">
         <div class="login-card">
             <!-- Logo -->
-            <div class="logo-section" id="logoSection" style="display: none;">
-                <img src="" alt="Company Logo" id="companyLogo" class="company-logo">
+            <div class="logo-section" id="logoSection">
+                <img src="" alt="Company Logo" id="companyLogo" class="company-logo" 
+                     onerror="this.parentElement.style.display='none';">
             </div>
             
             <!-- Welcome Text -->
@@ -1338,11 +1342,21 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 
                 const logo = document.getElementById('companyLogo');
                 const logoSection = document.getElementById('logoSection');
-                if (logo && logoSection && c.branding.logoUrl) {
-                    logo.src = c.branding.logoUrl;
-                    logo.alt = c.branding.logoAlt || 'Logo';
-                    if (c.branding.logoMaxWidth) logo.style.maxWidth = c.branding.logoMaxWidth + 'px';
-                    logoSection.style.display = 'block';
+                if (logo && logoSection) {
+                    if (c.branding.logoUrl && c.branding.logoUrl.trim() !== '') {
+                        logo.src = c.branding.logoUrl;
+                        logo.alt = c.branding.logoAlt || 'Logo';
+                        if (c.branding.logoMaxWidth) logo.style.maxWidth = c.branding.logoMaxWidth + 'px';
+                        logoSection.style.display = 'block';
+                        // Hide logo section if image fails to load
+                        logo.onerror = function() {
+                            logoSection.style.display = 'none';
+                            console.warn('Logo failed to load:', c.branding.logoUrl);
+                        };
+                    } else {
+                        // No logo configured - hide the section
+                        logoSection.style.display = 'none';
+                    }
                 }
                 
                 const badge = document.getElementById('dominoBadge');
