@@ -1533,57 +1533,92 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             }
         }
         
-        // Form validation
+        // Form validation - unified validation including CAPTCHA
         function initFormValidation() {
             const form = document.getElementById('loginForm');
             const c = DominoLoginConfig;
             
-            if (!form || !c.form?.enableValidation) return;
+            if (!form) return;
             
+            // Single unified submit handler
             form.addEventListener('submit', function(e) {
                 clearAllErrors();
                 
                 const username = document.getElementById('Username');
                 const password = document.getElementById('Password');
                 let isValid = true;
+                let firstInvalidField = null;
                 
                 // Validate username
-                if (!username.value.trim()) {
-                    showFieldError('Username', c.errorMessages.emptyUsername || 'Please enter your username');
-                    showError(c.errorMessages.emptyUsername || 'Please enter your username');
-                    username.focus();
-                    e.preventDefault();
+                if (!username || !username.value.trim()) {
+                    const msg = c.errorMessages?.emptyUsername || '👤 Please enter your username';
+                    showFieldError('Username', msg);
+                    if (!firstInvalidField) firstInvalidField = username;
                     isValid = false;
                 }
                 
                 // Validate password
-                if (isValid && !password.value) {
-                    showFieldError('Password', c.errorMessages.emptyPassword || 'Please enter your password');
-                    showError(c.errorMessages.emptyPassword || 'Please enter your password');
-                    password.focus();
-                    e.preventDefault();
+                if (!password || !password.value) {
+                    const msg = c.errorMessages?.emptyPassword || '🔑 Please enter your password';
+                    showFieldError('Password', msg);
+                    if (!firstInvalidField) firstInvalidField = password;
                     isValid = false;
                 }
                 
                 // Validate password length
-                if (isValid && c.form.minPasswordLength && password.value.length < c.form.minPasswordLength) {
-                    showFieldError('Password', c.errorMessages.shortPassword || 'Password is too short');
-                    showError(c.errorMessages.shortPassword || 'Password is too short');
-                    password.focus();
-                    e.preventDefault();
+                if (password && password.value && c.form?.minPasswordLength && password.value.length < c.form.minPasswordLength) {
+                    const msg = c.errorMessages?.shortPassword || '📏 Password must be at least ' + c.form.minPasswordLength + ' characters';
+                    showFieldError('Password', msg);
+                    if (!firstInvalidField) firstInvalidField = password;
                     isValid = false;
                 }
                 
-                return isValid;
+                // Validate CAPTCHA if enabled
+                if (c.features?.enableCaptcha) {
+                    const captchaResult = validateCaptchaInput();
+                    if (!captchaResult.valid) {
+                        if (!firstInvalidField) firstInvalidField = document.getElementById('captchaAnswer');
+                        isValid = false;
+                    }
+                }
+                
+                // Show combined error message if validation failed
+                if (!isValid) {
+                    e.preventDefault();
+                    showError('❌ Please fix the errors above before submitting.');
+                    if (firstInvalidField) firstInvalidField.focus();
+                    
+                    // Reset loading state
+                    resetSubmitButton();
+                    return false;
+                }
+                
+                return true;
             });
             
             // Clear errors on input
-            ['Username', 'Password'].forEach(id => {
+            ['Username', 'Password', 'captchaAnswer'].forEach(id => {
                 const field = document.getElementById(id);
                 if (field) {
-                    field.addEventListener('input', () => clearFieldError(id));
+                    field.addEventListener('input', function() {
+                        clearFieldError(id);
+                        hideError();
+                    });
                 }
             });
+        }
+        
+        // Reset submit button to normal state
+        function resetSubmitButton() {
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const loader = document.getElementById('btnLoader');
+            const icon = btn ? btn.querySelector('.btn-icon') : null;
+            
+            if (btn) btn.disabled = false;
+            if (btnText) btnText.style.display = 'inline';
+            if (loader) loader.style.display = 'none';
+            if (icon) icon.style.display = 'inline';
         }
         
         // Password toggle
@@ -1604,7 +1639,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             });
         }
         
-        // Loading spinner
+        // Loading spinner - only show after validation passes
         function initLoadingSpinner() {
             const form = document.getElementById('loginForm');
             const btn = document.getElementById('submitBtn');
@@ -1614,13 +1649,13 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             
             if (!form || !btn) return;
             
-            form.addEventListener('submit', function() {
-                if (form.checkValidity()) {
-                    btn.disabled = true;
-                    if (btnText) btnText.style.display = 'none';
-                    if (loader) loader.style.display = 'flex';
-                    if (icon) icon.style.display = 'none';
-                }
+            // Show loading state immediately on click, validation will reset if failed
+            btn.addEventListener('click', function() {
+                // Start loading animation
+                btn.disabled = true;
+                if (btnText) btnText.style.display = 'none';
+                if (loader) loader.style.display = 'flex';
+                if (icon) icon.style.display = 'none';
             });
         }
         
@@ -2014,22 +2049,36 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             }
         }
         
-        function validateCaptcha(e) {
+        // Validate CAPTCHA input - returns {valid: boolean, message: string}
+        function validateCaptchaInput() {
             const c = DominoLoginConfig;
-            if (!c.features?.enableCaptcha) return true;
+            if (!c.features?.enableCaptcha) return { valid: true, message: '' };
             
             const answerEl = document.getElementById('captchaAnswer');
             const errorEl = document.getElementById('captchaError');
             const userAnswer = parseInt(answerEl?.value, 10);
             
-            if (isNaN(userAnswer) || userAnswer !== captchaAnswer) {
-                e.preventDefault();
-                captchaAttempts++;
-                
+            // Check if CAPTCHA is empty
+            if (!answerEl?.value || answerEl.value.trim() === '') {
+                const msg = t('captchaError') || '🔢 Please solve the security question';
                 if (errorEl) {
-                    errorEl.textContent = t('captchaError') || 'Incorrect answer, please try again';
+                    errorEl.textContent = msg;
                     errorEl.classList.add('visible');
                 }
+                showFieldError('captchaAnswer', msg);
+                return { valid: false, message: msg };
+            }
+            
+            // Check if answer is correct
+            if (isNaN(userAnswer) || userAnswer !== captchaAnswer) {
+                captchaAttempts++;
+                const msg = t('captchaError') || '❌ Incorrect answer, please try again';
+                
+                if (errorEl) {
+                    errorEl.textContent = msg;
+                    errorEl.classList.add('visible');
+                }
+                showFieldError('captchaAnswer', msg);
                 
                 // Generate new CAPTCHA after max attempts
                 if (captchaAttempts >= (c.captcha?.maxAttempts || 3)) {
@@ -2037,11 +2086,23 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     generateCaptcha();
                 }
                 
-                answerEl?.focus();
-                return false;
+                return { valid: false, message: msg };
             }
             
+            // Valid
             errorEl?.classList.remove('visible');
+            clearFieldError('captchaAnswer');
+            return { valid: true, message: '' };
+        }
+        
+        // Legacy function for backward compatibility
+        function validateCaptcha(e) {
+            const result = validateCaptchaInput();
+            if (!result.valid) {
+                e.preventDefault();
+                document.getElementById('captchaAnswer')?.focus();
+                return false;
+            }
             return true;
         }
         
