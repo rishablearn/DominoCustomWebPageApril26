@@ -1807,7 +1807,10 @@ Option 4: Hide logo
         // Show inline field error
         function showFieldError(fieldId, message) {
             const field = document.getElementById(fieldId);
-            const errorEl = document.getElementById(fieldId + 'Error');
+            // Handle case sensitivity - HTML uses lowercase error IDs
+            const errorId = fieldId.charAt(0).toLowerCase() + fieldId.slice(1) + 'Error';
+            const errorEl = document.getElementById(errorId);
+            
             if (field) {
                 field.classList.add('input-error');
                 field.setAttribute('aria-invalid', 'true');
@@ -1821,7 +1824,10 @@ Option 4: Hide logo
         // Clear inline field error
         function clearFieldError(fieldId) {
             const field = document.getElementById(fieldId);
-            const errorEl = document.getElementById(fieldId + 'Error');
+            // Handle case sensitivity - HTML uses lowercase error IDs
+            const errorId = fieldId.charAt(0).toLowerCase() + fieldId.slice(1) + 'Error';
+            const errorEl = document.getElementById(errorId);
+            
             if (field) {
                 field.classList.remove('input-error');
                 field.removeAttribute('aria-invalid');
@@ -1837,6 +1843,7 @@ Option 4: Hide logo
             hideError();
             clearFieldError('Username');
             clearFieldError('Password');
+            clearFieldError('captchaAnswer');
         }
         
         // Check URL for Domino reasontype error codes
@@ -1880,10 +1887,13 @@ Option 4: Hide logo
                     submitBtn.disabled = true;
                 }
                 
+                let errorMessages = [];
+                
                 // Validate username
                 if (!username || !username.value.trim()) {
                     const msg = CONFIG.errorMessages?.emptyUsername || '👤 Please enter your username';
                     showFieldError('Username', msg);
+                    errorMessages.push(msg);
                     if (!firstInvalidField) firstInvalidField = username;
                     isValid = false;
                 }
@@ -1892,6 +1902,7 @@ Option 4: Hide logo
                 if (!password || !password.value) {
                     const msg = CONFIG.errorMessages?.emptyPassword || '🔑 Please enter your password';
                     showFieldError('Password', msg);
+                    errorMessages.push(msg);
                     if (!firstInvalidField) firstInvalidField = password;
                     isValid = false;
                 }
@@ -1900,6 +1911,7 @@ Option 4: Hide logo
                 if (password && password.value && CONFIG.passwordStrength?.minLength && password.value.length < CONFIG.passwordStrength.minLength) {
                     const msg = CONFIG.errorMessages?.shortPassword || '📏 Password must be at least ' + CONFIG.passwordStrength.minLength + ' characters';
                     showFieldError('Password', msg);
+                    errorMessages.push(msg);
                     if (!firstInvalidField) firstInvalidField = password;
                     isValid = false;
                 }
@@ -1908,15 +1920,18 @@ Option 4: Hide logo
                 if (CONFIG.features?.enableCaptcha) {
                     const captchaResult = validateCaptchaInput();
                     if (!captchaResult.valid) {
+                        errorMessages.push(captchaResult.message);
                         if (!firstInvalidField) firstInvalidField = document.getElementById('captchaAnswer');
                         isValid = false;
                     }
                 }
                 
-                // Show combined error message if validation failed
+                // Show error message if validation failed
                 if (!isValid) {
                     e.preventDefault();
-                    showError('❌ Please fix the errors above before submitting.');
+                    // Show the first error message in the main error container
+                    const displayMsg = errorMessages.length > 0 ? errorMessages[0] : '❌ Please fix the errors before submitting.';
+                    showError(displayMsg);
                     if (firstInvalidField) firstInvalidField.focus();
                     
                     // Reset loading state
@@ -2356,25 +2371,29 @@ Option 4: Hide logo
             
             // Check if CAPTCHA is empty
             if (!answerEl?.value || answerEl.value.trim() === '') {
-                const msg = t('captchaError') || '🔢 Please solve the security question';
+                const msg = '🔢 Please solve the security question';
                 if (errorEl) {
                     errorEl.textContent = msg;
                     errorEl.classList.add('visible');
                 }
-                showFieldError('captchaAnswer', msg);
+                if (answerEl) {
+                    answerEl.classList.add('input-error');
+                }
                 return { valid: false, message: msg };
             }
             
             // Check if answer is correct
             if (isNaN(userAnswer) || userAnswer !== captchaAnswer) {
                 captchaAttempts++;
-                const msg = t('captchaError') || '❌ Incorrect answer, please try again';
+                const msg = '❌ Incorrect answer, please try again';
                 
                 if (errorEl) {
                     errorEl.textContent = msg;
                     errorEl.classList.add('visible');
                 }
-                showFieldError('captchaAnswer', msg);
+                if (answerEl) {
+                    answerEl.classList.add('input-error');
+                }
                 
                 // Generate new CAPTCHA after max attempts
                 if (captchaAttempts >= (CONFIG.captcha?.maxAttempts || 3)) {
@@ -2386,8 +2405,8 @@ Option 4: Hide logo
             }
             
             // Valid
-            errorEl?.classList.remove('visible');
-            clearFieldError('captchaAnswer');
+            if (errorEl) errorEl.classList.remove('visible');
+            if (answerEl) answerEl.classList.remove('input-error');
             return { valid: true, message: '' };
         }
         
