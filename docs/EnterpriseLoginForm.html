@@ -96,6 +96,10 @@ Option 4: Hide logo
          ======================================================================== -->
     <script>
     const CONFIG = {
+        // Version info - displayed at bottom of page
+        version: "2.0.0",
+        versionDate: "2026-04-28",
+        
         // =====================================================================
         // COMPANY BRANDING
         // =====================================================================
@@ -693,14 +697,15 @@ Option 4: Hide logo
         
         /* ===== Error Display ===== */
         .error-container {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-            border: 1px solid var(--error-color);
-            border-left: 4px solid var(--error-color);
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            border: 2px solid var(--error-color);
             border-radius: 12px;
-            padding: 16px;
+            padding: 0;
             margin-bottom: 20px;
             display: none;
             animation: shake 0.5s ease-in-out;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
         }
         
         @keyframes shake {
@@ -710,35 +715,42 @@ Option 4: Hide logo
         }
         
         .error-container.show {
+            display: block;
+        }
+        
+        .error-content { padding: 0; }
+        .error-header {
             display: flex;
-            align-items: flex-start;
-            gap: 12px;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: var(--error-color);
+            color: white;
         }
-        
-        .error-icon {
-            font-size: 18px;
-            flex-shrink: 0;
+        .error-icon { font-size: 18px; flex-shrink: 0; }
+        .error-title { flex: 1; font-weight: 600; font-size: 14px; }
+        .error-dismiss {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background 0.2s;
         }
-        
+        .error-dismiss:hover { background: rgba(255,255,255,0.3); }
+        .error-body {
+            padding: 14px 16px;
+            background: white;
+        }
         .error-message {
-            color: var(--error-color);
+            color: #991b1b;
             font-size: 14px;
             font-weight: 500;
-            flex: 1;
             line-height: 1.5;
+            display: block;
         }
-        
-        .error-dismiss {
-            background: none;
-            border: none;
-            color: var(--error-color);
-            cursor: pointer;
-            padding: 4px;
-            opacity: 0.7;
-            font-size: 16px;
-        }
-        
-        .error-dismiss:hover { opacity: 1; }
         
         /* Success & Warning Containers */
         .success-container {
@@ -1051,6 +1063,27 @@ Option 4: Hide logo
         
         .powered-by a:hover {
             text-decoration: underline;
+        }
+        
+        .version-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 4px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+        }
+        .version-info .version-date {
+            opacity: 0.8;
+        }
+        .version-info .version-date::before {
+            content: "•";
+            margin-right: 8px;
         }
         
         /* ===== RESPONSIVE DESIGN ===== */
@@ -1428,11 +1461,18 @@ Option 4: Hide logo
                     <p class="welcome-subtitle" id="welcomeSubtitle">Sign in to access your email and applications</p>
                 </div>
                 
-                <!-- Error Display -->
+                <!-- Error Display - Prominent Section -->
                 <div class="error-container" id="errorContainer" role="alert" aria-live="assertive">
-                    <span class="error-icon">⚠️</span>
-                    <span class="error-message" id="errorMessage"></span>
-                    <button type="button" class="error-dismiss" id="errorDismiss" aria-label="Dismiss error">✕</button>
+                    <div class="error-content">
+                        <div class="error-header">
+                            <span class="error-icon">⚠️</span>
+                            <span class="error-title">Login Error</span>
+                            <button type="button" class="error-dismiss" id="errorDismiss" aria-label="Dismiss error">✕</button>
+                        </div>
+                        <div class="error-body">
+                            <span class="error-message" id="errorMessage"></span>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Success Display -->
@@ -1577,6 +1617,10 @@ Option 4: Hide logo
         <p class="powered-by" id="poweredBy">
             Powered by <a href="https://www.hcl-software.com/domino" target="_blank" rel="noopener">HCL Domino</a>
         </p>
+        <div class="version-info" id="versionInfo">
+            <span>Version <span id="versionNumber">2.0.0</span></span>
+            <span class="version-date" id="versionDate">2026-04-28</span>
+        </div>
     </footer>
     
     <!-- ========================================================================
@@ -1643,6 +1687,12 @@ Option 4: Hide logo
             const poweredBy = document.getElementById('poweredBy');
             if (poweredBy && !b.showPoweredBy) {
                 poweredBy.style.display = 'none';
+            }
+            
+            // Version info
+            if (CONFIG.version) {
+                setText('versionNumber', CONFIG.version);
+                setText('versionDate', CONFIG.versionDate || '');
             }
         }
         
@@ -1967,9 +2017,15 @@ Option 4: Hide logo
         function initFormValidation() {
             const form = document.getElementById('loginForm');
             
-            if (!form) return;
+            if (!form) {
+                console.error('[LoginForm] Form element not found');
+                return;
+            }
+            
+            console.log('[LoginForm] Validation initialized, CAPTCHA enabled:', CONFIG.features?.enableCaptcha);
             
             form.addEventListener('submit', function(e) {
+                console.log('[LoginForm] Submit triggered');
                 clearAllErrors();
                 
                 const username = document.getElementById('Username');
@@ -2015,7 +2071,9 @@ Option 4: Hide logo
                 
                 // Validate CAPTCHA if enabled
                 if (CONFIG.features?.enableCaptcha) {
+                    console.log('[LoginForm] Validating CAPTCHA...');
                     const captchaResult = validateCaptchaInput();
+                    console.log('[LoginForm] CAPTCHA result:', captchaResult);
                     if (!captchaResult.valid) {
                         errorMessages.push(captchaResult.message);
                         if (!firstInvalidField) firstInvalidField = document.getElementById('captchaAnswer');
@@ -2023,11 +2081,15 @@ Option 4: Hide logo
                     }
                 }
                 
+                console.log('[LoginForm] Validation result - isValid:', isValid, 'errors:', errorMessages);
+                
                 // Show error message if validation failed
                 if (!isValid) {
                     e.preventDefault();
+                    e.stopPropagation();
                     // Show the first error message in the main error container
                     const displayMsg = errorMessages.length > 0 ? errorMessages[0] : '❌ Please fix the errors before submitting.';
+                    console.log('[LoginForm] Showing error:', displayMsg);
                     showError(displayMsg);
                     if (firstInvalidField) firstInvalidField.focus();
                     
@@ -2036,6 +2098,7 @@ Option 4: Hide logo
                     return false;
                 }
                 
+                console.log('[LoginForm] All validations passed, submitting form');
                 return true;
             });
             
