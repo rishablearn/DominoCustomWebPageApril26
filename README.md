@@ -330,6 +330,9 @@ Form must POST to `/names.nsf?Login`
 - ✅ Added comprehensive MIME troubleshooting documentation
 - ✅ Added "Choosing Your Deployment Option" guide
 - ✅ Added HCL documentation references throughout
+- ✅ Added Indian language support (9 languages: Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Gujarati, Punjabi)
+- ✅ Multi-language support expanded to 18 languages total
+- ✅ Enhanced error handling with Domino reasontype codes (1-10)
 
 ### Version 2.0.0 (April 2026)
 - Initial release with modular architecture

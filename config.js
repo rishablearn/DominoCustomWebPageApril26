@@ -358,6 +358,7 @@ const DominoLoginConfig = {
         // Available languages (add more as needed)
         // Each language requires corresponding translations in i18n/[code].js
         availableLanguages: [
+            // International Languages
             { code: "en", name: "English", dir: "ltr" },
             { code: "es", name: "Español", dir: "ltr" },
             { code: "fr", name: "Français", dir: "ltr" },
@@ -367,7 +368,16 @@ const DominoLoginConfig = {
             { code: "ja", name: "日本語", dir: "ltr" },
             { code: "ar", name: "العربية", dir: "rtl" },
             { code: "he", name: "עברית", dir: "rtl" },
-            { code: "hi", name: "हिन्दी", dir: "ltr" }
+            // Indian Languages
+            { code: "hi", name: "हिन्दी", dir: "ltr" },
+            { code: "ta", name: "தமிழ்", dir: "ltr" },
+            { code: "te", name: "తెలుగు", dir: "ltr" },
+            { code: "bn", name: "বাংলা", dir: "ltr" },
+            { code: "mr", name: "मराठी", dir: "ltr" },
+            { code: "kn", name: "ಕನ್ನಡ", dir: "ltr" },
+            { code: "ml", name: "മലയാളം", dir: "ltr" },
+            { code: "gu", name: "ગુજરાતી", dir: "ltr" },
+            { code: "pa", name: "ਪੰਜਾਬੀ", dir: "ltr" }
         ],
         
         // Show language selector dropdown
