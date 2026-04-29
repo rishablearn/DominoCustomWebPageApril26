@@ -801,6 +801,5 @@ MIT License - Feel free to use and modify for your organization.
 ---
 
 **Created:** April 2026  
-**Author:** Cascade AI  
 **Compatible with:** HCL Domino 12.x, 14.x  
 **Version:** 2.1.0
