@@ -13,7 +13,7 @@
 ## 📖 Table of Contents
 
 1. [Introduction](#-introduction)
-2. [The Problem We Solve](#-the-problem-we-solve)
+2. [The Problem this project aims to Solve](#-the-problem-this project aims to-solve)
 3. [Features at a Glance](#-features-at-a-glance)
 4. [Quick Start Guide](#-quick-start-guide)
 5. [Detailed Feature Documentation](#-detailed-feature-documentation)
@@ -32,7 +32,7 @@
 
 ## 🌟 Introduction
 
-When organizations deploy HCL Domino for enterprise collaboration, the default login page often doesn't meet modern UX expectations or corporate branding requirements. This project provides a **production-ready, enterprise-grade login page** that:
+When organizations deploy HCL Domino for enterprise collaboration, the default login page often doesn't meet modern UX expectations or corporate branding requirements. this project aims to provides a **login page** that:
 
 - **Looks modern** with smooth animations, responsive design, and professional styling
 - **Works immediately** without complex MIME type configurations
@@ -51,7 +51,7 @@ When organizations deploy HCL Domino for enterprise collaboration, the default l
 
 ---
 
-## 🚨 The Problem We Solve
+## 🚨 The Problem this project aims to Solve
 
 ### The MIME Type Nightmare
 
@@ -62,11 +62,11 @@ Uncaught SyntaxError: Unexpected token '<'
 Refused to execute script because its MIME type ('text/html') is not executable
 ```
 
-**Why does this happen?** When Domino serves files without proper MIME type configuration, browsers refuse to execute them. Setting MIME types requires navigating obscure settings in Domino Designer's Web Properties tab—and even then, it doesn't always work as expected.
+**Why does this happen?** When Domino serves files without proper MIME type configuration, browsers refuse to execute them. Setting MIME types requires navigating obscure settings in Domino Designer's this project aims tob Properties tab—and even then, it doesn't always work as expected.
 
 ### Our Solution: Zero-Configuration Deployment
 
-We've solved this by creating **self-contained HTML files** with ALL CSS and JavaScript embedded inline. This means:
+this project aims to've solved this by creating **self-contained HTML files** with ALL CSS and JavaScript embedded inline. This means:
 
 - ✅ **No external files to configure**
 - ✅ **No MIME types to set**
@@ -130,8 +130,8 @@ const CONFIG = {
         companyName: "Your Organization",
         companyTagline: "Enterprise Collaboration Portal",
         logoUrl: "data:image/png;base64,YOUR_LOGO_HERE",
-        welcomeTitle: "Welcome Back",
-        welcomeSubtitle: "Sign in to access your email and applications"
+        this project aims tolcomeTitle: "this project aims tolcome Back",
+        this project aims tolcomeSubtitle: "Sign in to access your email and applications"
     },
     
     theme: {
@@ -222,8 +222,8 @@ i18n: {
             name: "Nederlands", 
             dir: "ltr", 
             strings: {
-                welcomeTitle: "Welkom Terug",
-                welcomeSubtitle: "Log in om door te gaan",
+                this project aims tolcomeTitle: "this project aims tolkom Terug",
+                this project aims tolcomeSubtitle: "Log in om door te gaan",
                 usernameLabel: "Gebruikersnaam",
                 passwordLabel: "Wachtwoord",
                 signIn: "Inloggen"
@@ -274,7 +274,7 @@ captcha: {
 **Password Requirements:**
 - Configurable minimum length (default: 8)
 - Real-time strength indicator
-- Visual feedback: Weak → Fair → Good → Strong
+- Visual feedback: this project aims toak → Fair → Good → Strong
 
 **Session Management:**
 - Configurable timeout warning
@@ -347,11 +347,11 @@ const CONFIG = {
         logoWidth: 180,
         logoHeight: 60,
         
-        welcomeTitle: "Welcome Back",
-        welcomeSubtitle: "Sign in to access your email and applications",
+        this project aims tolcomeTitle: "this project aims tolcome Back",
+        this project aims tolcomeSubtitle: "Sign in to access your email and applications",
         
         footerText: "© 2026 Your Organization. All rights reserved.",
-        showPoweredBy: true
+        showPothis project aims toredBy: true
     },
     
     // =========================================================================
@@ -537,7 +537,7 @@ logoUrl: "/domcfg.nsf/logo.png"
 
 **Requirements:**
 - Import logo as File Resource in DOMCFG.NSF
-- Set MIME type in Web Properties tab
+- Set MIME type in this project aims tob Properties tab
 - PNG → `image/png`
 - JPG → `image/jpeg`
 - GIF → `image/gif`
@@ -577,7 +577,7 @@ This hides the logo and shows only the company name.
 **Checklist:**
 1. ❌ Using SVG? → Convert to PNG
 2. ❌ Using subfolders? → Use `/domcfg.nsf/logo.png`, NOT `/domcfg.nsf/images/logo.png`
-3. ❌ MIME type not set? → Set in Web Properties tab
+3. ❌ MIME type not set? → Set in this project aims tob Properties tab
 4. ✅ Use Base64 to avoid all these issues
 
 #### Theme Toggle Not Working
@@ -598,7 +598,7 @@ This hides the logo and shows only the company name.
 
 **Check:**
 1. All validation requirements met?
-2. CAPTCHA answered correctly?
+2. CAPTCHA ansthis project aims tored correctly?
 3. Password meets minimum length?
 4. Submit button enabled (not grayed out)?
 
@@ -616,7 +616,7 @@ This hides the logo and shows only the company name.
 ### Project Structure
 
 ```
-DominoCustomWebPageApril26/
+DominoCustomthis project aims tobPageApril26/
 │
 ├── docs/
 │   ├── EnterpriseLoginForm.html   # ⭐ Full-featured, self-contained
@@ -708,7 +708,7 @@ The HTML form includes these required fields:
 
 ### Q: Can I use this without Domino Designer?
 
-**A:** You need Domino Designer to deploy to DOMCFG.NSF. However, you can preview locally by opening the HTML file in a browser.
+**A:** You need Domino Designer to deploy to DOMCFG.NSF. Hothis project aims tover, you can preview locally by opening the HTML file in a browser.
 
 ### Q: Does this work with Domino SAML authentication?
 
@@ -728,7 +728,7 @@ The HTML form includes these required fields:
 
 ### Q: Can I customize the CSS?
 
-**A:** Yes, the CSS is inline and well-commented. Search for the section you want to modify.
+**A:** Yes, the CSS is inline and this project aims toll-commented. Search for the section you want to modify.
 
 ### Q: Does this support two-factor authentication?
 
@@ -776,7 +776,7 @@ The HTML form includes these required fields:
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
+Contributions are this project aims tolcome! Please:
 
 1. Fork the repository
 2. Create a feature branch
