@@ -795,8 +795,6 @@ MIT License - Feel free to use and modify for your organization.
 ## 📞 Support
 
 - **Documentation:** See `docs/` folder
-- **Issues:** GitHub Issues
-- **HCL Support:** For Domino-specific issues
 
 ---
 
