@@ -97,8 +97,8 @@ Option 4: Hide logo
     <script>
     const CONFIG = {
         // Version info - displayed at bottom of page
-        version: "2.1.0",
-        versionDate: "2026-04-28",
+        version: "2.1.1",
+        versionDate: "2026-04-29",
         
         // =====================================================================
         // COMPANY BRANDING
@@ -660,6 +660,153 @@ Option 4: Hide logo
         
         [data-theme="dark"] .form-options a {
             color: var(--primary-color);
+        }
+        
+        /* Dark mode: Quick Links Section */
+        [data-theme="dark"] .quick-links-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-top-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        [data-theme="dark"] .quick-links-title {
+            color: #a1a1aa;
+        }
+        
+        /* Dark mode: Security Notice */
+        [data-theme="dark"] .security-notice {
+            background: rgba(245, 158, 11, 0.1);
+            border-top-color: rgba(245, 158, 11, 0.3);
+        }
+        
+        [data-theme="dark"] .security-notice-title {
+            color: #fbbf24;
+        }
+        
+        [data-theme="dark"] .security-notice-text {
+            color: #fcd34d;
+        }
+        
+        /* Dark mode: CAPTCHA */
+        [data-theme="dark"] .captcha-title {
+            color: #e4e4e7;
+        }
+        
+        [data-theme="dark"] .captcha-instruction {
+            color: #a1a1aa;
+        }
+        
+        [data-theme="dark"] .captcha-btn:hover {
+            background: rgba(0, 102, 204, 0.3);
+            color: #ffffff;
+        }
+        
+        /* Dark mode: Labels and text */
+        [data-theme="dark"] .form-label {
+            color: #e4e4e7;
+        }
+        
+        [data-theme="dark"] .label-icon {
+            color: #a1a1aa;
+        }
+        
+        [data-theme="dark"] .welcome-title {
+            color: #f4f4f5;
+        }
+        
+        [data-theme="dark"] .welcome-subtitle {
+            color: #a1a1aa;
+        }
+        
+        /* Dark mode: Company branding */
+        [data-theme="dark"] .company-name {
+            color: #f4f4f5;
+        }
+        
+        [data-theme="dark"] .company-tagline {
+            color: #a1a1aa;
+        }
+        
+        /* Dark mode: Remember me and options */
+        [data-theme="dark"] .remember-me span {
+            color: #a1a1aa;
+        }
+        
+        [data-theme="dark"] .forgot-password {
+            color: #60a5fa;
+        }
+        
+        [data-theme="dark"] .forgot-password:hover {
+            color: #93c5fd;
+        }
+        
+        /* Dark mode: Submit button disabled */
+        [data-theme="dark"] .submit-button:disabled {
+            background: #3f3f46;
+            color: #71717a;
+            opacity: 0.7;
+        }
+        
+        /* Dark mode: Language dropdown */
+        [data-theme="dark"] .lang-option {
+            color: #e4e4e7;
+        }
+        
+        [data-theme="dark"] .lang-option:hover {
+            background: rgba(0, 102, 204, 0.2);
+        }
+        
+        [data-theme="dark"] .lang-option.active {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        /* Dark mode: Password strength */
+        [data-theme="dark"] .strength-text {
+            color: #a1a1aa;
+        }
+        
+        /* Dark mode: Session warning */
+        [data-theme="dark"] .session-warning {
+            background: rgba(30, 30, 46, 0.98);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        [data-theme="dark"] .session-warning-content h3 {
+            color: #f4f4f5;
+        }
+        
+        [data-theme="dark"] .session-warning-content p {
+            color: #a1a1aa;
+        }
+        
+        /* Dark mode: Offline indicator */
+        [data-theme="dark"] .offline-indicator {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+        
+        /* Dark mode: Version info */
+        [data-theme="dark"] .version-info {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Dark mode: Input error text */
+        [data-theme="dark"] .input-error-text {
+            color: #fca5a5;
+        }
+        
+        /* Dark mode: Announcement */
+        [data-theme="dark"] .announcement {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        [data-theme="dark"] .announcement-title {
+            color: #93c5fd;
+        }
+        
+        [data-theme="dark"] .announcement-text {
+            color: #bfdbfe;
         }
         
         /* ===== Reduced Motion ===== */
@@ -1751,8 +1898,8 @@ Option 4: Hide logo
             Powered by <a href="https://www.hcl-software.com/domino" target="_blank" rel="noopener">HCL Domino</a>
         </p>
         <div class="version-info" id="versionInfo">
-            <span>Version <span id="versionNumber">2.1.0</span></span>
-            <span class="version-date" id="versionDate">2026-04-28</span>
+            <span>Version <span id="versionNumber">2.1.1</span></span>
+            <span class="version-date" id="versionDate">2026-04-29</span>
         </div>
     </footer>
     

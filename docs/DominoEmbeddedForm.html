@@ -80,8 +80,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
      */
     const DominoLoginConfig = {
         // Version info - displayed at bottom of page
-        version: "2.1.0",
-        versionDate: "2026-04-28",
+        version: "2.1.1",
+        versionDate: "2026-04-29",
         
         branding: {
             companyName: "Your Company Name",
@@ -848,6 +848,135 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         color: rgba(255, 255, 255, 0.7);
     }
     
+    /* Dark mode: Labels and text */
+    [data-theme="dark"] .form-label {
+        color: #e4e4e7;
+    }
+    
+    [data-theme="dark"] .label-icon {
+        color: #a1a1aa;
+    }
+    
+    [data-theme="dark"] .welcome-title {
+        color: #f4f4f5;
+    }
+    
+    [data-theme="dark"] .welcome-subtitle {
+        color: #a1a1aa;
+    }
+    
+    /* Dark mode: Company branding */
+    [data-theme="dark"] .company-name {
+        color: #f4f4f5;
+    }
+    
+    [data-theme="dark"] .company-tagline {
+        color: #a1a1aa;
+    }
+    
+    /* Dark mode: Remember me and options */
+    [data-theme="dark"] .form-check-label {
+        color: #a1a1aa;
+    }
+    
+    [data-theme="dark"] .forgot-link {
+        color: #60a5fa;
+    }
+    
+    [data-theme="dark"] .forgot-link:hover {
+        color: #93c5fd;
+    }
+    
+    /* Dark mode: Submit button disabled */
+    [data-theme="dark"] .submit-btn:disabled {
+        background: #3f3f46;
+        color: #71717a;
+        opacity: 0.7;
+    }
+    
+    /* Dark mode: Language dropdown */
+    [data-theme="dark"] .lang-option {
+        color: #e4e4e7;
+    }
+    
+    [data-theme="dark"] .lang-option:hover {
+        background: rgba(0, 102, 204, 0.2);
+    }
+    
+    [data-theme="dark"] .lang-option.active {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    /* Dark mode: CAPTCHA */
+    [data-theme="dark"] .captcha-title {
+        color: #e4e4e7;
+    }
+    
+    [data-theme="dark"] .captcha-instruction {
+        color: #a1a1aa;
+    }
+    
+    [data-theme="dark"] .captcha-question {
+        background: rgba(255, 255, 255, 0.1);
+        color: #e4e4e7;
+    }
+    
+    [data-theme="dark"] .captcha-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: #e4e4e7;
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    [data-theme="dark"] .captcha-btn:hover {
+        background: rgba(0, 102, 204, 0.3);
+        color: #ffffff;
+    }
+    
+    /* Dark mode: Password strength */
+    [data-theme="dark"] .strength-text {
+        color: #a1a1aa;
+    }
+    
+    /* Dark mode: Security notice */
+    [data-theme="dark"] .security-text {
+        color: #a1a1aa;
+    }
+    
+    /* Dark mode: Session warning */
+    [data-theme="dark"] .session-warning {
+        background: rgba(30, 30, 46, 0.98);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-theme="dark"] .session-warning-content h3 {
+        color: #f4f4f5;
+    }
+    
+    [data-theme="dark"] .session-warning-content p {
+        color: #a1a1aa;
+    }
+    
+    /* Dark mode: Offline indicator */
+    [data-theme="dark"] .offline-indicator {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+    }
+    
+    /* Dark mode: Input error text */
+    [data-theme="dark"] .input-error-text {
+        color: #fca5a5;
+    }
+    
+    /* Dark mode: Footer text */
+    [data-theme="dark"] .footer-text {
+        color: rgba(255, 255, 255, 0.6);
+    }
+    
+    [data-theme="dark"] .footer-link {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
     @media (prefers-reduced-motion: reduce) {
         *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
@@ -1604,8 +1733,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 <strong>HCL Domino</strong>
             </div>
             <div class="version-info" id="versionInfo">
-                <span>Version <span id="versionNumber">2.1.0</span></span>
-                <span class="version-date" id="versionDate">2026-04-28</span>
+                <span>Version <span id="versionNumber">2.1.1</span></span>
+                <span class="version-date" id="versionDate">2026-04-29</span>
             </div>
         </footer>
     </div>
