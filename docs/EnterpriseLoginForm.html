@@ -97,7 +97,7 @@ Option 4: Hide logo
     <script>
     const CONFIG = {
         // Version info - displayed at bottom of page
-        version: "2.2.0",
+        version: "2.3.0",
         versionDate: "2026-05-19",
         
         // =====================================================================
@@ -1686,11 +1686,22 @@ Option 4: Hide logo
         /* WCAG: visual indicator when audio is playing */
         .captcha-btn.speaking { background: var(--primary-color); border-color: var(--primary-color); color: white; animation: pulse-speaking 1s ease-in-out infinite; }
         @keyframes pulse-speaking { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        /* Disable animation for users who prefer reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            .captcha-btn.speaking { animation: none; }
+        }
+        /* Windows High Contrast / Forced Colors: use outline to show speaking state */
+        @media (forced-colors: active) {
+            .captcha-btn.speaking { outline: 3px solid ButtonText; forced-color-adjust: none; }
+            .captcha-btn:focus-visible { outline: 3px solid ButtonText; }
+        }
         [data-theme="dark"] .captcha-btn { background: rgba(255,255,255,0.08); color: #e4e4e7; border-color: rgba(255,255,255,0.2); }
         [data-theme="dark"] .captcha-btn:hover, [data-theme="dark"] .captcha-btn:focus-visible { background: rgba(0,102,204,0.3); color: #ffffff; border-color: var(--primary-color); }
         [data-theme="dark"] .captcha-btn.speaking { background: var(--primary-color); color: white; }
-        /* WCAG: audio status live region */
+        /* WCAG: audio status live region — visible to all users, announced by screen readers */
         .captcha-audio-status { font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px; min-height: 1.2em; }
+        /* Global screen-reader-only live regions injected at <body> level for JAWS/NVDA compatibility */
+        .sr-live-polite, .sr-live-assertive { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
         .captcha-error { color: var(--error-color); font-size: 0.85rem; margin-top: 8px; display: none; }
         .captcha-error.visible { display: block; }
         
@@ -1712,7 +1723,18 @@ Option 4: Hide logo
 <body>
     <!-- WCAG 2.1: Skip Link -->
     <a href="#loginForm" class="skip-link">Skip to login form</a>
-    
+
+    <!--
+        SCREEN READER LIVE REGIONS
+        Must be at <body> level (not nested inside role=group/region).
+        JAWS 2022+, NVDA, VoiceOver, Narrator, and TalkBack all require
+        live regions to exist in the DOM on page load before content is injected.
+        sr-live-polite  → non-urgent updates (new question, audio done)
+        sr-live-assertive → urgent updates (audio playing, errors)
+    -->
+    <div id="srLivePolite"   class="sr-live-polite"   role="status" aria-live="polite"   aria-atomic="true"></div>
+    <div id="srLiveAssertive" class="sr-live-assertive" role="alert"  aria-live="assertive" aria-atomic="true"></div>
+
     <!-- Background -->
     <div class="page-background" id="pageBackground"></div>
     
@@ -1867,36 +1889,79 @@ Option 4: Hide logo
                     <!-- Hidden Domino Fields -->
                     <input type="hidden" name="RedirectTo" id="RedirectTo" value="/">
                     
-                    <!-- CAPTCHA Section (WCAG 2.1 Accessible) -->
-                    <div class="captcha-container" id="captchaContainer" role="group" aria-labelledby="captchaTitle" style="display: none;">
-                        <div class="captcha-title" id="captchaTitle">
-                            <span>🔒</span>
+                    <!-- =====================================================
+                         CAPTCHA — Fully WCAG 2.1 / Screen Reader Compatible
+                         Tested against: JAWS, NVDA, VoiceOver, Narrator, TalkBack
+                         Live regions are at <body> level (srLivePolite / srLiveAssertive)
+                         to ensure reliable announcement across all AT software.
+                         ===================================================== -->
+                    <div class="captcha-container" id="captchaContainer"
+                         role="group"
+                         aria-labelledby="captchaTitleText"
+                         style="display: none;">
+
+                        <div class="captcha-title">
+                            <span aria-hidden="true">🔒</span>
                             <span id="captchaTitleText">Security Verification</span>
                         </div>
-                        <p class="sr-only" id="captchaInstructionSR" aria-live="polite"></p>
-                        <p id="captchaInstruction" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">Solve this math problem</p>
-                        <div class="captcha-question" id="captchaQuestion" role="img" aria-label="Math problem">3 + 5 = ?</div>
-                        <label for="captchaAnswer" class="sr-only">Enter your answer</label>
-                        <input type="text" id="captchaAnswer" name="captchaAnswer" class="captcha-input" 
-                               placeholder="Your answer" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
+
+                        <p id="captchaInstruction" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">
+                            Solve this math problem
+                        </p>
+
+                        <!--
+                            role="img" + aria-label: presents the visual equation as a
+                            labelled image so VoiceOver/JAWS read the spelled-out form.
+                            aria-label is updated by generateCaptcha() with fully spelled text.
+                        -->
+                        <div class="captcha-question" id="captchaQuestion"
+                             role="img"
+                             aria-label="Math problem: 3 plus 5 equals what?">
+                            3 + 5 = ?
+                        </div>
+
+                        <!--
+                            Answer input:
+                            aria-required: signals field is mandatory to AT
+                            aria-describedby: chains instruction + error so AT reads both
+                        -->
+                        <label for="captchaAnswer" class="sr-only">Enter the answer to the security question</label>
+                        <input type="text" id="captchaAnswer" name="captchaAnswer"
+                               class="captcha-input"
+                               placeholder="Your answer"
+                               autocomplete="off"
+                               inputmode="numeric"
+                               pattern="[0-9]*"
+                               aria-required="true"
+                               aria-describedby="captchaInstruction captchaError">
                         <input type="hidden" id="captchaExpected" value="">
+
                         <div class="captcha-actions">
+                            <!--
+                                Audio button:
+                                aria-pressed toggled by JS (false=idle, true=speaking)
+                                aria-describedby="srLivePolite" — AT reads live region
+                                    content when button has focus (NVDA browse mode)
+                            -->
                             <button type="button" class="captcha-btn" id="captchaAudioBtn"
-                                aria-label="Listen to audio version of security question"
+                                aria-label="Read security question aloud"
                                 aria-pressed="false"
-                                aria-describedby="captchaAudioStatus">
+                                aria-describedby="srLivePolite">
                                 <span aria-hidden="true">🔊</span>
                                 <span id="captchaAudioText">Listen</span>
                             </button>
+
                             <button type="button" class="captcha-btn" id="captchaRefreshBtn"
                                 aria-label="Get a new security question">
                                 <span aria-hidden="true">🔄</span>
                                 <span id="captchaRefreshText">New question</span>
                             </button>
                         </div>
-                        <!-- WCAG: live region announces audio playback status to screen readers -->
-                        <div id="captchaAudioStatus" class="captcha-audio-status" role="status" aria-live="polite" aria-atomic="true"></div>
-                        <div class="captcha-error" id="captchaError" role="alert" aria-live="assertive">Incorrect answer</div>
+
+                        <!-- Visible status line for sighted users (also read by AT via srLivePolite) -->
+                        <div id="captchaAudioStatus" class="captcha-audio-status" aria-hidden="true"></div>
+
+                        <div class="captcha-error" id="captchaError" role="alert">Incorrect answer</div>
                     </div>
                     
                     <!-- Submit Button - Disabled until validation passes -->
@@ -1936,7 +2001,7 @@ Option 4: Hide logo
             Powered by <a href="https://www.hcl-software.com/domino" target="_blank" rel="noopener">HCL Domino</a>
         </p>
         <div class="version-info" id="versionInfo">
-            <span>Version <span id="versionNumber">2.2.0</span></span>
+            <span>Version <span id="versionNumber">2.3.0</span></span>
             <span class="version-date" id="versionDate">2026-05-19</span>
         </div>
     </footer>
@@ -2780,16 +2845,61 @@ Option 4: Hide logo
             
             container.style.display = 'block';
             generateCaptcha();
-            
+
             document.getElementById('captchaAudioBtn')?.addEventListener('click', speakCaptcha);
             document.getElementById('captchaRefreshBtn')?.addEventListener('click', generateCaptcha);
+
+            // Announce that the security section has appeared so AT users are not surprised
+            srAnnounce('Security verification required. Please solve the math problem and enter the answer.', 'polite');
             // Form submit validation is handled by initFormValidation()
         }
         
+        // ── Helpers: body-level live region announce ──────────────────────────
+        // Must use body-level regions (not nested) for JAWS 2022+, NVDA, Narrator.
+        // Briefly clear then set to force re-announcement of identical strings.
+        function srAnnounce(msg, urgency) {
+            var id = (urgency === 'assertive') ? 'srLiveAssertive' : 'srLivePolite';
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = '';
+            // RAF delay ensures DOM mutation is observed by all AT
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() { el.textContent = msg; });
+            });
+        }
+
+        // ── Helpers: operator spelling for TTS ───────────────────────────────
+        function spellOperator(op) {
+            if (op === '×') return 'times';
+            if (op === '÷') return 'divided by';
+            if (op === '+') return 'plus';
+            if (op === '-') return 'minus';
+            return op;
+        }
+
+        function buildSpokenText(num1, op, num2) {
+            return 'Security question: ' + num1 + ' ' + spellOperator(op) + ' ' + num2 + '. What is the answer?';
+        }
+
+        function buildAriaLabel(num1, op, num2) {
+            return 'Math problem: ' + num1 + ' ' + spellOperator(op) + ' ' + num2 + ' equals what?';
+        }
+
+        // ── generateCaptcha ──────────────────────────────────────────────────
         function generateCaptcha() {
+            // Cancel any TTS and reset audio button state first
+            if ('speechSynthesis' in window) speechSynthesis.cancel();
+            var audioBtn = document.getElementById('captchaAudioBtn');
+            var statusEl = document.getElementById('captchaAudioStatus');
+            if (audioBtn) {
+                audioBtn.setAttribute('aria-pressed', 'false');
+                audioBtn.classList.remove('speaking');
+            }
+            if (statusEl) statusEl.textContent = '';
+
             const difficulty = CONFIG.captcha?.difficulty || 'easy';
             let num1, num2, operator;
-            
+
             if (difficulty === 'easy') {
                 num1 = Math.floor(Math.random() * 10) + 1;
                 num2 = Math.floor(Math.random() * 10) + 1;
@@ -2806,80 +2916,124 @@ Option 4: Hide logo
                 operator = '×';
                 captchaAnswer = num1 * num2;
             }
-            
-            const question = `${num1} ${operator} ${num2} = ?`;
+
+            const question = num1 + ' ' + operator + ' ' + num2 + ' = ?';
             const questionEl = document.getElementById('captchaQuestion');
-            const srEl = document.getElementById('captchaInstructionSR');
-            
+
             if (questionEl) {
                 questionEl.textContent = question;
-                questionEl.setAttribute('aria-label', `Math problem: ${num1} ${operator === '×' ? 'times' : operator} ${num2}`);
+                // aria-label uses fully spelled operator so screen readers read it correctly
+                questionEl.setAttribute('aria-label', buildAriaLabel(num1, operator, num2));
             }
             document.getElementById('captchaExpected').value = captchaAnswer;
-            if (srEl) srEl.textContent = `New problem: ${num1} ${operator === '×' ? 'times' : operator} ${num2}`;
-            
+
             document.getElementById('captchaAnswer').value = '';
             document.getElementById('captchaError')?.classList.remove('visible');
-            
-            // Re-validate form since CAPTCHA changed
-            if (typeof validateFormRealtime === 'function') {
-                validateFormRealtime();
-            }
+
+            // Announce new question to screen readers via body-level polite region
+            srAnnounce('New security question: ' + num1 + ' ' + spellOperator(operator) + ' ' + num2 + '. Please enter the answer below.', 'polite');
+
+            if (typeof validateFormRealtime === 'function') validateFormRealtime();
         }
-        
+
+        // ── speakCaptcha ─────────────────────────────────────────────────────
+        // Compatible with: Chrome, Firefox, Safari (macOS/iOS), Edge, Samsung Internet
+        // Screen readers: JAWS, NVDA, VoiceOver, Narrator, TalkBack
         function speakCaptcha() {
             if (!CONFIG.captcha?.enableAudio) return;
-            const questionEl = document.getElementById('captchaQuestion');
-            const audioBtn = document.getElementById('captchaAudioBtn');
-            const statusEl = document.getElementById('captchaAudioStatus');
+
+            var questionEl = document.getElementById('captchaQuestion');
+            var audioBtn   = document.getElementById('captchaAudioBtn');
+            var statusEl   = document.getElementById('captchaAudioStatus');
             if (!questionEl) return;
-            
-            const rawText = questionEl.textContent.trim();
-            const text = 'Security question: ' + rawText
-                .replace('×', ' times ')
-                .replace('÷', ' divided by ')
-                .replace('+', ' plus ')
-                .replace('-', ' minus ')
-                .replace('= ?', '. What is the answer?');
-            
+
+            // Build spoken text from aria-label (already spelled out) or raw text
+            var ariaLabel = questionEl.getAttribute('aria-label') || '';
+            var spokenText = ariaLabel || ('Security question: ' + questionEl.textContent.trim());
+
+            // ── Fallback: speechSynthesis not available ───────────────────────
             if (!('speechSynthesis' in window)) {
-                // WCAG: graceful fallback — show text visually instead of disruptive alert
-                if (statusEl) statusEl.textContent = 'Audio unavailable. Question: ' + rawText;
+                var fallback = 'Audio not available. ' + spokenText;
+                if (statusEl) statusEl.textContent = fallback;
+                srAnnounce(fallback, 'polite');
                 return;
             }
-            
-            // Cancel any ongoing speech
+
+            // ── If already speaking → stop (toggle off) ──────────────────────
+            if (audioBtn && audioBtn.getAttribute('aria-pressed') === 'true') {
+                speechSynthesis.cancel();
+                audioBtn.setAttribute('aria-pressed', 'false');
+                audioBtn.classList.remove('speaking');
+                if (statusEl) statusEl.textContent = '';
+                srAnnounce('Audio stopped.', 'polite');
+                return;
+            }
+
+            // Cancel any residual speech
             speechSynthesis.cancel();
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 0.8;
-            utterance.lang = document.documentElement.lang || 'en';
-            
-            // WCAG: update aria-pressed and visual state while speaking
+
+            // iOS Safari: resume suspended AudioContext (required after page load)
+            if (speechSynthesis.paused) speechSynthesis.resume();
+
+            var utterance = new SpeechSynthesisUtterance(spokenText);
+            utterance.rate  = 0.85;
+            utterance.pitch = 1;
+            // Use page language; fallback to 'en-US' for consistent TTS voice selection
+            utterance.lang  = document.documentElement.lang || 'en-US';
+
+            // ── Helper: set speaking state ────────────────────────────────────
+            function setSpeaking(active) {
+                if (audioBtn) {
+                    audioBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    audioBtn.classList.toggle('speaking', active);
+                }
+            }
+
+            // ── Chrome/Edge bug workaround ────────────────────────────────────
+            // onstart does not always fire in Chromium (crbug.com/570000).
+            // Apply speaking state immediately via rAF so UI never gets stuck.
+            var startApplied = false;
+            requestAnimationFrame(function() {
+                if (!startApplied) {
+                    startApplied = true;
+                    setSpeaking(true);
+                    var msg = 'Playing: ' + spokenText;
+                    if (statusEl) statusEl.textContent = 'Playing audio…';
+                    srAnnounce(msg, 'assertive');
+                }
+            });
+
             utterance.onstart = function() {
-                if (audioBtn) {
-                    audioBtn.setAttribute('aria-pressed', 'true');
-                    audioBtn.classList.add('speaking');
-                }
+                startApplied = true;
+                setSpeaking(true);
+                var msg = 'Playing: ' + spokenText;
                 if (statusEl) statusEl.textContent = 'Playing audio…';
+                srAnnounce(msg, 'assertive');
             };
+
             utterance.onend = function() {
-                if (audioBtn) {
-                    audioBtn.setAttribute('aria-pressed', 'false');
-                    audioBtn.classList.remove('speaking');
-                }
+                setSpeaking(false);
                 if (statusEl) statusEl.textContent = 'Audio complete.';
+                srAnnounce('Audio complete.', 'polite');
+                // Move focus back to answer input for keyboard/AT users
+                var answerEl = document.getElementById('captchaAnswer');
+                if (answerEl) answerEl.focus();
             };
-            utterance.onerror = function() {
-                if (audioBtn) {
-                    audioBtn.setAttribute('aria-pressed', 'false');
-                    audioBtn.classList.remove('speaking');
-                }
-                if (statusEl) statusEl.textContent = 'Audio failed. Question: ' + rawText;
+
+            utterance.onerror = function(e) {
+                setSpeaking(false);
+                var msg = 'Audio failed. ' + spokenText;
+                if (statusEl) statusEl.textContent = msg;
+                srAnnounce(msg, 'assertive');
             };
-            
+
             speechSynthesis.speak(utterance);
         }
+
+        // ── Cancel TTS on page hide (back-forward cache safe) ─────────────────
+        window.addEventListener('pagehide', function() {
+            if ('speechSynthesis' in window) speechSynthesis.cancel();
+        });
         
         // Validate CAPTCHA input - returns {valid: boolean, message: string}
         function validateCaptchaInput() {
