@@ -78,7 +78,7 @@ Option 4: Hide logo
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Secure Enterprise Login Portal">
     <meta name="robots" content="noindex, nofollow">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -97,8 +97,8 @@ Option 4: Hide logo
     <script>
     const CONFIG = {
         // Version info - displayed at bottom of page
-        version: "2.1.1",
-        versionDate: "2026-04-29",
+        version: "2.2.0",
+        versionDate: "2026-05-19",
         
         // =====================================================================
         // COMPANY BRANDING
@@ -825,6 +825,10 @@ Option 4: Hide logo
             font-size: 16px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            /* Auto scrollbar when content overflows */
+            overflow-x: hidden;
+            overflow-y: auto;
+            scroll-behavior: smooth;
         }
         
         /* Smooth theme transition */
@@ -838,9 +842,13 @@ Option 4: Hide logo
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             line-height: 1.6;
             color: var(--text-primary);
+            /* Use dvh for mobile browser chrome awareness */
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
         
         /* ===== Background ===== */
@@ -893,9 +901,19 @@ Option 4: Hide logo
         .main-container {
             flex: 1;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             padding: 40px 20px;
+            /* Allow natural height growth so card never clips */
+            min-height: calc(100vh - 60px);
+            min-height: calc(100dvh - 60px);
+        }
+        
+        /* Center vertically only when there is enough room */
+        @media (min-height: 700px) {
+            .main-container {
+                align-items: center;
+            }
         }
         
         /* ===== Login Card ===== */
@@ -904,9 +922,15 @@ Option 4: Hide logo
             border-radius: var(--card-radius);
             box-shadow: var(--card-shadow);
             width: 100%;
-            max-width: 440px;
-            overflow: hidden;
+            /* Fluid width: min 280px, prefer 440px, max 100% of container */
+            max-width: clamp(280px, 90vw, 440px);
+            /* Clip only horizontally for border-radius; allow vertical growth */
+            overflow-x: hidden;
+            overflow-y: visible;
             animation: slideUp 0.5s ease-out;
+            /* Ensure card never exceeds viewport height, scroll within if needed */
+            max-height: calc(100vh - 80px);
+            max-height: calc(100dvh - 80px);
         }
         
         @keyframes slideUp {
@@ -1650,15 +1674,23 @@ Option 4: Hide logo
         
         /* ===== CAPTCHA ===== */
         .captcha-container { margin: 20px 0; padding: 16px; background: var(--input-bg); border-radius: 12px; border: 1px solid var(--input-border); }
-        .captcha-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-        .captcha-question { font-size: 1.5rem; font-weight: 700; text-align: center; padding: 16px; background: white; border-radius: 8px; margin: 12px 0; letter-spacing: 2px; }
-        [data-theme="dark"] .captcha-question { background: rgba(255,255,255,0.1); }
+        .captcha-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; color: var(--text-primary); }
+        .captcha-question { font-size: 1.5rem; font-weight: 700; text-align: center; padding: 16px; background: white; border-radius: 8px; margin: 12px 0; letter-spacing: 2px; color: #1a1a2e; }
+        [data-theme="dark"] .captcha-question { background: rgba(255,255,255,0.1); color: #e4e4e7; }
         .captcha-input { width: 100%; padding: 12px 16px; border: 2px solid var(--input-border); border-radius: 8px; font-size: 1rem; text-align: center; background: var(--input-bg); color: var(--text-primary); }
         .captcha-input:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 3px rgba(0,102,204,0.2); }
         .captcha-actions { display: flex; gap: 8px; margin-top: 12px; }
-        .captcha-btn { flex: 1; padding: 10px; border: 1px solid var(--input-border); background: white; border-radius: 8px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        [data-theme="dark"] .captcha-btn { background: rgba(255,255,255,0.1); color: var(--text-primary); }
-        .captcha-btn:hover { background: var(--primary-light); border-color: var(--primary-color); }
+        /* WCAG: captcha buttons - min 44px touch target, clear contrast */
+        .captcha-btn { flex: 1; min-height: 44px; padding: 10px; border: 2px solid var(--input-border); background: var(--card-bg); border-radius: 8px; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-primary); font-weight: 500; transition: all 0.2s; }
+        .captcha-btn:hover, .captcha-btn:focus-visible { background: var(--primary-light); border-color: var(--primary-color); color: var(--primary-color); outline: 3px solid var(--primary-color); outline-offset: 2px; }
+        /* WCAG: visual indicator when audio is playing */
+        .captcha-btn.speaking { background: var(--primary-color); border-color: var(--primary-color); color: white; animation: pulse-speaking 1s ease-in-out infinite; }
+        @keyframes pulse-speaking { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        [data-theme="dark"] .captcha-btn { background: rgba(255,255,255,0.08); color: #e4e4e7; border-color: rgba(255,255,255,0.2); }
+        [data-theme="dark"] .captcha-btn:hover, [data-theme="dark"] .captcha-btn:focus-visible { background: rgba(0,102,204,0.3); color: #ffffff; border-color: var(--primary-color); }
+        [data-theme="dark"] .captcha-btn.speaking { background: var(--primary-color); color: white; }
+        /* WCAG: audio status live region */
+        .captcha-audio-status { font-size: 0.8rem; color: var(--text-secondary); margin-top: 6px; min-height: 1.2em; }
         .captcha-error { color: var(--error-color); font-size: 0.85rem; margin-top: 8px; display: none; }
         .captcha-error.visible { display: block; }
         
@@ -1849,15 +1881,21 @@ Option 4: Hide logo
                                placeholder="Your answer" autocomplete="off" inputmode="numeric" pattern="[0-9]*">
                         <input type="hidden" id="captchaExpected" value="">
                         <div class="captcha-actions">
-                            <button type="button" class="captcha-btn" id="captchaAudioBtn" aria-label="Listen to audio version">
-                                <span>🔊</span>
+                            <button type="button" class="captcha-btn" id="captchaAudioBtn"
+                                aria-label="Listen to audio version of security question"
+                                aria-pressed="false"
+                                aria-describedby="captchaAudioStatus">
+                                <span aria-hidden="true">🔊</span>
                                 <span id="captchaAudioText">Listen</span>
                             </button>
-                            <button type="button" class="captcha-btn" id="captchaRefreshBtn" aria-label="Get new question">
-                                <span>🔄</span>
+                            <button type="button" class="captcha-btn" id="captchaRefreshBtn"
+                                aria-label="Get a new security question">
+                                <span aria-hidden="true">🔄</span>
                                 <span id="captchaRefreshText">New question</span>
                             </button>
                         </div>
+                        <!-- WCAG: live region announces audio playback status to screen readers -->
+                        <div id="captchaAudioStatus" class="captcha-audio-status" role="status" aria-live="polite" aria-atomic="true"></div>
                         <div class="captcha-error" id="captchaError" role="alert" aria-live="assertive">Incorrect answer</div>
                     </div>
                     
@@ -1898,8 +1936,8 @@ Option 4: Hide logo
             Powered by <a href="https://www.hcl-software.com/domino" target="_blank" rel="noopener">HCL Domino</a>
         </p>
         <div class="version-info" id="versionInfo">
-            <span>Version <span id="versionNumber">2.1.1</span></span>
-            <span class="version-date" id="versionDate">2026-04-29</span>
+            <span>Version <span id="versionNumber">2.2.0</span></span>
+            <span class="version-date" id="versionDate">2026-05-19</span>
         </div>
     </footer>
     
@@ -2792,18 +2830,55 @@ Option 4: Hide logo
         function speakCaptcha() {
             if (!CONFIG.captcha?.enableAudio) return;
             const questionEl = document.getElementById('captchaQuestion');
+            const audioBtn = document.getElementById('captchaAudioBtn');
+            const statusEl = document.getElementById('captchaAudioStatus');
             if (!questionEl) return;
             
-            const text = questionEl.textContent.replace('×', 'times').replace('= ?', 'equals what?');
+            const rawText = questionEl.textContent.trim();
+            const text = 'Security question: ' + rawText
+                .replace('×', ' times ')
+                .replace('÷', ' divided by ')
+                .replace('+', ' plus ')
+                .replace('-', ' minus ')
+                .replace('= ?', '. What is the answer?');
             
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = 0.8;
-                speechSynthesis.cancel();
-                speechSynthesis.speak(utterance);
-            } else {
-                alert('Audio: ' + text);
+            if (!('speechSynthesis' in window)) {
+                // WCAG: graceful fallback — show text visually instead of disruptive alert
+                if (statusEl) statusEl.textContent = 'Audio unavailable. Question: ' + rawText;
+                return;
             }
+            
+            // Cancel any ongoing speech
+            speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.8;
+            utterance.lang = document.documentElement.lang || 'en';
+            
+            // WCAG: update aria-pressed and visual state while speaking
+            utterance.onstart = function() {
+                if (audioBtn) {
+                    audioBtn.setAttribute('aria-pressed', 'true');
+                    audioBtn.classList.add('speaking');
+                }
+                if (statusEl) statusEl.textContent = 'Playing audio…';
+            };
+            utterance.onend = function() {
+                if (audioBtn) {
+                    audioBtn.setAttribute('aria-pressed', 'false');
+                    audioBtn.classList.remove('speaking');
+                }
+                if (statusEl) statusEl.textContent = 'Audio complete.';
+            };
+            utterance.onerror = function() {
+                if (audioBtn) {
+                    audioBtn.setAttribute('aria-pressed', 'false');
+                    audioBtn.classList.remove('speaking');
+                }
+                if (statusEl) statusEl.textContent = 'Audio failed. Question: ' + rawText;
+            };
+            
+            speechSynthesis.speak(utterance);
         }
         
         // Validate CAPTCHA input - returns {valid: boolean, message: string}
