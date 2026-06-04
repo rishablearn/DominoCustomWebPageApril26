@@ -344,6 +344,11 @@ Option 4: Hide logo
             // Show countdown ring (time remaining on current code)
             showTimer: true,
 
+            // When MFA is enabled, automatically hide the CAPTCHA step.
+            // MFA already proves the user is human — CAPTCHA adds no security
+            // benefit and degrades UX. Set to false to show CAPTCHA alongside MFA.
+            disableCaptchaWhenMFA: true,
+
             // UI text (override as needed)
             promptTitle: "Two-Factor Authentication",
             promptSubtitle: "Enter the 6-digit code from your authenticator app",
@@ -2712,8 +2717,8 @@ Option 4: Hide logo
                     isValid = false;
                 }
                 
-                // Validate CAPTCHA if enabled
-                if (CONFIG.features?.enableCaptcha) {
+                // Validate CAPTCHA if enabled and not suppressed by MFA
+                if (isCaptchaActive()) {
                     console.log('[LoginForm] Validating CAPTCHA...');
                     const captchaResult = validateCaptchaInput();
                     console.log('[LoginForm] CAPTCHA result:', captchaResult);
@@ -3113,8 +3118,17 @@ Option 4: Hide logo
         let captchaAnswer = 0;
         let captchaAttempts = 0;
         
+        // Returns true only when CAPTCHA should be shown and validated.
+        // Returns false when CAPTCHA is globally disabled OR suppressed by MFA.
+        function isCaptchaActive() {
+            if (!CONFIG.features?.enableCaptcha) return false;
+            if (CONFIG.features?.enableMFA && CONFIG.mfa?.enable &&
+                CONFIG.mfa?.disableCaptchaWhenMFA !== false) return false;
+            return true;
+        }
+
         function setupCaptcha() {
-            if (!CONFIG.features?.enableCaptcha) return;
+            if (!isCaptchaActive()) return;
             
             const container = document.getElementById('captchaContainer');
             if (!container) return;
@@ -3313,7 +3327,7 @@ Option 4: Hide logo
         
         // Validate CAPTCHA input - returns {valid: boolean, message: string}
         function validateCaptchaInput() {
-            if (!CONFIG.features?.enableCaptcha) return { valid: true, message: '' };
+            if (!isCaptchaActive()) return { valid: true, message: '' };
             
             const answerEl = document.getElementById('captchaAnswer');
             const errorEl = document.getElementById('captchaError');
@@ -3402,8 +3416,8 @@ Option 4: Hide logo
             
             if (!passwordValid) allValid = false;
             
-            // Check CAPTCHA if enabled
-            if (CONFIG.features?.enableCaptcha) {
+            // Check CAPTCHA if enabled and not suppressed by MFA
+            if (isCaptchaActive()) {
                 const captchaValue = captchaEl?.value?.trim() || '';
                 const userAnswer = parseInt(captchaValue, 10);
                 const captchaValid = captchaValue !== '' && !isNaN(userAnswer) && userAnswer === captchaAnswer;
@@ -3432,7 +3446,7 @@ Option 4: Hide logo
             submitBtn.disabled = !allValid;
             
             console.log('[Validation] Username:', usernameValid, 'Password:', passwordValid, 
-                        'CAPTCHA:', CONFIG.features?.enableCaptcha ? (allValid ? 'valid' : 'invalid') : 'disabled',
+                        'CAPTCHA:', isCaptchaActive() ? (allValid ? 'valid' : 'invalid') : 'disabled',
                         '=> Submit enabled:', allValid);
             
             return allValid;

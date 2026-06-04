@@ -211,6 +211,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             totpWindow: 30,
             autoSubmit: true,
             showTimer: true,
+            // Set false to show CAPTCHA alongside MFA (not recommended — MFA already proves human)
+            disableCaptchaWhenMFA: true,
             promptTitle: "Two-Factor Authentication",
             promptSubtitle: "Enter the 6-digit code from your authenticator app",
             backupText: "Can't access your authenticator?",
@@ -2214,7 +2216,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     showFieldError('Password', msg); errorMessages.push(msg);
                     if (!firstInvalidField) firstInvalidField = password; isValid = false;
                 }
-                if (c.features?.enableCaptcha) {
+                if (isCaptchaActive()) {
                     const captchaResult = validateCaptchaInput();
                     if (!captchaResult.valid) {
                         errorMessages.push(captchaResult.message);
@@ -2616,10 +2618,20 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         // =====================================================================
         let captchaAnswer = 0;
         let captchaAttempts = 0;
-        
+
+        // Returns true only when CAPTCHA should be shown and validated.
+        // Returns false when globally disabled OR suppressed by MFA.
+        function isCaptchaActive() {
+            var c = DominoLoginConfig;
+            if (!c.features?.enableCaptcha) return false;
+            if (c.features?.enableMFA && c.mfa?.enable &&
+                c.mfa?.disableCaptchaWhenMFA !== false) return false;
+            return true;
+        }
+
         function initCaptcha() {
             const c = DominoLoginConfig;
-            if (!c.features || !c.features.enableCaptcha) return;
+            if (!isCaptchaActive()) return;
             
             const container = document.getElementById('captchaContainer');
             if (!container) return;
@@ -2795,7 +2807,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         // Validate CAPTCHA input - returns {valid: boolean, message: string}
         function validateCaptchaInput() {
             const c = DominoLoginConfig;
-            if (!c.features?.enableCaptcha) return { valid: true, message: '' };
+            if (!isCaptchaActive()) return { valid: true, message: '' };
             
             const answerEl = document.getElementById('captchaAnswer');
             const errorEl = document.getElementById('captchaError');
@@ -2885,8 +2897,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             
             if (!passwordValid) allValid = false;
             
-            // Check CAPTCHA if enabled
-            if (c.features?.enableCaptcha) {
+            // Check CAPTCHA if enabled and not suppressed by MFA
+            if (isCaptchaActive()) {
                 const captchaValue = captchaEl?.value?.trim() || '';
                 const userAnswer = parseInt(captchaValue, 10);
                 const captchaValid = captchaValue !== '' && !isNaN(userAnswer) && userAnswer === captchaAnswer;
@@ -2916,7 +2928,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             submitBtn.disabled = !allValid;
             
             console.log('[Validation] Username:', usernameValid, 'Password:', passwordValid, 
-                        'CAPTCHA:', c.features?.enableCaptcha ? (allValid ? 'valid' : 'invalid') : 'disabled',
+                        'CAPTCHA:', isCaptchaActive() ? (allValid ? 'valid' : 'invalid') : 'disabled',
                         '=> Submit enabled:', allValid);
             
             return allValid;
