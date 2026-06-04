@@ -153,7 +153,7 @@ Built-in support for:
 | Kannada | `kn` | LTR | India |
 | Malayalam | `ml` | LTR | India |
 | Gujarati | `gu` | LTR | India |
-| Punjabi | `pa` | LTR | India, Pakistan |
+| Punjabi | `pa` | LTR | India |
 | Chinese | `zh` | LTR | China |
 | Japanese | `ja` | LTR | Japan |
 | Korean | `ko` | LTR | Korea |
