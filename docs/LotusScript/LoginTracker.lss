@@ -1,0 +1,281 @@
+'===========================================================================
+' LoginTracker.lss
+' LotusScript Agent — Log Login Attempts to Person Document
+'
+' Version  : 1.0.0
+' Date     : 2026-06-04
+' Requires : HCL Domino 12.0.1+  (NAMES.NSF accessible from DOMCFG.NSF)
+'
+' PURPOSE
+' -------
+' Receives a web POST from the custom login page, reads the client-supplied
+' browser fingerprint plus the server-side IP address, then updates the
+' matching Person document in NAMES.NSF with the last N login attempts.
+'
+' Each attempt is stored as one pipe-delimited item in the multi-value
+' field  LoginHistory  on the Person document.
+' Format per item:
+'   TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA
+'
+' Example:
+'   2026-06-04T12:30:00Z|192.168.1.5|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0
+'
+' HOW TO DEPLOY
+' -------------
+' 1. Open DOMCFG.NSF in Domino Designer (or create agent in your own NSF).
+' 2. Create a new LotusScript Agent:
+'      Name     : LogLoginAttempt
+'      Trigger  : On demand  (HTTP agents respond to ?OpenAgent)
+'      Run as   : Web user   (allow anonymous in ACL — see step 4)
+'      Context  : None (runs without a specific document)
+' 3. Paste this entire file into the agent code editor (Script area).
+' 4. Set ACL on the database containing this agent:
+'      Anonymous access  : Reader  (minimum; agent runs under "Web user")
+'      Ensure "Run unrestricted methods" is NOT needed — this agent
+'      only reads/writes a document it opens directly.
+' 5. In  Domino Administrator → Server → Server Document → Security:
+'      "Run unrestricted LotusScript/Java agents" — add the server ID.
+' 6. Save and sign the agent with an ID that has Write access to NAMES.NSF.
+' 7. Verify the agent URL works:
+'      https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
+'      Should return HTTP 200 with text "OK".
+' 8. Enable tracking in the login page CONFIG:
+'      features.enableLoginTracking = true
+'      loginTracking.agentUrl = "/domcfg.nsf/LogLoginAttempt?OpenAgent"
+'
+' PERSON DOCUMENT FIELDS WRITTEN
+' --------------------------------
+'  LoginHistory     Multi-value Text  — last N attempts (pipe-delimited)
+'  LoginHistoryUpdated  Date/Time     — when the field was last updated
+'
+' EMAIL NOTIFICATION (optional, disabled by default)
+' ---------------------------------------------------
+'  Set SEND_EMAIL_ON_NEW_ATTEMPT = True below.
+'  The agent sends a memo to the user on every new attempt.
+'  Requires a properly configured Domino mail router.
+'
+'===========================================================================
+Option Public
+Option Declare
+
+'--- CONFIGURATION -----------------------------------------------------------
+Const MAX_HISTORY     = 5     ' Number of attempts to keep per user
+Const NAMES_SERVER    = ""    ' "" = current server; or "ServerName/Org"
+Const NAMES_DB_PATH   = "names.nsf"
+Const SEND_EMAIL_ON_NEW_ATTEMPT = False
+Const EMAIL_SUBJECT   = "Login Attempt Notification"
+'-----------------------------------------------------------------------------
+
+Sub Initialize()
+    Dim session As New NotesSession
+    Dim context As NotesDatabase
+    Dim web     As NotesDocument     ' pseudo-document holding CGI vars
+    Dim result  As String
+
+    On Error GoTo ErrorHandler
+
+    Set context = session.CurrentDatabase
+    Set web     = session.DocumentContext   ' CGI + POST fields available here
+
+    '-- 1. Read POST parameters sent by the login page ----------------------
+    Dim ts        As String  : ts        = GetField(web, "ts")
+    Dim tz        As String  : tz        = GetField(web, "tz")
+    Dim lang      As String  : lang      = GetField(web, "lang")
+    Dim scr       As String  : scr       = GetField(web, "scr")
+    Dim browser   As String  : browser   = GetField(web, "browser")
+    Dim platform  As String  : platform  = GetField(web, "platform")
+    Dim mfa       As String  : mfa       = GetField(web, "mfa")
+    Dim username  As String  : username  = GetField(web, "username")
+    Dim status    As String  : status    = "ATTEMPT"
+
+    '-- 2. Retrieve real IP from CGI environment (server fills this) --------
+    Dim ipAddress As String
+    ipAddress = GetField(web, "REMOTE_ADDR")     ' Standard CGI variable
+    If ipAddress = "" Then
+        ipAddress = GetField(web, "HTTP_X_FORWARDED_FOR")  ' Behind load balancer
+    End If
+    If ipAddress = "" Then ipAddress = "unknown"
+
+    '-- 3. Validate we have a username to look up ---------------------------
+    If username = "" Then
+        Call RespondOK()
+        Exit Sub
+    End If
+
+    '-- 4. Build the history entry string -----------------------------------
+    Dim entry As String
+    entry = ts & "|" & ipAddress & "|" & status & "|" & _
+            browser & "|" & platform & "|" & tz & "|" & scr & "|" & mfa
+
+    '-- 5. Open NAMES.NSF and find the Person document ----------------------
+    Dim namesDb As NotesDatabase
+    Set namesDb = New NotesDatabase(NAMES_SERVER, NAMES_DB_PATH)
+
+    If Not namesDb.IsOpen Then
+        Call namesDb.Open(NAMES_SERVER, NAMES_DB_PATH)
+    End If
+
+    If Not namesDb.IsOpen Then
+        Print "Content-type: text/plain"
+        Print ""
+        Print "ERROR: Could not open " & NAMES_DB_PATH
+        Exit Sub
+    End If
+
+    ' Look up by short name or internet address in ($Users) view
+    Dim usersView As NotesView
+    Set usersView = namesDb.GetView("($Users)")
+
+    Dim personDoc As NotesDocument
+    Set personDoc = usersView.GetDocumentByKey(username, False)
+
+    If personDoc Is Nothing Then
+        ' Try by internet (email) address
+        Dim inetView As NotesView
+        Set inetView = namesDb.GetView("($VIMPeople)")
+        If Not (inetView Is Nothing) Then
+            Set personDoc = inetView.GetDocumentByKey(username, False)
+        End If
+    End If
+
+    If personDoc Is Nothing Then
+        ' Username not found — still respond OK (do not leak existence)
+        Call RespondOk()
+        Exit Sub
+    End If
+
+    '-- 6. Rotate history — prepend new entry, trim to MAX_HISTORY ----------
+    Dim existingItems As Variant
+    existingItems = personDoc.GetItemValue("LoginHistory")
+
+    Dim newHistory() As String
+    ReDim newHistory(MAX_HISTORY - 1)
+    newHistory(0) = entry
+
+    Dim i As Integer
+    Dim filled As Integer
+    filled = 1
+    For i = 0 To UBound(existingItems)
+        If filled >= MAX_HISTORY Then Exit For
+        Dim existingVal As String
+        existingVal = CStr(existingItems(i))
+        If existingVal <> "" Then
+            newHistory(filled) = existingVal
+            filled = filled + 1
+        End If
+    Next i
+
+    ' Trim unused slots
+    ReDim Preserve newHistory(filled - 1)
+
+    '-- 7. Write fields back to Person document -----------------------------
+    Call personDoc.ReplaceItemValue("LoginHistory", newHistory)
+    Call personDoc.ReplaceItemValue("LoginHistoryUpdated", Now())
+    Call personDoc.Save(True, False)
+
+    '-- 8. Optional: send email notification --------------------------------
+    If SEND_EMAIL_ON_NEW_ATTEMPT Then
+        Call SendNotificationEmail(session, namesDb, personDoc, entry, ipAddress)
+    End If
+
+    '-- 9. Clean up ---------------------------------------------------------
+    Call usersView.Recycle()
+    Call personDoc.Recycle()
+    Call namesDb.Recycle()
+
+    Call RespondOk()
+    Exit Sub
+
+ErrorHandler:
+    Print "Content-type: text/plain"
+    Print ""
+    Print "ERROR " & Err & ": " & Error$
+    Resume Next
+End Sub
+
+'===========================================================================
+' RespondOk  — writes a minimal HTTP 200 response body
+'===========================================================================
+Sub RespondOk()
+    Print "Content-type: text/plain"
+    Print ""
+    Print "OK"
+End Sub
+
+'===========================================================================
+' GetField  — safely retrieves a single text value from a CGI / POST doc
+'===========================================================================
+Function GetField(doc As NotesDocument, fieldName As String) As String
+    On Error Resume Next
+    Dim val As Variant
+    val = doc.GetItemValue(fieldName)
+    If IsArray(val) Then
+        If UBound(val) >= 0 Then
+            GetField = CStr(val(0))
+        Else
+            GetField = ""
+        End If
+    Else
+        GetField = CStr(val)
+    End If
+    On Error GoTo 0
+End Function
+
+'===========================================================================
+' SendNotificationEmail
+' Sends a memo to the user with details of the new login attempt.
+' Only called if SEND_EMAIL_ON_NEW_ATTEMPT = True.
+'===========================================================================
+Sub SendNotificationEmail(session As NotesSession, namesDb As NotesDatabase, _
+                          personDoc As NotesDocument, entry As String, ip As String)
+    On Error GoTo EmailError
+
+    Dim mailDb As NotesDatabase
+    Dim mailFile As String
+    mailFile = CStr(personDoc.GetItemValue("MailFile")(0))
+    Dim mailServer As String
+    mailServer = CStr(personDoc.GetItemValue("MailServer")(0))
+
+    If mailFile = "" Then Exit Sub
+
+    Set mailDb = New NotesDatabase(mailServer, mailFile)
+    If Not mailDb.IsOpen Then Call mailDb.Open(mailServer, mailFile)
+    If Not mailDb.IsOpen Then Exit Sub
+
+    Dim memo As NotesDocument
+    Set memo = mailDb.CreateDocument()
+
+    Call memo.ReplaceItemValue("Form", "Memo")
+    Call memo.ReplaceItemValue("Subject", EMAIL_SUBJECT)
+
+    Dim recipient As String
+    recipient = CStr(personDoc.GetItemValue("InternetAddress")(0))
+    If recipient = "" Then
+        recipient = CStr(personDoc.GetItemValue("FullName")(0))
+    End If
+    Call memo.ReplaceItemValue("SendTo", recipient)
+
+    Dim parts() As String
+    parts = Split(entry, "|")
+    Dim body As String
+    body = "A new login attempt was recorded for your account." & Chr(10) & Chr(10)
+    If UBound(parts) >= 1 Then body = body & "Time      : " & parts(0) & Chr(10)
+    If UBound(parts) >= 1 Then body = body & "IP Address: " & parts(1) & Chr(10)
+    If UBound(parts) >= 3 Then body = body & "Browser   : " & parts(3) & Chr(10)
+    If UBound(parts) >= 4 Then body = body & "Platform  : " & parts(4) & Chr(10)
+    If UBound(parts) >= 5 Then body = body & "Timezone  : " & parts(5) & Chr(10)
+    body = body & Chr(10) & "If this was not you, please contact IT Support immediately."
+
+    Dim bodyItem As NotesRichTextItem
+    Set bodyItem = memo.CreateRichTextItem("Body")
+    Call bodyItem.AppendText(body)
+
+    Call memo.Send(False)
+    Call mailDb.Recycle()
+    Exit Sub
+
+EmailError:
+    ' Email failure is non-fatal — log and continue
+    Print "Email notification failed: " & Err & " " & Error$
+    Resume Next
+End Sub

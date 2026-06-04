@@ -97,8 +97,8 @@ Option 4: Hide logo
     <script>
     const CONFIG = {
         // Version info - displayed at bottom of page
-        version: "2.3.0",
-        versionDate: "2026-05-19",
+        version: "2.4.0",
+        versionDate: "2026-06-04",
         
         // =====================================================================
         // COMPANY BRANDING
@@ -304,7 +304,90 @@ Option 4: Hide logo
             enableKeyboardShortcuts: true,       // Keyboard shortcuts (Alt+U, Alt+P)
             enableAnimations: true,              // UI animations
             enableTranslations: true,            // Multi-language support
-            enableCaptcha: true                  // CAPTCHA verification
+            enableCaptcha: true,                 // CAPTCHA verification
+            enableMFA: false,                    // TOTP multi-factor authentication (Domino 12.0.1+)
+            enableLoginTracking: false           // Log login attempts to Person document
+        },
+
+        // =====================================================================
+        // MFA / TOTP SETTINGS  (Requires Domino 12.0.1+ with MFA enabled)
+        // =====================================================================
+        // HOW IT WORKS:
+        //   1. User enters username + password → clicks Sign In
+        //   2. If features.enableMFA = true, a TOTP screen appears
+        //   3. User enters 6-digit code from their authenticator app
+        //   4. Form submits all three values to Domino's /names.nsf?Login
+        //
+        // DOMINO SERVER SETUP (required before enabling):
+        //   - Enable MFA in: Domino Administrator → Security → MFA
+        //   - Note the "OTP Field Name" configured on the server
+        //   - Set that same name in mfa.totpFieldName below
+        //   - Users must enroll their authenticator app via the
+        //     Domino self-service URL (e.g. /names.nsf?MFASetup)
+        // =====================================================================
+        mfa: {
+            // Master switch - set to true after Domino MFA is configured
+            enable: false,
+
+            // Field name that Domino's web auth handler expects for the OTP code.
+            // MUST match what is configured in your Domino MFA settings.
+            // Common values: "OTPToken", "$$OTPCode", "TOTPCode"
+            // Check: Domino Admin → Security → Multi-Factor Authentication → Web Field Name
+            totpFieldName: "OTPToken",
+
+            // TOTP time window in seconds (must match server, default = 30)
+            totpWindow: 30,
+
+            // Auto-submit form when user enters all 6 digits
+            autoSubmit: true,
+
+            // Show countdown ring (time remaining on current code)
+            showTimer: true,
+
+            // UI text (override as needed)
+            promptTitle: "Two-Factor Authentication",
+            promptSubtitle: "Enter the 6-digit code from your authenticator app",
+            backupText: "Can't access your authenticator?",
+            backupLinkText: "Contact IT Support",
+            backupLinkUrl: "mailto:itsupport@yourorg.com",
+            verifyButtonText: "Verify Code",
+            backButtonText: "\u2190 Back to Login"
+        },
+
+        // =====================================================================
+        // LOGIN ATTEMPT TRACKING
+        // =====================================================================
+        // HOW IT WORKS:
+        //   1. Before each login attempt, client-side browser info is collected
+        //      (timestamp, user-agent, timezone, screen, language)
+        //   2. An async POST is fired to a Domino agent (agentUrl below)
+        //   3. The agent reads the real IP from HTTP headers and updates
+        //      the Person document in names.nsf with the last N attempts
+        //   4. The last login info is also saved in localStorage and shown
+        //      as a "Last login" banner on the next page load
+        //
+        // AGENT SETUP (see docs/LotusScript/LoginTracker.lss for full code):
+        //   - Create an agent in DOMCFG.NSF named "LogLoginAttempt"
+        //   - Run as: Web user / anonymous (no auth required)
+        //   - Trigger: Web - REST style (receives form POST)
+        //   - The agent updates names.nsf Person document field: LoginHistory
+        //
+        // Person Document field format (multi-value, last 5 entries):
+        //   LoginHistory[0] = "2026-06-04T12:30:00Z|192.168.1.5|ATTEMPT|Chrome 125|Windows 11|Asia/Kolkata"
+        //   LoginHistory[1] = "2026-06-03T09:15:00Z|192.168.1.5|FAILED |Firefox 126|macOS 14|Asia/Kolkata"
+        // =====================================================================
+        loginTracking: {
+            enable: false,
+
+            // URL of the LotusScript tracking agent in DOMCFG.NSF
+            // Must allow anonymous access; receives the POST data
+            agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
+
+            // Maximum login attempts to retain in Person document
+            maxHistory: 5,
+
+            // Also track client-side validation failures (wrong CAPTCHA etc.)
+            trackValidationFailures: false
         },
         
         // =====================================================================
@@ -335,7 +418,7 @@ Option 4: Hide logo
             enableAudio: true,
             maxAttempts: 3
         },
-        
+
         // =====================================================================
         // TRANSLATIONS (i18n)
         // =====================================================================
@@ -1541,6 +1624,74 @@ Option 4: Hide logo
             }
         }
         
+        /* ===== MFA / TOTP Step ===== */
+        .mfa-step { display: none; padding: 8px 0 4px; animation: slideUp 0.35s ease-out; }
+        .mfa-step.visible { display: block; }
+        .credentials-step.hidden { display: none; }
+
+        .mfa-header { text-align: center; margin-bottom: 20px; }
+        .mfa-icon-ring { font-size: 2.5rem; line-height: 1; margin-bottom: 10px; }
+        .mfa-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 6px; }
+        .mfa-subtitle { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+
+        /* Countdown ring */
+        .totp-timer-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+        .totp-ring-svg { width: 72px; height: 72px; transform: rotate(-90deg); }
+        .totp-ring-bg { fill: none; stroke: var(--input-border); stroke-width: 6; }
+        .totp-ring-fill { fill: none; stroke: var(--primary-color); stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 213.6;   /* 2π × 34 */
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear, stroke 0.5s ease; }
+        .totp-ring-fill.warning { stroke: var(--warning-color, #f59e0b); }
+        .totp-ring-fill.urgent  { stroke: var(--error-color,   #dc3545); }
+        .totp-ring-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+        .totp-timer-wrap-inner { position: relative; width: 72px; height: 72px; }
+
+        /* TOTP code input — large digits */
+        .totp-input-group { margin-bottom: 18px; }
+        .totp-input {
+            width: 100%; padding: 16px 12px; border: 2px solid var(--input-border);
+            border-radius: 12px; font-size: 2rem; font-weight: 700; letter-spacing: 0.5em;
+            text-align: center; background: var(--input-bg); color: var(--text-primary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .totp-input:focus { border-color: var(--primary-color); outline: none;
+            box-shadow: 0 0 0 3px rgba(0,102,204,0.18); }
+        .totp-input.filled { border-color: var(--success-color, #28a745); }
+        .totp-hint { font-size: 0.78rem; color: var(--text-secondary); text-align: center; margin-top: 6px; }
+        .totp-error { color: var(--error-color); font-size: 0.85rem; text-align: center;
+            margin-top: 6px; min-height: 1.2em; }
+        [data-theme="dark"] .totp-input { background: rgba(255,255,255,0.07); color: #e4e4e7; border-color: rgba(255,255,255,0.2); }
+
+        .mfa-back-btn { background: none; border: none; color: var(--primary-color);
+            cursor: pointer; font-size: 0.875rem; padding: 10px 0; width: 100%;
+            text-align: center; margin-top: 8px; text-decoration: underline; }
+        .mfa-back-btn:hover { color: var(--primary-hover); }
+        .mfa-support { text-align: center; font-size: 0.8rem; color: var(--text-secondary);
+            margin-top: 12px; }
+        .mfa-support-link { color: var(--primary-color); }
+
+        /* ===== Last Login Banner ===== */
+        .last-login-banner {
+            display: none; margin-bottom: 16px;
+            background: var(--input-bg); border: 1px solid var(--input-border);
+            border-radius: 10px; padding: 10px 14px;
+            font-size: 0.78rem; color: var(--text-secondary);
+        }
+        .last-login-banner.visible { display: block; }
+        .last-login-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
+            font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+        .last-login-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+        .last-login-row { display: flex; align-items: baseline; gap: 4px; }
+        .last-login-label { color: var(--text-secondary); font-size: 0.72rem; white-space: nowrap; }
+        .last-login-val { color: var(--text-primary); font-weight: 500; font-size: 0.78rem;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+        .last-login-status-ok  { color: #28a745; font-weight: 700; }
+        .last-login-status-fail{ color: #dc3545; font-weight: 700; }
+        [data-theme="dark"] .last-login-banner { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+
         /* ===== Top Bar (Theme Toggle) ===== */
         .top-bar {
             position: fixed;
@@ -1820,9 +1971,42 @@ Option 4: Hide logo
                     <span>⚠️</span>
                     <span class="warning-message" id="warningMessage"></span>
                 </div>
-                
-                <!-- Login Form -->
+
+                <!-- Last Login Banner (shown on next visit if login tracking enabled) -->
+                <div class="last-login-banner" id="lastLoginBanner" role="note" aria-label="Previous login information">
+                    <div class="last-login-title">
+                        <span aria-hidden="true">🕐</span>
+                        <span>Last Login Attempt</span>
+                    </div>
+                    <div class="last-login-rows">
+                        <div class="last-login-row">
+                            <span class="last-login-label">Date:</span>
+                            <span class="last-login-val" id="llDate">—</span>
+                        </div>
+                        <div class="last-login-row">
+                            <span class="last-login-label">Status:</span>
+                            <span class="last-login-val" id="llStatus">—</span>
+                        </div>
+                        <div class="last-login-row">
+                            <span class="last-login-label">Browser:</span>
+                            <span class="last-login-val" id="llBrowser">—</span>
+                        </div>
+                        <div class="last-login-row">
+                            <span class="last-login-label">Timezone:</span>
+                            <span class="last-login-val" id="llTimezone">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Login Form — wraps both steps so hidden fields are always in the POST -->
                 <form class="login-form" id="loginForm" method="POST" action="/names.nsf?Login" autocomplete="on">
+
+                    <!-- Hidden TOTP field — populated just before form submit (name is configurable) -->
+                    <input type="hidden" id="totpHiddenField" name="OTPToken" value="">
+
+                    <!-- ── STEP 1: Credentials ──────────────────────────────── -->
+                    <div id="credentialsStep" class="credentials-step">
+
                     <!-- Username Field -->
                     <div class="form-group">
                         <label class="form-label" for="Username">
@@ -1970,6 +2154,72 @@ Option 4: Hide logo
                         <span class="button-text" id="buttonText">Sign In</span>
                         <span class="button-icon" id="buttonIcon">→</span>
                     </button>
+
+                    </div><!-- /#credentialsStep -->
+
+                    <!-- ── STEP 2: TOTP / MFA ─────────────────────────────────
+                         Shown after Step 1 validation passes when MFA is enabled.
+                         The totpHiddenField above is populated from totpCode before submit.
+                    ── -->
+                    <div id="mfaStep" class="mfa-step"
+                         role="region" aria-labelledby="mfaTitle">
+
+                        <div class="mfa-header">
+                            <div class="mfa-icon-ring" aria-hidden="true">🔐</div>
+                            <h2 class="mfa-title" id="mfaTitle">Two-Factor Authentication</h2>
+                            <p class="mfa-subtitle" id="mfaSubtitle">Enter the 6-digit code from your authenticator app</p>
+                        </div>
+
+                        <!-- Animated countdown ring (time remaining on current TOTP window) -->
+                        <div class="totp-timer-wrap" id="totpTimerWrap" aria-hidden="true">
+                            <div class="totp-timer-wrap-inner">
+                                <svg class="totp-ring-svg" viewBox="0 0 80 80">
+                                    <circle class="totp-ring-bg"   cx="40" cy="40" r="34"/>
+                                    <circle class="totp-ring-fill" cx="40" cy="40" r="34" id="totpRingFill"/>
+                                </svg>
+                                <span class="totp-ring-center" id="totpTimeDisplay">30</span>
+                            </div>
+                        </div>
+                        <!-- Screen-reader-only timer announcement -->
+                        <div class="sr-only" aria-live="polite" id="totpTimerSR"></div>
+
+                        <!-- 6-digit code input -->
+                        <div class="totp-input-group">
+                            <label for="totpCode" class="sr-only">6-digit authentication code from your authenticator app</label>
+                            <input type="text" id="totpCode"
+                                   class="totp-input"
+                                   inputmode="numeric"
+                                   maxlength="6"
+                                   pattern="[0-9]{6}"
+                                   autocomplete="one-time-code"
+                                   placeholder="· · · · · ·"
+                                   aria-label="Enter 6-digit code from your authenticator app"
+                                   aria-required="true"
+                                   aria-describedby="totpHint totpCodeError">
+                            <div class="totp-hint" id="totpHint">Code refreshes every 30 seconds</div>
+                            <div class="totp-error" id="totpCodeError" role="alert" aria-live="assertive"></div>
+                        </div>
+
+                        <!-- Verify button -->
+                        <button type="button" class="submit-button" id="verifyMfaBtn">
+                            <span class="button-text" id="verifyMfaText">Verify Code</span>
+                            <span class="button-icon">→</span>
+                        </button>
+
+                        <!-- Back to credentials -->
+                        <button type="button" class="mfa-back-btn" id="mfaBackBtn"
+                                aria-label="Go back to username and password">
+                            ← Back to Login
+                        </button>
+
+                        <!-- Support fallback -->
+                        <p class="mfa-support">
+                            <span id="mfaBackupText">Can't access your authenticator? </span>
+                            <a href="mailto:itsupport@yourorg.com" class="mfa-support-link" id="mfaSupportLink">Contact IT Support</a>
+                        </p>
+
+                    </div><!-- /#mfaStep -->
+
                 </form>
             </div>
             
@@ -2001,8 +2251,8 @@ Option 4: Hide logo
             Powered by <a href="https://www.hcl-software.com/domino" target="_blank" rel="noopener">HCL Domino</a>
         </p>
         <div class="version-info" id="versionInfo">
-            <span>Version <span id="versionNumber">2.3.0</span></span>
-            <span class="version-date" id="versionDate">2026-05-19</span>
+            <span>Version <span id="versionNumber">2.4.0</span></span>
+            <span class="version-date" id="versionDate">2026-06-04</span>
         </div>
     </footer>
     
@@ -2408,9 +2658,19 @@ Option 4: Hide logo
             console.log('[LoginForm] Validation initialized, CAPTCHA enabled:', CONFIG.features?.enableCaptcha);
             
             form.addEventListener('submit', function(e) {
-                console.log('[LoginForm] Submit triggered');
+                console.log('[LoginForm] Submit triggered, MFA active:', _mfaActive);
                 clearAllErrors();
-                
+
+                // If this submission was triggered by submitWithMFA() the _mfaActive
+                // flag is already cleared via the direct .submit() call path — so we
+                // only intercept the regular button click path here.
+                if (_mfaActive) {
+                    // Should not reach here normally — submitWithMFA handles it
+                    e.preventDefault();
+                    submitWithMFA();
+                    return false;
+                }
+
                 const username = document.getElementById('Username');
                 const password = document.getElementById('Password');
                 const submitBtn = document.getElementById('submitButton');
@@ -2470,19 +2730,35 @@ Option 4: Hide logo
                 if (!isValid) {
                     e.preventDefault();
                     e.stopPropagation();
-                    // Show the first error message in the main error container
                     const displayMsg = errorMessages.length > 0 ? errorMessages[0] : '❌ Please fix the errors before submitting.';
                     console.log('[LoginForm] Showing error:', displayMsg);
                     showError(displayMsg);
                     if (firstInvalidField) firstInvalidField.focus();
                     
-                    // Reset loading state
+                    // Optionally track validation failures
+                    if (CONFIG.loginTracking?.trackValidationFailures) {
+                        trackLoginAttempt({ validationFail: true }, null);
+                    }
+
                     resetSubmitButton();
                     return false;
                 }
-                
-                console.log('[LoginForm] All validations passed, submitting form');
-                return true;
+
+                // ── MFA intercept ────────────────────────────────────────────
+                // All credentials validated — if MFA is enabled, show TOTP step
+                // instead of submitting now. The form will be submitted from
+                // submitWithMFA() once the user enters their TOTP code.
+                if (CONFIG.features?.enableMFA && CONFIG.mfa?.enable) {
+                    e.preventDefault();
+                    resetSubmitButton();
+                    showMFAStep();
+                    return false;
+                }
+
+                // ── No MFA — track then submit ───────────────────────────────
+                e.preventDefault();
+                trackLoginAttempt({}, function() { form.submit(); });
+                return false;
             });
             
             // Clear errors on input
@@ -3213,6 +3489,8 @@ Option 4: Hide logo
             setupTranslations();
             setupCaptcha();
             setupWCAG();
+            setupMFA();
+            setupLoginTracking();
             
             // Real-time validation - enables submit only when all fields valid
             setupRealtimeValidation();
@@ -3221,6 +3499,270 @@ Option 4: Hide logo
             initErrorDismiss();
             initFormValidation();
             checkForDominoErrors();
+        }
+
+        // =====================================================================
+        // MFA / TOTP  (Section added v2.4.0)
+        // =====================================================================
+        var _totpTimerInterval = null;   // countdown interval handle
+        var _mfaActive = false;          // true while TOTP step is showing
+
+        function setupMFA() {
+            var cfg = CONFIG.mfa;
+            if (!CONFIG.features?.enableMFA || !cfg?.enable) return;
+
+            // Apply config text
+            var el = function(id) { return document.getElementById(id); };
+            if (cfg.promptTitle)    { var t = el('mfaTitle');    if (t) t.textContent = cfg.promptTitle; }
+            if (cfg.promptSubtitle) { var s = el('mfaSubtitle'); if (s) s.textContent = cfg.promptSubtitle; }
+            if (cfg.backupText)     { var b = el('mfaBackupText');   if (b) b.textContent = cfg.backupText + ' '; }
+            if (cfg.backupLinkText) { var l = el('mfaSupportLink');  if (l) { l.textContent = cfg.backupLinkText; l.href = cfg.backupLinkUrl || '#'; } }
+            if (cfg.backButtonText) { var bk = el('mfaBackBtn');     if (bk) bk.textContent = cfg.backButtonText; }
+            if (cfg.verifyButtonText){ var v = el('verifyMfaText');  if (v) v.textContent = cfg.verifyButtonText; }
+
+            // Rename hidden TOTP field to match server config
+            var hf = el('totpHiddenField');
+            if (hf && cfg.totpFieldName) hf.name = cfg.totpFieldName;
+
+            // Back button
+            var backBtn = el('mfaBackBtn');
+            if (backBtn) backBtn.addEventListener('click', hideMFAStep);
+
+            // Verify button
+            var verifyBtn = el('verifyMfaBtn');
+            if (verifyBtn) verifyBtn.addEventListener('click', submitWithMFA);
+
+            // TOTP input — auto-submit on 6 digits
+            var totpInput = el('totpCode');
+            if (totpInput) {
+                totpInput.addEventListener('input', function() {
+                    var val = this.value.replace(/\D/g, '').slice(0, 6);
+                    this.value = val;
+                    this.classList.toggle('filled', val.length === 6);
+                    if (val.length === 6 && cfg.autoSubmit) submitWithMFA();
+                });
+                totpInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); submitWithMFA(); }
+                });
+            }
+        }
+
+        function showMFAStep() {
+            var cfg = CONFIG.mfa || {};
+            _mfaActive = true;
+
+            var credStep = document.getElementById('credentialsStep');
+            var mfaStep  = document.getElementById('mfaStep');
+            if (credStep) credStep.classList.add('hidden');
+            if (mfaStep)  { mfaStep.classList.add('visible'); }
+
+            // Focus TOTP input
+            setTimeout(function() {
+                var inp = document.getElementById('totpCode');
+                if (inp) { inp.value = ''; inp.focus(); }
+            }, 80);
+
+            // Start countdown ring
+            if (cfg.showTimer !== false) startTOTPTimer(cfg.totpWindow || 30);
+
+            srAnnounce('Two-factor authentication required. Please enter your 6-digit code.', 'polite');
+        }
+
+        function hideMFAStep() {
+            _mfaActive = false;
+            stopTOTPTimer();
+
+            var credStep = document.getElementById('credentialsStep');
+            var mfaStep  = document.getElementById('mfaStep');
+            if (credStep) credStep.classList.remove('hidden');
+            if (mfaStep)  mfaStep.classList.remove('visible');
+
+            var inp = document.getElementById('totpCode');
+            if (inp) { inp.value = ''; inp.classList.remove('filled'); }
+            document.getElementById('totpCodeError').textContent = '';
+
+            setTimeout(function() {
+                var u = document.getElementById('Username');
+                if (u) u.focus();
+            }, 80);
+        }
+
+        function submitWithMFA() {
+            var code = (document.getElementById('totpCode')?.value || '').trim();
+            var errorEl = document.getElementById('totpCodeError');
+
+            if (!/^[0-9]{6}$/.test(code)) {
+                if (errorEl) errorEl.textContent = '⚠️ Please enter a valid 6-digit code.';
+                srAnnounce('Invalid code. Please enter the 6-digit number from your authenticator.', 'assertive');
+                document.getElementById('totpCode')?.focus();
+                return;
+            }
+            if (errorEl) errorEl.textContent = '';
+
+            // Copy code into hidden field so it travels with the form POST
+            var hf = document.getElementById('totpHiddenField');
+            if (hf) hf.value = code;
+
+            // Track then submit
+            trackLoginAttempt({ mfa: true }, function() {
+                document.getElementById('loginForm')?.submit();
+            });
+        }
+
+        // ─── TOTP countdown ring ────────────────────────────────────────────
+        var TOTP_CIRCUMFERENCE = 2 * Math.PI * 34; // 213.6
+
+        function startTOTPTimer(windowSec) {
+            stopTOTPTimer();
+            var ring    = document.getElementById('totpRingFill');
+            var display = document.getElementById('totpTimeDisplay');
+            var srEl    = document.getElementById('totpTimerSR');
+
+            function tick() {
+                var now  = Math.floor(Date.now() / 1000);
+                var left = windowSec - (now % windowSec);
+                if (display) display.textContent = left;
+
+                // Ring progress
+                if (ring) {
+                    var offset = TOTP_CIRCUMFERENCE * (1 - left / windowSec);
+                    ring.style.strokeDashoffset = offset;
+                    ring.className = 'totp-ring-fill' +
+                        (left <= 5 ? ' urgent' : left <= 10 ? ' warning' : '');
+                }
+
+                // Announce to screen readers only on key thresholds
+                if (srEl && (left === 10 || left === 5)) {
+                    srEl.textContent = left + ' seconds remaining on current code.';
+                }
+            }
+            tick();
+            _totpTimerInterval = setInterval(tick, 1000);
+        }
+
+        function stopTOTPTimer() {
+            if (_totpTimerInterval) { clearInterval(_totpTimerInterval); _totpTimerInterval = null; }
+        }
+
+        // Stop timer when navigating away
+        window.addEventListener('pagehide', stopTOTPTimer);
+
+        // =====================================================================
+        // LOGIN ATTEMPT TRACKING  (Section added v2.4.0)
+        // =====================================================================
+        // Collects client-side browser fingerprint and POSTs to Domino agent.
+        // The agent (see docs/LotusScript/LoginTracker.lss) reads the real IP
+        // from HTTP headers and updates the Person document in names.nsf.
+        // Last attempt is also persisted in localStorage for the banner.
+        // =====================================================================
+
+        function setupLoginTracking() {
+            if (!CONFIG.features?.enableLoginTracking && !CONFIG.loginTracking?.enable) return;
+            showLastLoginBanner();
+        }
+
+        // Collect browser fingerprint — no PII, no passwords
+        function buildAttemptPayload(extra) {
+            var ua = navigator.userAgent;
+            var browser = detectBrowser(ua);
+            return {
+                ts:     new Date().toISOString(),
+                tz:     Intl.DateTimeFormat().resolvedOptions().timeZone,
+                lang:   navigator.language,
+                scr:    screen.width + 'x' + screen.height,
+                browser: browser,
+                platform: (navigator.userAgentData?.platform || navigator.platform || '').substring(0, 30),
+                mfa:    extra?.mfa ? '1' : '0',
+                status: 'ATTEMPT'   // server agent may update to SUCCESS/FAILED
+            };
+        }
+
+        function detectBrowser(ua) {
+            if (/Edg\//i.test(ua))    return 'Edge';
+            if (/OPR\//i.test(ua))    return 'Opera';
+            if (/Chrome\//i.test(ua)) return 'Chrome';
+            if (/Firefox\//i.test(ua))return 'Firefox';
+            if (/Safari\//i.test(ua)) return 'Safari';
+            return 'Browser';
+        }
+
+        // Fire-and-forget POST to the tracking agent, then run callback
+        function trackLoginAttempt(extra, callback) {
+            var cfg = CONFIG.loginTracking || {};
+            if (!CONFIG.features?.enableLoginTracking && !cfg.enable) {
+                if (callback) callback();
+                return;
+            }
+
+            var payload = buildAttemptPayload(extra);
+
+            // Save to localStorage for "last login" banner on next visit
+            try { localStorage.setItem('lastLoginAttempt', JSON.stringify(payload)); } catch (e) {}
+
+            var agentUrl = cfg.agentUrl || '/domcfg.nsf/LogLoginAttempt?OpenAgent';
+            var body = Object.keys(payload).map(function(k) {
+                return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
+            }).join('&');
+            body += '&username=' + encodeURIComponent(
+                document.getElementById('Username')?.value || '');
+
+            // Send async — do not block form submission
+            if (typeof fetch !== 'undefined') {
+                fetch(agentUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body,
+                    keepalive: true    // survives page navigation
+                }).catch(function() {});
+            } else {
+                // XHR fallback (IE11)
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', agentUrl, true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.send(body);
+            }
+
+            if (callback) callback();
+        }
+
+        // Show last login banner from localStorage
+        function showLastLoginBanner() {
+            var banner = document.getElementById('lastLoginBanner');
+            if (!banner) return;
+            var raw;
+            try { raw = localStorage.getItem('lastLoginAttempt'); } catch (e) { return; }
+            if (!raw) return;
+
+            var d;
+            try { d = JSON.parse(raw); } catch (e) { return; }
+
+            var fmt = function(iso) {
+                try {
+                    return new Date(iso).toLocaleString(navigator.language, {
+                        year: 'numeric', month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                } catch (e) { return iso; }
+            };
+
+            var setVal = function(id, val) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = val || '—';
+            };
+
+            setVal('llDate',     fmt(d.ts));
+            setVal('llBrowser',  d.browser + (d.platform ? ' / ' + d.platform : ''));
+            setVal('llTimezone', d.tz || '—');
+
+            var statusEl = document.getElementById('llStatus');
+            if (statusEl) {
+                var st = (d.status || 'ATTEMPT').toUpperCase();
+                statusEl.textContent = st;
+                statusEl.className = 'last-login-val ' +
+                    (st === 'SUCCESS' ? 'last-login-status-ok' : 'last-login-status-fail');
+            }
+
+            banner.classList.add('visible');
         }
         
         // =====================================================================

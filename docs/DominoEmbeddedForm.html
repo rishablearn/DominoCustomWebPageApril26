@@ -80,8 +80,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
      */
     const DominoLoginConfig = {
         // Version info - displayed at bottom of page
-        version: "2.3.0",
-        versionDate: "2026-05-19",
+        version: "2.4.0",
+        versionDate: "2026-06-04",
         
         branding: {
             companyName: "Your Company Name",
@@ -196,7 +196,39 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             enableKeyboardShortcuts: true,       // Keyboard shortcuts
             showQuickLinks: true,                // Quick links section
             enableTranslations: true,            // Multi-language support
-            enableCaptcha: true                  // CAPTCHA verification
+            enableCaptcha: true,                 // CAPTCHA verification
+            enableMFA: false,                    // TOTP multi-factor authentication (Domino 12.0.1+)
+            enableLoginTracking: false           // Log login attempts to Person document
+        },
+
+        // =====================================================================
+        // MFA / TOTP SETTINGS  (Requires Domino 12.0.1+ with MFA enabled)
+        // See docs/LotusScript/LoginTracker.lss and README.md for setup
+        // =====================================================================
+        mfa: {
+            enable: false,
+            totpFieldName: "OTPToken",
+            totpWindow: 30,
+            autoSubmit: true,
+            showTimer: true,
+            promptTitle: "Two-Factor Authentication",
+            promptSubtitle: "Enter the 6-digit code from your authenticator app",
+            backupText: "Can't access your authenticator?",
+            backupLinkText: "Contact IT Support",
+            backupLinkUrl: "mailto:itsupport@yourorg.com",
+            verifyButtonText: "Verify Code",
+            backButtonText: "\u2190 Back to Login"
+        },
+
+        // =====================================================================
+        // LOGIN ATTEMPT TRACKING
+        // See docs/LotusScript/LoginTracker.lss and README.md for agent setup
+        // =====================================================================
+        loginTracking: {
+            enable: false,
+            agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
+            maxHistory: 5,
+            trackValidationFailures: false
         },
         session: {
             warningMinutes: 25,
@@ -217,9 +249,9 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         // CAPTCHA SETTINGS
         // =====================================================================
         captcha: {
-            type: "math",                        // "math" = accessible math CAPTCHA
-            difficulty: "easy",                  // easy, medium, hard
-            enableAudio: true,                   // Audio CAPTCHA for accessibility
+            type: "math",
+            difficulty: "easy",
+            enableAudio: true,
             maxAttempts: 3,
             labels: {
                 title: "Security Verification",
@@ -1525,6 +1557,58 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
     /* Body-level screen-reader live region styles */
     .sr-live-polite, .sr-live-assertive { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     
+    /* ===== MFA / TOTP Step ===== */
+    .mfa-step { display: none; padding: 8px 0 4px; }
+    .mfa-step.visible { display: block; }
+    .credentials-step.hidden { display: none; }
+    .mfa-header { text-align: center; margin-bottom: 20px; }
+    .mfa-icon-ring { font-size: 2.5rem; line-height: 1; margin-bottom: 10px; }
+    .mfa-title { font-size: 1.25rem; font-weight: 700; color: var(--text-primary); margin: 0 0 6px; }
+    .mfa-subtitle { font-size: 0.85rem; color: var(--text-secondary); margin: 0; }
+    .totp-timer-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+    .totp-ring-svg { width: 72px; height: 72px; transform: rotate(-90deg); }
+    .totp-ring-bg { fill: none; stroke: var(--input-border); stroke-width: 6; }
+    .totp-ring-fill { fill: none; stroke: var(--primary-color); stroke-width: 6; stroke-linecap: round;
+        stroke-dasharray: 213.6; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear, stroke 0.5s ease; }
+    .totp-ring-fill.warning { stroke: var(--warning-color, #f59e0b); }
+    .totp-ring-fill.urgent  { stroke: var(--error-color, #dc3545); }
+    .totp-ring-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+        font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+    .totp-timer-wrap-inner { position: relative; width: 72px; height: 72px; }
+    .totp-input-group { margin-bottom: 18px; }
+    .totp-input { width: 100%; padding: 16px 12px; border: 2px solid var(--input-border);
+        border-radius: 12px; font-size: 2rem; font-weight: 700; letter-spacing: 0.5em;
+        text-align: center; background: var(--input-bg, #f8f9fa); color: var(--text-primary);
+        transition: border-color 0.2s, box-shadow 0.2s; box-sizing: border-box; }
+    .totp-input:focus { border-color: var(--primary-color); outline: none; box-shadow: 0 0 0 3px rgba(0,102,204,0.18); }
+    .totp-input.filled { border-color: var(--success-color, #28a745); }
+    .totp-hint { font-size: 0.78rem; color: var(--text-secondary); text-align: center; margin-top: 6px; }
+    .totp-error { color: var(--error-color, #dc3545); font-size: 0.85rem; text-align: center;
+        margin-top: 6px; min-height: 1.2em; }
+    [data-theme="dark"] .totp-input { background: rgba(255,255,255,0.07); color: #e4e4e7; border-color: rgba(255,255,255,0.2); }
+    .mfa-back-btn { background: none; border: none; color: var(--primary-color); cursor: pointer;
+        font-size: 0.875rem; padding: 10px 0; width: 100%; text-align: center;
+        margin-top: 8px; text-decoration: underline; }
+    .mfa-support { text-align: center; font-size: 0.8rem; color: var(--text-secondary); margin-top: 12px; }
+    .mfa-support-link { color: var(--primary-color); }
+    /* ===== Last Login Banner ===== */
+    .last-login-banner { display: none; margin-bottom: 16px; background: var(--input-bg, #f8f9fa);
+        border: 1px solid var(--input-border); border-radius: 10px; padding: 10px 14px;
+        font-size: 0.78rem; color: var(--text-secondary); }
+    .last-login-banner.visible { display: block; }
+    .last-login-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
+        font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
+    .last-login-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
+    .last-login-row { display: flex; align-items: baseline; gap: 4px; }
+    .last-login-label { color: var(--text-secondary); font-size: 0.72rem; white-space: nowrap; }
+    .last-login-val { color: var(--text-primary); font-weight: 500; font-size: 0.78rem;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+    .last-login-status-ok   { color: #28a745; font-weight: 700; }
+    .last-login-status-fail { color: #dc3545; font-weight: 700; }
+    [data-theme="dark"] .last-login-banner { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
+    @media (prefers-reduced-motion: reduce) { .totp-ring-fill { transition: none; } }
+    @media (forced-colors: active) { .totp-input:focus, .totp-input.filled { outline: 3px solid ButtonText; } }
+
     /* WCAG 2.1 - Skip Link */
     .skip-link { position: absolute; top: -40px; left: 0; background: var(--primary-color); color: white; padding: 12px 24px; z-index: 9999; text-decoration: none; font-weight: 600; border-radius: 0 0 8px 0; transition: top 0.3s; }
     .skip-link:focus { top: 0; }
@@ -1652,11 +1736,15 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 </div>
             </div>
             
-            <!-- Login Form -->
+            <!-- Login Form — wraps both steps -->
             <form id="loginForm" method="POST" action="/names.nsf?Login" autocomplete="on">
                 <input type="hidden" name="RedirectTo" id="RedirectTo" value="/">
                 <input type="hidden" name="reasontype" id="reasontype" value="">
-                
+                <input type="hidden" id="totpHiddenField" name="OTPToken" value="">
+
+                <!-- STEP 1: Credentials -->
+                <div id="credentialsStep">
+
                 <!-- Username -->
                 <div class="form-group">
                     <label for="Username" class="form-label" id="usernameLabel">
@@ -1702,6 +1790,17 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     </div>
                 </div>
                 
+                <!-- Last Login Banner -->
+                <div class="last-login-banner" id="lastLoginBanner" role="note" aria-label="Previous login information">
+                    <div class="last-login-title"><span aria-hidden="true">🕐</span><span>Last Login Attempt</span></div>
+                    <div class="last-login-rows">
+                        <div class="last-login-row"><span class="last-login-label">Date:</span><span class="last-login-val" id="llDate">—</span></div>
+                        <div class="last-login-row"><span class="last-login-label">Status:</span><span class="last-login-val" id="llStatus">—</span></div>
+                        <div class="last-login-row"><span class="last-login-label">Browser:</span><span class="last-login-val" id="llBrowser">—</span></div>
+                        <div class="last-login-row"><span class="last-login-label">Timezone:</span><span class="last-login-val" id="llTimezone">—</span></div>
+                    </div>
+                </div>
+
                 <!-- Options Row -->
                 <div class="form-options" id="formOptions" style="display: none;">
                     <label class="checkbox-label" id="rememberMeContainer">
@@ -1764,7 +1863,47 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                         <div class="captcha-error" id="captchaError" role="alert">Incorrect answer, please try again</div>
                     </div>
                 
+                    </div><!-- /#credentialsStep -->
+
+                    <!-- STEP 2: TOTP / MFA -->
+                    <div id="mfaStep" class="mfa-step" role="region" aria-labelledby="mfaTitle">
+                        <div class="mfa-header">
+                            <div class="mfa-icon-ring" aria-hidden="true">🔐</div>
+                            <h2 class="mfa-title" id="mfaTitle">Two-Factor Authentication</h2>
+                            <p class="mfa-subtitle" id="mfaSubtitle">Enter the 6-digit code from your authenticator app</p>
+                        </div>
+                        <div class="totp-timer-wrap" id="totpTimerWrap" aria-hidden="true">
+                            <div class="totp-timer-wrap-inner">
+                                <svg class="totp-ring-svg" viewBox="0 0 80 80">
+                                    <circle class="totp-ring-bg" cx="40" cy="40" r="34"/>
+                                    <circle class="totp-ring-fill" cx="40" cy="40" r="34" id="totpRingFill"/>
+                                </svg>
+                                <span class="totp-ring-center" id="totpTimeDisplay">30</span>
+                            </div>
+                        </div>
+                        <div class="sr-only" aria-live="polite" id="totpTimerSR"></div>
+                        <div class="totp-input-group">
+                            <label for="totpCode" class="sr-only">6-digit authentication code</label>
+                            <input type="text" id="totpCode" class="totp-input"
+                                   inputmode="numeric" maxlength="6" pattern="[0-9]{6}"
+                                   autocomplete="one-time-code" placeholder="· · · · · ·"
+                                   aria-label="Enter 6-digit code from your authenticator app"
+                                   aria-required="true" aria-describedby="totpHint totpCodeError">
+                            <div class="totp-hint" id="totpHint">Code refreshes every 30 seconds</div>
+                            <div class="totp-error" id="totpCodeError" role="alert" aria-live="assertive"></div>
+                        </div>
+                        <button type="button" class="submit-btn" id="verifyMfaBtn" style="width:100%;margin-bottom:8px;">
+                            <span class="btn-text" id="verifyMfaText">Verify Code</span>
+                        </button>
+                        <button type="button" class="mfa-back-btn" id="mfaBackBtn">&#8592; Back to Login</button>
+                        <p class="mfa-support">
+                            <span id="mfaBackupText">Can't access your authenticator? </span>
+                            <a href="mailto:itsupport@yourorg.com" class="mfa-support-link" id="mfaSupportLink">Contact IT Support</a>
+                        </p>
+                    </div><!-- /#mfaStep -->
+
                 <!-- Submit Button - Disabled until validation passes -->
+                <div id="credentialsSubmitWrap">
                 <button type="submit" class="submit-btn" id="submitBtn" disabled>
                     <span class="btn-text" id="btnText">Sign In</span>
                     <span class="btn-loader" id="btnLoader" style="display: none;">
@@ -1777,6 +1916,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                         <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                 </button>
+                </div><!-- /#credentialsSubmitWrap -->
+
             </form>
             
             <!-- Security Notice -->
@@ -1800,8 +1941,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 <strong>HCL Domino</strong>
             </div>
             <div class="version-info" id="versionInfo">
-                <span>Version <span id="versionNumber">2.3.0</span></span>
-                <span class="version-date" id="versionDate">2026-05-19</span>
+                <span>Version <span id="versionNumber">2.4.0</span></span>
+                <span class="version-date" id="versionDate">2026-06-04</span>
             </div>
         </footer>
     </div>
@@ -2042,74 +2183,68 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             
             // Single unified submit handler
             form.addEventListener('submit', function(e) {
-                console.log('[LoginForm] Submit triggered');
+                console.log('[LoginForm] Submit triggered, MFA active:', _mfaActive);
                 clearAllErrors();
-                
+
+                if (_mfaActive) {
+                    e.preventDefault();
+                    submitWithMFA();
+                    return false;
+                }
+
                 const username = document.getElementById('Username');
                 const password = document.getElementById('Password');
                 let isValid = true;
                 let firstInvalidField = null;
                 let errorMessages = [];
-                
-                // Validate username
+
                 if (!username || !username.value.trim()) {
                     const msg = c.errorMessages?.emptyUsername || '👤 Please enter your username';
-                    showFieldError('Username', msg);
-                    errorMessages.push(msg);
-                    if (!firstInvalidField) firstInvalidField = username;
-                    isValid = false;
+                    showFieldError('Username', msg); errorMessages.push(msg);
+                    if (!firstInvalidField) firstInvalidField = username; isValid = false;
                 }
-                
-                // Validate password
                 if (!password || !password.value) {
                     const msg = c.errorMessages?.emptyPassword || '🔑 Please enter your password';
-                    showFieldError('Password', msg);
-                    errorMessages.push(msg);
-                    if (!firstInvalidField) firstInvalidField = password;
-                    isValid = false;
+                    showFieldError('Password', msg); errorMessages.push(msg);
+                    if (!firstInvalidField) firstInvalidField = password; isValid = false;
                 }
-                
-                // Validate password length
-                const minPwdLen = c.passwordStrength?.minLength || c.form?.minPasswordLength || 8;
+                const minPwdLen = c.passwordStrength?.minLength || 8;
                 if (password && password.value && password.value.length < minPwdLen) {
                     const msg = c.errorMessages?.shortPassword || '📏 Password must be at least ' + minPwdLen + ' characters';
-                    showFieldError('Password', msg);
-                    errorMessages.push(msg);
-                    if (!firstInvalidField) firstInvalidField = password;
-                    isValid = false;
+                    showFieldError('Password', msg); errorMessages.push(msg);
+                    if (!firstInvalidField) firstInvalidField = password; isValid = false;
                 }
-                
-                // Validate CAPTCHA if enabled
                 if (c.features?.enableCaptcha) {
-                    console.log('[LoginForm] Validating CAPTCHA...');
                     const captchaResult = validateCaptchaInput();
-                    console.log('[LoginForm] CAPTCHA result:', captchaResult);
                     if (!captchaResult.valid) {
                         errorMessages.push(captchaResult.message);
                         if (!firstInvalidField) firstInvalidField = document.getElementById('captchaAnswer');
                         isValid = false;
                     }
                 }
-                
-                console.log('[LoginForm] Validation result - isValid:', isValid, 'errors:', errorMessages);
-                
-                // Show error message if validation failed
+
                 if (!isValid) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Show the first error message in the main error container
-                    const displayMsg = errorMessages.length > 0 ? errorMessages[0] : '❌ Please fix the errors before submitting.';
-                    console.log('[LoginForm] Showing error:', displayMsg);
+                    e.preventDefault(); e.stopPropagation();
+                    const displayMsg = errorMessages[0] || '❌ Please fix the errors before submitting.';
                     showError(displayMsg);
                     if (firstInvalidField) firstInvalidField.focus();
-                    
-                    // Reset loading state
+                    if (c.loginTracking?.trackValidationFailures) trackLoginAttempt({ validationFail: true }, null);
                     resetSubmitButton();
                     return false;
                 }
-                
-                console.log('[LoginForm] All validations passed, submitting form');
-                return true;
+
+                // MFA intercept
+                if (c.features?.enableMFA && c.mfa?.enable) {
+                    e.preventDefault();
+                    resetSubmitButton();
+                    showMFAStep();
+                    return false;
+                }
+
+                // Track then submit
+                e.preventDefault();
+                trackLoginAttempt({}, function() { form.submit(); });
+                return false;
             });
             
             // Clear errors on input
@@ -2860,18 +2995,202 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             initTranslations();
             initCaptcha();
             initWCAG();
-            
+            setupMFA();
+            setupLoginTracking();
+
             // Real-time validation - enables submit only when all fields valid
             setupRealtimeValidation();
-            
+
             // Error handling
             initErrorDismiss();
             initFormValidation();
             checkForErrors();
-            
+
             // Focus username
             const username = document.getElementById('Username');
             if (username && !username.value) setTimeout(function() { username.focus(); }, 100);
+        }
+
+        // =====================================================================
+        // MFA / TOTP
+        // =====================================================================
+        var _totpTimerInterval = null;
+        var _mfaActive = false;
+        var TOTP_CIRCUMFERENCE = 2 * Math.PI * 34;
+
+        function setupMFA() {
+            var cfg = DominoLoginConfig.mfa;
+            if (!DominoLoginConfig.features?.enableMFA || !cfg?.enable) return;
+            var el = function(id) { return document.getElementById(id); };
+            if (cfg.promptTitle)    { var t = el('mfaTitle');    if (t) t.textContent = cfg.promptTitle; }
+            if (cfg.promptSubtitle) { var s = el('mfaSubtitle'); if (s) s.textContent = cfg.promptSubtitle; }
+            if (cfg.backupText)     { var b = el('mfaBackupText'); if (b) b.textContent = cfg.backupText + ' '; }
+            if (cfg.backupLinkText) { var l = el('mfaSupportLink'); if (l) { l.textContent = cfg.backupLinkText; l.href = cfg.backupLinkUrl || '#'; } }
+            if (cfg.backButtonText) { var bk = el('mfaBackBtn'); if (bk) bk.textContent = cfg.backButtonText; }
+            if (cfg.verifyButtonText){ var v = el('verifyMfaText'); if (v) v.textContent = cfg.verifyButtonText; }
+            var hf = el('totpHiddenField');
+            if (hf && cfg.totpFieldName) hf.name = cfg.totpFieldName;
+            var backBtn = el('mfaBackBtn');
+            if (backBtn) backBtn.addEventListener('click', hideMFAStep);
+            var verifyBtn = el('verifyMfaBtn');
+            if (verifyBtn) verifyBtn.addEventListener('click', submitWithMFA);
+            var totpInput = el('totpCode');
+            if (totpInput) {
+                totpInput.addEventListener('input', function() {
+                    var val = this.value.replace(/\D/g, '').slice(0, 6);
+                    this.value = val;
+                    this.classList.toggle('filled', val.length === 6);
+                    if (val.length === 6 && cfg.autoSubmit) submitWithMFA();
+                });
+                totpInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); submitWithMFA(); }
+                });
+            }
+        }
+
+        function showMFAStep() {
+            var cfg = DominoLoginConfig.mfa || {};
+            _mfaActive = true;
+            var credStep = document.getElementById('credentialsStep');
+            var mfaStep  = document.getElementById('mfaStep');
+            var submitWrap = document.getElementById('credentialsSubmitWrap');
+            if (credStep)   credStep.classList.add('hidden');
+            if (submitWrap) submitWrap.style.display = 'none';
+            if (mfaStep)    mfaStep.classList.add('visible');
+            setTimeout(function() { var inp = document.getElementById('totpCode'); if (inp) { inp.value=''; inp.focus(); } }, 80);
+            if (cfg.showTimer !== false) startTOTPTimer(cfg.totpWindow || 30);
+            srAnnounce('Two-factor authentication required. Enter your 6-digit code.', 'polite');
+        }
+
+        function hideMFAStep() {
+            _mfaActive = false;
+            stopTOTPTimer();
+            var credStep = document.getElementById('credentialsStep');
+            var mfaStep  = document.getElementById('mfaStep');
+            var submitWrap = document.getElementById('credentialsSubmitWrap');
+            if (credStep)   credStep.classList.remove('hidden');
+            if (submitWrap) submitWrap.style.display = '';
+            if (mfaStep)    mfaStep.classList.remove('visible');
+            var inp = document.getElementById('totpCode');
+            if (inp) { inp.value = ''; inp.classList.remove('filled'); }
+            document.getElementById('totpCodeError').textContent = '';
+            setTimeout(function() { var u = document.getElementById('Username'); if (u) u.focus(); }, 80);
+        }
+
+        function submitWithMFA() {
+            var code = (document.getElementById('totpCode')?.value || '').trim();
+            var errorEl = document.getElementById('totpCodeError');
+            if (!/^[0-9]{6}$/.test(code)) {
+                if (errorEl) errorEl.textContent = '⚠️ Please enter a valid 6-digit code.';
+                srAnnounce('Invalid code. Please enter the 6-digit number.', 'assertive');
+                document.getElementById('totpCode')?.focus();
+                return;
+            }
+            if (errorEl) errorEl.textContent = '';
+            var hf = document.getElementById('totpHiddenField');
+            if (hf) hf.value = code;
+            trackLoginAttempt({ mfa: true }, function() { document.getElementById('loginForm')?.submit(); });
+        }
+
+        function startTOTPTimer(windowSec) {
+            stopTOTPTimer();
+            var ring = document.getElementById('totpRingFill');
+            var display = document.getElementById('totpTimeDisplay');
+            var srEl = document.getElementById('totpTimerSR');
+            function tick() {
+                var now = Math.floor(Date.now() / 1000);
+                var left = windowSec - (now % windowSec);
+                if (display) display.textContent = left;
+                if (ring) {
+                    ring.style.strokeDashoffset = TOTP_CIRCUMFERENCE * (1 - left / windowSec);
+                    ring.className = 'totp-ring-fill' + (left <= 5 ? ' urgent' : left <= 10 ? ' warning' : '');
+                }
+                if (srEl && (left === 10 || left === 5))
+                    srEl.textContent = left + ' seconds remaining on current code.';
+            }
+            tick();
+            _totpTimerInterval = setInterval(tick, 1000);
+        }
+        function stopTOTPTimer() {
+            if (_totpTimerInterval) { clearInterval(_totpTimerInterval); _totpTimerInterval = null; }
+        }
+        window.addEventListener('pagehide', stopTOTPTimer);
+
+        // =====================================================================
+        // LOGIN ATTEMPT TRACKING
+        // =====================================================================
+        function setupLoginTracking() {
+            var cfg = DominoLoginConfig.loginTracking || {};
+            if (!DominoLoginConfig.features?.enableLoginTracking && !cfg.enable) return;
+            showLastLoginBanner();
+        }
+        function buildAttemptPayload(extra) {
+            var ua = navigator.userAgent;
+            return {
+                ts: new Date().toISOString(),
+                tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                lang: navigator.language,
+                scr: screen.width + 'x' + screen.height,
+                browser: detectBrowserDE(ua),
+                platform: (navigator.userAgentData?.platform || navigator.platform || '').substring(0, 30),
+                mfa: extra?.mfa ? '1' : '0',
+                status: 'ATTEMPT'
+            };
+        }
+        function detectBrowserDE(ua) {
+            if (/Edg\//i.test(ua))    return 'Edge';
+            if (/OPR\//i.test(ua))    return 'Opera';
+            if (/Chrome\//i.test(ua)) return 'Chrome';
+            if (/Firefox\//i.test(ua))return 'Firefox';
+            if (/Safari\//i.test(ua)) return 'Safari';
+            return 'Browser';
+        }
+        function trackLoginAttempt(extra, callback) {
+            var cfg = DominoLoginConfig.loginTracking || {};
+            if (!DominoLoginConfig.features?.enableLoginTracking && !cfg.enable) {
+                if (callback) callback(); return;
+            }
+            var payload = buildAttemptPayload(extra);
+            try { localStorage.setItem('lastLoginAttempt', JSON.stringify(payload)); } catch (e) {}
+            var agentUrl = cfg.agentUrl || '/domcfg.nsf/LogLoginAttempt?OpenAgent';
+            var body = Object.keys(payload).map(function(k) {
+                return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
+            }).join('&');
+            body += '&username=' + encodeURIComponent(document.getElementById('Username')?.value || '');
+            if (typeof fetch !== 'undefined') {
+                fetch(agentUrl, { method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: body, keepalive: true }).catch(function() {});
+            } else {
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', agentUrl, true);
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                xhr.send(body);
+            }
+            if (callback) callback();
+        }
+        function showLastLoginBanner() {
+            var banner = document.getElementById('lastLoginBanner');
+            if (!banner) return;
+            var raw; try { raw = localStorage.getItem('lastLoginAttempt'); } catch (e) { return; }
+            if (!raw) return;
+            var d; try { d = JSON.parse(raw); } catch (e) { return; }
+            var fmt = function(iso) {
+                try { return new Date(iso).toLocaleString(navigator.language, {
+                    year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+                catch(e) { return iso; }
+            };
+            var setVal = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+            setVal('llDate', fmt(d.ts));
+            setVal('llBrowser', d.browser + (d.platform ? ' / ' + d.platform : ''));
+            setVal('llTimezone', d.tz || '—');
+            var statusEl = document.getElementById('llStatus');
+            if (statusEl) {
+                var st = (d.status || 'ATTEMPT').toUpperCase();
+                statusEl.textContent = st;
+                statusEl.className = 'last-login-val ' + (st === 'SUCCESS' ? 'last-login-status-ok' : 'last-login-status-fail');
+            }
+            banner.classList.add('visible');
         }
         
         if (document.readyState === 'loading') {
