@@ -146,9 +146,9 @@ Built-in support for:
 | German | `de` | LTR | Germany, Austria |
 | Arabic | `ar` | **RTL** | Middle East |
 | Hindi | `hi` | LTR | India |
-| Tamil | `ta` | LTR | India, Sri Lanka |
+| Tamil | `ta` | LTR | India |
 | Telugu | `te` | LTR | India |
-| Bengali | `bn` | LTR | India, Bangladesh |
+| Bengali | `bn` | LTR | India |
 | Marathi | `mr` | LTR | India |
 | Kannada | `kn` | LTR | India |
 | Malayalam | `ml` | LTR | India |
