@@ -54,7 +54,7 @@ Download or locate these files from this project:
 - `css/login.css` - Styling
 - `js/login.js` - Functionality
 - `i18n/translations.js` - Language translations
-- Your logo file (PNG, JPG, or GIF - **Domino does NOT support SVG**)
+- Your logo file (PNG, JPG, or GIF formats are supported)
 
 ---
 
@@ -424,7 +424,7 @@ For EACH file listed below, follow these steps:
 | 4 | `i18n/translations.js` | `translations.js` | Languages |
 | 5 | Your logo file (PNG, JPG, GIF) | `logo.png` | Logo image |
 
-**⚠️ NOTE:** Domino does NOT support SVG files. Use PNG, JPG, or GIF for logos.
+**Note:** PNG, JPG, or GIF formats are supported for logo files.
 
 #### Step 1.4.3: Rename Files If Needed
 
@@ -499,7 +499,7 @@ When you import files, Domino may not set the correct MIME type automatically fo
 | `logo.jpg` | `image/jpeg` | Usually auto-detected |
 
 **⚠️ IMPORTANT NOTES:**
-- Domino does NOT support SVG files. Use PNG, JPG, or GIF instead.
+- PNG, JPG, or GIF formats are recommended for image files.
 - The MIME type field is in the **Web Properties** tab, NOT the Basic tab!
 - If the Web Properties tab is empty, make sure you selected a file resource.
 
@@ -633,7 +633,7 @@ tell http restart
 - Limited customization options compared to separate config.js
 - Missing some advanced features (translations, etc.)
 
-**Recommendation:** Use Method 1 for production deployments.
+**Recommendation:** Method 1 is the recommended approach for deployments.
 
 ---
 
@@ -673,7 +673,7 @@ branding: {
 #### Change Logo
 
 1. First, import your logo as a file resource (see Step 1.4)
-2. Name it something like `company-logo.png` (Domino does NOT support SVG!)
+2. Name it something like `company-logo.png` (PNG, JPG, or GIF formats are recommended)
 3. In `config.js`, find:
 ```javascript
 logoUrl: "",  // Empty by default
@@ -681,7 +681,7 @@ logoUrl: "",  // Empty by default
 
 4. Change to:
 ```javascript
-logoUrl: "/domcfg.nsf/company-logo.png",  // PNG, JPG, or GIF only - NO SVG!
+logoUrl: "/domcfg.nsf/company-logo.png",  // PNG, JPG, or GIF formats
 ```
 
 **Important:** The URL must start with `/domcfg.nsf/` when the file is inside DOMCFG.NSF
@@ -943,7 +943,7 @@ Refused to apply style from 'https://server/domcfg.nsf/css/login.css'
 because its MIME type ('text/html') is not a supported stylesheet MIME type
 ```
 
-**Cause:** You used an HTML file with subfolder paths. Domino doesn't support subfolder paths for file resources.
+**Cause:** The HTML file references subfolder paths, which are not supported for file resources in this configuration.
 
 **Solution:** Use `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` instead - they have all CSS/JS inline, so no external files needed!
 
@@ -996,7 +996,7 @@ and strict MIME type checking is enabled.
 | `.jpg` files | `image/jpeg` |
 | `.gif` files | `image/gif` |
 
-**⚠️ Domino does NOT support SVG files. Use PNG, JPG, or GIF instead.**
+**PNG, JPG, or GIF formats are recommended for image files.**
 
 **Verify fix:** Open each file URL directly in browser - you should see the file content, not an error page.
 
@@ -1005,7 +1005,7 @@ and strict MIME type checking is enabled.
 **Solutions:**
 1. Verify logo file is imported as file resource
 2. Check URL path is correct: `/domcfg.nsf/your-logo.png`
-3. Check file format is supported (PNG, JPG, GIF - **NOT SVG**)
+3. Check file format: PNG, JPG, or GIF are supported
 4. Try opening the logo URL directly in browser
 
 ### Problem: Changes to config.js Not Taking Effect
@@ -1123,7 +1123,7 @@ Background: Teal to green gradient
 **Step-by-step:**
 
 1. **Prepare your logo:**
-   - **⚠️ Domino does NOT support SVG - use PNG instead**
+   - **PNG format is recommended (JPG or GIF are also supported)**
    - Recommended format: PNG with transparent background
    - Alternative: JPG or GIF
    - Recommended size: 200-400px wide
@@ -1134,12 +1134,12 @@ Background: Teal to green gradient
    - Expand **Resources** → **Files**
    - Right-click → **Import**
    - Select your logo file
-   - Name it: `company-logo.png` (PNG, JPG, or GIF - **NOT SVG**)
+   - Name it: `company-logo.png` (PNG, JPG, or GIF formats are recommended)
 
 3. **Update config.js:**
 ```javascript
 branding: {
-    logoUrl: "/domcfg.nsf/company-logo.png",  // PNG, JPG, or GIF only - NO SVG!
+    logoUrl: "/domcfg.nsf/company-logo.png",  // PNG, JPG, or GIF formats
     logoAlt: "Acme Corporation Logo",    // Accessibility
     logo: {
         maxWidth: 180,       // Adjust size
@@ -1293,7 +1293,7 @@ Requirements:
 
 ## Checklist: Before Going Live
 
-Use this checklist before deploying to production:
+Use this checklist before deploying:
 
 ### Design & Branding
 - [ ] Company logo imported and displaying correctly

@@ -1,6 +1,6 @@
 # HCL Domino Custom Login Page
 
-> **Transform Your HCL Domino Login Experience** — A modern, secure, fully accessible login page with TOTP MFA, login attempt tracking, CAPTCHA, 18 languages, dark mode, and zero MIME configuration headaches.
+> **Extend Your HCL Domino Login Experience** — A modern, secure, fully accessible login page with TOTP MFA, login attempt tracking, CAPTCHA, 18 languages, dark mode, and streamlined MIME type handling.
 
 ![Version](https://img.shields.io/badge/version-2.4.0-blue)
 ![Domino](https://img.shields.io/badge/HCL%20Domino-12.x%20%7C%2014.x-green)
@@ -14,29 +14,34 @@
 ## 📖 Table of Contents
 
 1. [Introduction](#-introduction)
-2. [What's New in v2.4.0](#-whats-new-in-v240)
+2. [How This Solution Augments Domino](#-how-this-solution-augments-domino)
 3. [Features at a Glance](#-features-at-a-glance)
-4. [Quick Start Guide (5 minutes)](#-quick-start-guide-5-minutes)
-5. [Deployment Guide — Step by Step](#-deployment-guide--step-by-step)
-6. [TOTP Multi-Factor Authentication](#-totp-multi-factor-authentication)
-7. [Login Attempt Tracking](#-login-attempt-tracking)
-8. [Person Document Storage](#-person-document-storage)
-9. [LotusScript Agent Deployment](#-lotusscript-agent-deployment)
-10. [Audio CAPTCHA](#-audio-captcha)
-11. [Configuration Reference](#-configuration-reference)
-12. [Internationalization (i18n)](#-internationalization-i18n)
-13. [Accessibility (WCAG 2.1 AA)](#-accessibility-wcag-21-aa)
-14. [Troubleshooting](#-troubleshooting)
-15. [Changelog](#-changelog)
+4. [Detailed Feature Documentation](#-detailed-feature-documentation)
+5. [Logo Configuration](#-logo-configuration)
+6. [Architecture & Technical Details](#-architecture--technical-details)
+7. [FAQ](#-faq)
+8. [What's New in v2.4.0](#-whats-new-in-v240)
+9. [Quick Start Guide (5 minutes)](#-quick-start-guide-5-minutes)
+10. [Deployment Guide — Step by Step](#-deployment-guide--step-by-step)
+11. [TOTP Multi-Factor Authentication](#-totp-multi-factor-authentication)
+12. [Login Attempt Tracking](#-login-attempt-tracking)
+13. [Person Document Storage](#-person-document-storage)
+14. [LotusScript Agent Deployment](#-lotusscript-agent-deployment)
+15. [Audio CAPTCHA](#-audio-captcha)
+16. [Configuration Reference](#-configuration-reference)
+17. [Internationalization (i18n)](#-internationalization-i18n)
+18. [Accessibility (WCAG 2.1 AA)](#-accessibility-wcag-21-aa)
+19. [Troubleshooting](#-troubleshooting)
+20. [Changelog](#-changelog)
 
 ---
 
 ## 🌟 Introduction
 
-When organizations deploy HCL Domino for enterprise collaboration, the default login page often doesn't meet modern UX expectations or corporate branding requirements. this project aims to provides a **login page** that:
+When organizations deploy HCL Domino for enterprise collaboration, this solution extends the default login experience to meet modern UX expectations and corporate branding requirements. This project provides a **login page** that:
 
 - **Looks modern** with smooth animations, responsive design, and professional styling
-- **Works immediately** without complex MIME type configurations
+- **Simple to deploy** with a self-contained, single-file approach
 - **Supports your brand** with customizable logos, colors, and messaging
 - **Speaks your language** with 18 built-in languages including RTL support
 - **Protects your users** with CAPTCHA, session management, and security notices
@@ -52,22 +57,22 @@ When organizations deploy HCL Domino for enterprise collaboration, the default l
 
 ---
 
-## 🚨 The Problem this project aims to Solve
+## 🎯 How This Solution Augments Domino
 
-### The MIME Type Nightmare
+### MIME Type Configuration Context
 
-If you've ever tried to customize a Domino login page with external CSS or JavaScript files, you've probably encountered these frustrating errors:
+When extending a Domino login page with external CSS or JavaScript resources, browsers may display the following messages if MIME type headers are not yet in place:
 
 ```
 Uncaught SyntaxError: Unexpected token '<'
 Refused to execute script because its MIME type ('text/html') is not executable
 ```
 
-**Why does this happen?** When Domino serves files without proper MIME type configuration, browsers refuse to execute them. Setting MIME types requires navigating obscure settings in Domino Designer's this project aims tob Properties tab—and even then, it doesn't always work as expected.
+**Context:** Browsers require correctly declared MIME type headers for script and style resources. Configuring these in Domino Designer's Web Properties tab is the standard approach. This solution intends to augment this capability by embedding all resources inline, so no external MIME type configuration is needed.
 
-### Our Solution: Zero-Configuration Deployment
+### The Solution: Zero-Configuration Deployment
 
-this project aims to've solved this by creating **self-contained HTML files** with ALL CSS and JavaScript embedded inline. This means:
+This project addresses this by creating **self-contained HTML files** with ALL CSS and JavaScript embedded inline. This means:
 
 - ✅ **No external files to configure**
 - ✅ **No MIME types to set**
@@ -107,64 +112,7 @@ Just paste the HTML, mark it as Pass-Thru HTML, and you're done.
 
 ---
 
-## 🚀 Quick Start Guide
-
-### Step 1: Choose Your File
-
-| Use Case | Recommended File | Complexity |
-|----------|------------------|------------|
-| Enterprise with all features | `docs/EnterpriseLoginForm.html` | ⭐ Easy |
-| Simple clean login | `docs/DominoEmbeddedForm.html` | ⭐ Easy |
-| Full modularity (advanced) | `CustomLoginForm-Domino.html` | ⭐⭐⭐ Advanced |
-
-### Step 2: Customize the Configuration
-
-Open your chosen HTML file and edit the `CONFIG` object at the top (around line 95):
-
-```javascript
-const CONFIG = {
-    // Version info - displayed at bottom of page
-    version: "2.1.0",
-    versionDate: "2026-04-28",
-    
-    branding: {
-        companyName: "Your Organization",
-        companyTagline: "Enterprise Collaboration Portal",
-        logoUrl: "data:image/png;base64,YOUR_LOGO_HERE",
-        this project aims tolcomeTitle: "this project aims tolcome Back",
-        this project aims tolcomeSubtitle: "Sign in to access your email and applications"
-    },
-    
-    theme: {
-        primaryColor: "#0066CC",
-        primaryColorHover: "#0052A3"
-    },
-    
-    features: {
-        enableThemeSwitcher: true,      // Light/Dark mode toggle
-        enablePasswordStrength: true,   // Password strength meter
-        enableRememberUsername: true,   // Remember last username
-        enableCaptcha: true             // CAPTCHA verification
-    }
-};
-```
-
-### Step 3: Deploy to Domino
-
-1. **Open Domino Designer**
-2. **Open or create DOMCFG.NSF** in your server's data directory
-3. **Create a new Form** named "$$LoginUserForm"
-4. **Paste the entire HTML content** into the form
-5. **Select all content** → **Text menu** → **Pass-Thru HTML**
-6. **Save the form**
-7. **Configure Sign In Form Mapping** (if not already done)
-8. **Restart HTTP**: `tell http restart`
-
-**That's it!** Your new login page is now live.
-
----
-
-## 📋 Detailed Feature Documentation
+##  Detailed Feature Documentation
 
 ### 🌓 Dark/Light Mode
 
@@ -223,8 +171,8 @@ i18n: {
             name: "Nederlands", 
             dir: "ltr", 
             strings: {
-                this project aims tolcomeTitle: "this project aims tolkom Terug",
-                this project aims tolcomeSubtitle: "Log in om door te gaan",
+                welcomeTitle: "Welkom Terug",
+                welcomeSubtitle: "Log in om door te gaan",
                 usernameLabel: "Gebruikersnaam",
                 passwordLabel: "Wachtwoord",
                 signIn: "Inloggen"
@@ -275,7 +223,7 @@ captcha: {
 **Password Requirements:**
 - Configurable minimum length (default: 8)
 - Real-time strength indicator
-- Visual feedback: this project aims toak → Fair → Good → Strong
+- Visual feedback: Weak → Fair → Good → Strong
 
 **Session Management:**
 - Configurable timeout warning
@@ -319,195 +267,9 @@ captcha: {
 
 ---
 
-## ⚙️ Configuration Reference
-
-### Complete CONFIG Object
-
-```javascript
-const CONFIG = {
-    // =========================================================================
-    // VERSION INFO
-    // =========================================================================
-    version: "2.1.0",
-    versionDate: "2026-04-28",
-    
-    // =========================================================================
-    // COMPANY BRANDING
-    // =========================================================================
-    branding: {
-        companyName: "Your Organization",
-        companyTagline: "Enterprise Collaboration Portal",
-        
-        // Logo Options:
-        // 1. Base64: "data:image/png;base64,iVBORw0KGgo..."
-        // 2. File Resource: "/domcfg.nsf/logo.png"
-        // 3. External URL: "https://cdn.example.com/logo.png"
-        // 4. Empty string to hide logo: ""
-        logoUrl: "data:image/png;base64,...",
-        logoAlt: "Organization Logo",
-        logoWidth: 180,
-        logoHeight: 60,
-        
-        this project aims tolcomeTitle: "this project aims tolcome Back",
-        this project aims tolcomeSubtitle: "Sign in to access your email and applications",
-        
-        footerText: "© 2026 Your Organization. All rights reserved.",
-        showPothis project aims toredBy: true
-    },
-    
-    // =========================================================================
-    // THEME COLORS
-    // =========================================================================
-    theme: {
-        primaryColor: "#0066CC",
-        primaryColorHover: "#0052A3",
-        primaryColorLight: "#e6f0ff",
-        
-        errorColor: "#dc3545",
-        successColor: "#28a745",
-        warningColor: "#f59e0b",
-        
-        backgroundGradientStart: "#1a1a2e",
-        backgroundGradientEnd: "#16213e"
-    },
-    
-    // =========================================================================
-    // QUICK LINKS
-    // =========================================================================
-    quickLinks: {
-        forgotPassword: {
-            show: true,
-            text: "Forgot Password",
-            url: "https://pwdreset.yourcompany.com/",
-            icon: "🔑"
-        },
-        unlockAccount: {
-            show: true,
-            text: "Unlock Account",
-            url: "/domcfg.nsf/unlock.nsf",
-            icon: "🔓"
-        },
-        userGuide: {
-            show: true,
-            text: "User Guide",
-            url: "/domcfg.nsf/UserGuide.pdf",
-            icon: "📖"
-        },
-        faq: {
-            show: true,
-            text: "FAQ",
-            url: "/domcfg.nsf/FAQ.pdf",
-            icon: "❓"
-        },
-        itSupport: {
-            show: true,
-            text: "IT Support",
-            url: "mailto:itsupport@yourcompany.com",
-            icon: "📧"
-        }
-    },
-    
-    // =========================================================================
-    // SECURITY NOTICE
-    // =========================================================================
-    securityNotice: {
-        show: true,
-        icon: "🔒",
-        title: "Secure Connection",
-        text: "This system is for authorized users only. All activity is monitored."
-    },
-    
-    // =========================================================================
-    // SYSTEM ANNOUNCEMENT
-    // =========================================================================
-    announcement: {
-        show: false,
-        type: "info",  // info | warning | error
-        title: "Scheduled Maintenance",
-        text: "System will be unavailable Saturday 2-4 AM",
-        dismissible: true
-    },
-    
-    // =========================================================================
-    // FEATURE TOGGLES
-    // =========================================================================
-    features: {
-        enableThemeSwitcher: true,
-        enablePasswordStrength: true,
-        enableRememberUsername: true,
-        enableOfflineDetection: true,
-        enableSessionWarning: true,
-        enableKeyboardShortcuts: true,
-        enableAnimations: true,
-        enableTranslations: true,
-        enableCaptcha: true
-    },
-    
-    // =========================================================================
-    // PASSWORD REQUIREMENTS
-    // =========================================================================
-    passwordStrength: {
-        minLength: 8,
-        showStrengthMeter: true
-    },
-    
-    // =========================================================================
-    // CAPTCHA SETTINGS
-    // =========================================================================
-    captcha: {
-        difficulty: "easy",
-        maxAttempts: 5,
-        enableAudio: true
-    },
-    
-    // =========================================================================
-    // SESSION SETTINGS
-    // =========================================================================
-    session: {
-        warningTimeMinutes: 25,
-        extendUrl: "/names.nsf?Login"
-    },
-    
-    // =========================================================================
-    // ERROR MESSAGES
-    // =========================================================================
-    errors: {
-        defaultTitle: "Login Failed",
-        defaultMessage: "Please check your credentials",
-        messages: {
-            0: "Authentication successful",
-            1: "Username not found",
-            2: "Incorrect password",
-            3: "Account locked",
-            4: "Password expired",
-            5: "Account disabled",
-            6: "Session expired",
-            7: "Access denied",
-            8: "Server unavailable",
-            9: "Too many attempts",
-            10: "Certificate required"
-        }
-    },
-    
-    // =========================================================================
-    // TRANSLATIONS (i18n)
-    // =========================================================================
-    i18n: {
-        defaultLanguage: "en",
-        languages: {
-            en: { name: "English", dir: "ltr", strings: { /* ... */ }},
-            es: { name: "Español", dir: "ltr", strings: { /* ... */ }},
-            // ... more languages
-        }
-    }
-};
-```
-
----
-
 ## 🖼️ Logo Configuration
 
-### Important: Domino Does NOT Support SVG
+### Supported Logo Formats
 
 **Supported formats:** PNG, JPG, GIF only
 
@@ -538,7 +300,7 @@ logoUrl: "/domcfg.nsf/logo.png"
 
 **Requirements:**
 - Import logo as File Resource in DOMCFG.NSF
-- Set MIME type in this project aims tob Properties tab
+- Set MIME type in Web Properties tab
 - PNG → `image/png`
 - JPG → `image/jpeg`
 - GIF → `image/gif`
@@ -561,63 +323,12 @@ This hides the logo and shows only the company name.
 
 ---
 
-## 🔧 Troubleshooting
-
-### Common Issues and Solutions
-
-#### "Uncaught SyntaxError: Unexpected token '<'"
-
-**Cause:** Domino is serving files as HTML instead of JavaScript
-
-**Solution:** Use the self-contained HTML files that have no external dependencies:
-- `docs/EnterpriseLoginForm.html`
-- `docs/DominoEmbeddedForm.html`
-
-#### Logo Not Displaying
-
-**Checklist:**
-1. ❌ Using SVG? → Convert to PNG
-2. ❌ Using subfolders? → Use `/domcfg.nsf/logo.png`, NOT `/domcfg.nsf/images/logo.png`
-3. ❌ MIME type not set? → Set in this project aims tob Properties tab
-4. ✅ Use Base64 to avoid all these issues
-
-#### Theme Toggle Not Working
-
-**Check:**
-1. Is `enableThemeSwitcher: true` in CONFIG?
-2. Is there a JavaScript error in the console?
-3. Try clearing localStorage: `localStorage.clear()`
-
-#### Translations Showing Incorrectly
-
-**Check:**
-1. Is `enableTranslations: true` in CONFIG?
-2. Is the language code correct in `i18n.languages`?
-3. Are all required strings defined?
-
-#### Form Not Submitting
-
-**Check:**
-1. All validation requirements met?
-2. CAPTCHA ansthis project aims tored correctly?
-3. Password meets minimum length?
-4. Submit button enabled (not grayed out)?
-
-#### Session Warning Not Appearing
-
-**Check:**
-1. Is `enableSessionWarning: true` in CONFIG?
-2. Is `session.warningTimeMinutes` set?
-3. Page must be open longer than the timeout
-
----
-
 ## 🏗️ Architecture & Technical Details
 
 ### Project Structure
 
 ```
-DominoCustomthis project aims tobPageApril26/
+DominoCustomWebPageApril26/
 │
 ├── docs/
 │   ├── EnterpriseLoginForm.html   # ⭐ Full-featured, self-contained
@@ -670,46 +381,11 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ---
 
-## 📦 Deployment Guide
-
-### Method 1: Pass-Thru HTML Form (Recommended)
-
-1. **Open Domino Designer**
-2. **Open DOMCFG.NSF** (create if it doesn't exist)
-3. **Create Form:** Design → Forms → New Form
-4. **Name it:** `$$LoginUserForm`
-5. **Paste HTML:** Copy entire file content and paste
-6. **Set Pass-Thru:** Select all → Text → Pass-Thru HTML
-7. **Save and close**
-8. **Configure mapping:** In DOMCFG.NSF, create Sign In Form Mapping
-9. **Restart HTTP:** `tell http restart`
-
-### Method 2: Page Design Element
-
-1. **Create Page:** Design → Pages → New Page
-2. **Paste HTML** content
-3. **Set Pass-Thru HTML**
-4. **Configure as default login page**
-
-### Domino Form Requirements
-
-The HTML form includes these required fields:
-
-```html
-<form method="POST" action="/names.nsf?Login">
-    <input type="text" name="Username" required>
-    <input type="password" name="Password" required>
-    <input type="hidden" name="RedirectTo" value="/">
-</form>
-```
-
----
-
 ## ❓ FAQ
 
 ### Q: Can I use this without Domino Designer?
 
-**A:** You need Domino Designer to deploy to DOMCFG.NSF. Hothis project aims tover, you can preview locally by opening the HTML file in a browser.
+**A:** You need Domino Designer to deploy to DOMCFG.NSF. However, you can preview locally by opening the HTML file in a browser.
 
 ### Q: Does this work with Domino SAML authentication?
 
@@ -729,7 +405,7 @@ The HTML form includes these required fields:
 
 ### Q: Can I customize the CSS?
 
-**A:** Yes, the CSS is inline and this project aims toll-commented. Search for the section you want to modify.
+**A:** Yes, the CSS is inline and well-commented. Search for the section you want to modify.
 
 ### Q: Does this support two-factor authentication?
 
@@ -870,7 +546,7 @@ All customization is done in the `CONFIG` / `DominoLoginConfig` JavaScript block
 | Quick links | `quickLinks.*` | Set `url` and `show: true/false` |
 | Announcement | `announcement.show/text` | Maintenance window notices |
 
-> **Logo tip:** Use base64 (https://www.base64-image.de/) to avoid all MIME type issues. Domino does NOT support SVG — use PNG, JPG, or GIF only.
+> **Logo tip:** Use base64 (https://www.base64-image.de/) to avoid all MIME type issues. PNG, JPG, or GIF formats are recommended for logos.
 
 ---
 

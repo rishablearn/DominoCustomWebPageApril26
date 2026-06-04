@@ -44,8 +44,8 @@ To customize, edit the DominoLoginConfig object below (around line 40).
 - Change companyName, colors, labels, etc.
 - For a logo, upload to DOMCFG.NSF as file resource named "logo.png"
   then set: logoUrl: "/domcfg.nsf/logo.png"
-  (NO subfolders like /images/ - Domino doesn't support that!)
-  NOTE: Domino does NOT support SVG - use PNG, JPG, or GIF
+  (No subfolders; use flat paths e.g. /domcfg.nsf/logo.png)
+  NOTE: PNG, JPG, or GIF formats are recommended
 
 REFERENCE:
 ================================================================================
@@ -91,7 +91,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             // Option 1: Upload logo to DOMCFG.NSF as file resource
             //           Set logoUrl to: "/domcfg.nsf/logo.png"
             //           IMPORTANT: No subfolders! NOT "/domcfg.nsf/images/logo.png"
-            //           NOTE: Domino does NOT support SVG - use PNG, JPG, or GIF
+            //           NOTE: PNG, JPG, or GIF formats are recommended
             //
             // Option 2: Use base64 data URI (no file upload needed)
             //           Set logoUrl to: "data:image/png;base64,..."

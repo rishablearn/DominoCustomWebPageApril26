@@ -123,7 +123,7 @@ If you must use external files, set MIME types in **Web Properties** tab (not Ba
 
 ## Logo Support
 
-### ⚠️ IMPORTANT: Domino does NOT support SVG files
+### Supported Image Formats
 
 **Supported formats:** PNG, JPG, GIF only
 
