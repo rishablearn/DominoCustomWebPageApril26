@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login Activity — HCL Verse</title>
+<style>
+/* ============================================================
+   LOGIN ACTIVITY VIEWER — Self-contained styles
+   IBM Carbon Design System inspired, HCL Verse compatible
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --blue-60:   #0f62fe;
+    --blue-70:   #0043ce;
+    --blue-10:   #edf5ff;
+    --blue-20:   #d0e2ff;
+    --green-50:  #198038;
+    --green-10:  #defbe6;
+    --green-20:  #a7f0ba;
+    --red-50:    #da1e28;
+    --red-10:    #fff1f1;
+    --yellow-20: #f1c21b;
+    --yellow-10: #fdf6dd;
+    --yellow-70: #8e6a00;
+    --gray-10:   #f4f4f4;
+    --gray-20:   #e0e0e0;
+    --gray-30:   #c6c6c6;
+    --gray-50:   #a8a8a8;
+    --gray-60:   #6f6f6f;
+    --gray-70:   #525252;
+    --gray-80:   #393939;
+    --gray-100:  #161616;
+    --orange-10: #fff4e6;
+    --orange-70: #8e3a00;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.14);
+    --radius:    6px;
+}
+
+html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'IBM Plex Sans', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--gray-10);
+    color: var(--gray-100);
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.hdr {
+    background: var(--blue-60);
+    color: #fff;
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hdr-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.hdr-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    line-height: 1.2;
+}
+
+.hdr-sub {
+    font-size: 12px;
+    opacity: 0.75;
+    margin-top: 1px;
+}
+
+.hdr-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.btn {
+    padding: 7px 14px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: background 0.15s, opacity 0.15s;
+    white-space: nowrap;
+}
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-ghost {
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    border-color: rgba(255,255,255,0.3);
+}
+.btn-ghost:not(:disabled):hover { background: rgba(255,255,255,0.26); }
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.main {
+    padding: 20px 24px;
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+/* ── Alert banner ───────────────────────────────────────────── */
+.alert {
+    padding: 11px 14px;
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    border-width: 1px;
+    border-style: solid;
+    line-height: 1.5;
+}
+.alert-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+.alert-info    { background: var(--blue-10);   color: var(--blue-70);   border-color: var(--blue-20); }
+.alert-warning { background: var(--yellow-10); color: var(--yellow-70); border-color: var(--yellow-20); }
+.alert-success { background: var(--green-10);  color: var(--green-50);  border-color: var(--green-20); }
+
+/* ── Summary cards ──────────────────────────────────────────── */
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid var(--gray-20);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-sm);
+}
+
+.card-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--gray-60);
+    margin-bottom: 8px;
+}
+
+.card-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gray-100);
+    line-height: 1;
+}
+
+.card-sub {
+    font-size: 12px;
+    color: var(--gray-60);
+    margin-top: 5px;
+}
+
+/* ── Section panel ──────────────────────────────────────────── */
+.panel {
+    background: #fff;
+    border: 1px solid var(--gray-20);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.panel-hdr {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--gray-20);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fff;
+}
+
+.panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-100);
+}
+
+.panel-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.badge-pill {
+    font-size: 11px;
+    background: var(--blue-60);
+    color: #fff;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.src-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--gray-60);
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+.dot-green  { background: var(--green-50); }
+.dot-orange { background: #e67e22; }
+.dot-grey   { background: var(--gray-50); }
+
+/* ── Table ──────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-60);
+    background: var(--gray-10);
+    border-bottom: 1px solid var(--gray-20);
+    white-space: nowrap;
+}
+
+td {
+    padding: 13px 14px;
+    border-bottom: 1px solid #f4f4f4;
+    vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+
+/* ── Status badge ───────────────────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+.badge-attempt { background: var(--blue-10);  color: var(--blue-70); }
+.badge-success { background: var(--green-10); color: var(--green-50); }
+.badge-failed  { background: var(--red-10);   color: var(--red-50); }
+
+/* ── Cell content helpers ───────────────────────────────────── */
+.row-num { font-size: 11px; color: var(--gray-50); font-weight: 500; }
+
+.date-main { font-weight: 500; color: var(--gray-100); }
+.date-rel  { font-size: 11.5px; color: var(--gray-60); margin-top: 2px; }
+
+.pending-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--orange-10);
+    color: var(--orange-70);
+    font-weight: 500;
+    margin-left: 5px;
+}
+
+.ip-mono {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12.5px;
+    color: var(--gray-80);
+    background: var(--gray-10);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.brow-main { font-weight: 500; }
+.brow-plat { font-size: 11.5px; color: var(--gray-60); margin-top: 1px; }
+
+.mfa-yes { color: var(--green-50); font-weight: 600; }
+.mfa-no  { color: var(--gray-50); }
+
+/* ── Loading / Empty ────────────────────────────────────────── */
+.state-box {
+    padding: 50px 24px;
+    text-align: center;
+    color: var(--gray-60);
+}
+
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--gray-20);
+    border-top-color: var(--blue-60);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.state-box h3 { font-size: 15px; color: var(--gray-80); margin-bottom: 6px; }
+.state-box p  { font-size: 13px; max-width: 420px; margin: 0 auto; line-height: 1.6; }
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.footer {
+    margin-top: 14px;
+    font-size: 11.5px;
+    color: var(--gray-60);
+    text-align: center;
+    padding: 8px 0 16px;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .main { padding: 12px 14px; }
+    .hdr  { padding: 12px 14px; }
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .hdr-actions .btn span { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════════ -->
+<div class="hdr">
+    <div class="hdr-left">
+        <div class="hdr-icon" aria-hidden="true">🔒</div>
+        <div>
+            <div class="hdr-title">Login Activity History</div>
+            <div class="hdr-sub" id="hdrSub">Loading your activity data…</div>
+        </div>
+    </div>
+    <div class="hdr-actions">
+        <button class="btn btn-ghost" id="refreshBtn" onclick="refreshData()" title="Reload data">
+            <span>↻</span><span> Refresh</span>
+        </button>
+        <button class="btn btn-ghost" onclick="window.close()" title="Close window">
+            <span>✕</span><span> Close</span>
+        </button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════════════ -->
+<div class="main" role="main">
+
+    <!-- Alerts -->
+    <div id="alertArea" aria-live="polite"></div>
+
+    <!-- Summary Cards -->
+    <div class="cards" id="cardsRow">
+        <div class="card">
+            <div class="card-label">Last Login</div>
+            <div class="card-value" id="cLastLogin">—</div>
+            <div class="card-sub"  id="cLastLoginSub">No data yet</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Total Recorded</div>
+            <div class="card-value" id="cTotal">—</div>
+            <div class="card-sub">Login attempts on file</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Unique IP Addresses</div>
+            <div class="card-value" id="cIPs">—</div>
+            <div class="card-sub">Distinct access locations</div>
+        </div>
+        <div class="card">
+            <div class="card-label">MFA Authenticated</div>
+            <div class="card-value" id="cMFA">—</div>
+            <div class="card-sub">Of recorded attempts</div>
+        </div>
+    </div>
+
+    <!-- Activity Panel -->
+    <div class="panel">
+        <div class="panel-hdr">
+            <span class="panel-title">Activity Log</span>
+            <div class="panel-right">
+                <span class="badge-pill" id="entryCount">…</span>
+                <div class="src-indicator" id="srcIndicator"></div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div class="state-box" id="loadingState">
+            <div class="spinner" role="status" aria-label="Loading"></div>
+            <p>Retrieving your login history from the server…</p>
+        </div>
+
+        <!-- Table (shown once data is ready) -->
+        <div class="tbl-wrap" id="tblWrap" style="display:none;" role="region" aria-label="Login history table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Date &amp; Time</th>
+                        <th>IP Address</th>
+                        <th>Browser / Platform</th>
+                        <th>Timezone</th>
+                        <th>Screen</th>
+                        <th>MFA</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tblBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Empty State -->
+        <div class="state-box" id="emptyState" style="display:none;">
+            <div style="font-size:42px;margin-bottom:12px;opacity:.4;">📋</div>
+            <h3>No Login History Found</h3>
+            <p>No activity has been recorded yet. Login tracking must be enabled on the
+               custom Domino login page (<code>features.enableLoginTracking: true</code>) and the
+               <strong>GetLoginHistory</strong> agent deployed in DOMCFG.NSF.</p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer" id="footerText">
+        HCL Verse Login Activity Viewer &nbsp;·&nbsp; Data from names.nsf via Domino
+    </div>
+
+</div><!-- /main -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT — fully self-contained
+════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ── Configuration ───────────────────────────────────────── */
+var CFG = {
+    agentUrl:   '/domcfg.nsf/GetLoginHistory?OpenAgent',
+    lsKey:      'lastLoginAttempt',
+    maxHistory: 5
+};
+
+/* ── State ───────────────────────────────────────────────── */
+var S = {
+    entries:  [],
+    source:   'none',   // 'server' | 'local' | 'none'
+    loadedAt: null
+};
+
+/* ── Boot ────────────────────────────────────────────────── */
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadData);
+} else {
+    loadData();
+}
+
+function refreshData() {
+    el('alertArea').innerHTML = '';
+    show('loadingState');
+    hide('tblWrap');
+    hide('emptyState');
+    var rb = el('refreshBtn');
+    rb.disabled = true;
+    setTimeout(function() { rb.disabled = false; }, 2500);
+    loadData();
+}
+
+/* ── Main data loader ────────────────────────────────────── */
+function loadData() {
+    var lsEntry = readLocalStorage();
+
+    fetchServerHistory(function(serverRows, serverErr) {
+        if (serverRows && serverRows.length > 0) {
+            S.entries = mergeLS(serverRows, lsEntry);
+            S.source  = 'server';
+            render(null);
+        } else if (lsEntry) {
+            S.entries = [lsEntry];
+            S.source  = 'local';
+            var msg = serverErr
+                ? 'The <strong>GetLoginHistory</strong> agent is not reachable (' + esc(serverErr) + '). ' +
+                  'Showing the last attempt stored in this browser only. Deploy the agent in DOMCFG.NSF for full server-side history.'
+                : 'Showing the last attempt recorded in this browser. ' +
+                  'Deploy <strong>GetLoginHistory</strong> in DOMCFG.NSF to see the complete history from all devices.';
+            render(msg);
+        } else {
+            S.entries = [];
+            S.source  = 'none';
+            render('No login history could be retrieved. ' +
+                'Enable <code>features.enableLoginTracking: true</code> on the login page and deploy ' +
+                '<strong>GetLoginHistory</strong> in DOMCFG.NSF. See the deployment guide.');
+        }
+        S.loadedAt = new Date();
+        updateFooter();
+    });
+}
+
+/* ── Fetch from Domino agent ─────────────────────────────── */
+function fetchServerHistory(cb) {
+    var done = false;
+    function finish(rows, err) {
+        if (done) return;
+        done = true;
+        cb(rows, err);
+    }
+
+    // Timeout after 8 s
+    var timer = setTimeout(function() { finish(null, 'Request timed out'); }, 8000);
+
+    if (typeof fetch !== 'undefined') {
+        fetch(CFG.agentUrl, { credentials: 'include' })
+            .then(function(r) {
+                clearTimeout(timer);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function(data) { finish(Array.isArray(data) ? data : null, null); })
+            .catch(function(e)   { finish(null, e.message || 'Network error'); });
+    } else {
+        // XHR fallback (older browsers)
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', CFG.agentUrl, true);
+        xhr.withCredentials = true;
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState !== 4) return;
+            clearTimeout(timer);
+            if (xhr.status === 200) {
+                try   { finish(JSON.parse(xhr.responseText), null); }
+                catch (e) { finish(null, 'Invalid JSON response'); }
+            } else {
+                finish(null, 'HTTP ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+}
+
+/* ── Read localStorage ───────────────────────────────────── */
+function readLocalStorage() {
+    try {
+        var raw = localStorage.getItem(CFG.lsKey);
+        if (!raw) return null;
+        var d = JSON.parse(raw);
+        if (!d || !d.ts) return null;
+        return {
+            ts:       d.ts,
+            ip:       '(this browser)',
+            status:   (d.status || 'ATTEMPT').toUpperCase(),
+            browser:  d.browser || 'Unknown',
+            platform: d.platform || '',
+            tz:       d.tz || '',
+            scr:      d.scr || '',
+            mfa:      (d.mfa === '1' || d.mfa === true) ? '1' : '0',
+            source:   'local'
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+/* ── Merge server + localStorage ─────────────────────────── */
+function mergeLS(serverRows, lsEntry) {
+    if (!lsEntry) return serverRows;
+    var latestServer = serverRows[0];
+    if (!latestServer) return [lsEntry];
+    var tSvr = new Date(latestServer.ts).getTime();
+    var tLs  = new Date(lsEntry.ts).getTime();
+    // Show localStorage entry as "pending" if it's more than 30 s newer
+    if (!isNaN(tLs) && !isNaN(tSvr) && tLs > tSvr + 30000) {
+        var merged = [Object.assign({}, lsEntry, { source: 'pending' })].concat(serverRows);
+        return merged.slice(0, CFG.maxHistory + 1);
+    }
+    return serverRows;
+}
+
+/* ── Render ──────────────────────────────────────────────── */
+function render(alertMsg) {
+    hide('loadingState');
+
+    if (alertMsg) {
+        addAlert(alertMsg, S.entries.length > 0 ? 'warning' : 'info');
+    }
+
+    updateCards(S.entries);
+    updateHeader(S.entries.length);
+    updateSrcIndicator();
+
+    if (S.entries.length === 0) {
+        show('emptyState');
+        hide('tblWrap');
+        return;
+    }
+
+    hide('emptyState');
+    buildTable(S.entries);
+    show('tblWrap');
+}
+
+/* ── Build table rows ────────────────────────────────────── */
+function buildTable(rows) {
+    var tb = el('tblBody');
+    tb.innerHTML = '';
+    rows.forEach(function(row, i) {
+        tb.appendChild(makeRow(row, i + 1));
+    });
+}
+
+function makeRow(r, idx) {
+    var tr = document.createElement('tr');
+
+    // # index
+    td(tr, '<span class="row-num">' + idx + '</span>');
+
+    // Date & Time
+    var fmt = fmtDate(r.ts);
+    var rel = timeAgo(r.ts);
+    var dateHtml = '<div class="date-main">' + esc(fmt.full) + '</div>' +
+                   '<div class="date-rel">'  + esc(rel) + '</div>';
+    if (r.source === 'pending') {
+        dateHtml += '<span class="pending-tag">Pending server sync</span>';
+    }
+    td(tr, dateHtml);
+
+    // IP
+    td(tr, '<span class="ip-mono">' + esc(r.ip || '—') + '</span>');
+
+    // Browser / Platform
+    td(tr, '<div class="brow-main">' + esc(r.browser || '—') + '</div>' +
+           (r.platform ? '<div class="brow-plat">' + esc(r.platform) + '</div>' : ''));
+
+    // Timezone
+    td(tr, esc(r.tz || '—'));
+
+    // Screen
+    td(tr, esc(r.scr || '—'));
+
+    // MFA
+    var mfaUsed = r.mfa === '1' || r.mfa === 1 || r.mfa === true;
+    td(tr, mfaUsed
+        ? '<span class="mfa-yes">&#10003; Yes</span>'
+        : '<span class="mfa-no">No</span>');
+
+    // Status
+    td(tr, statusBadge(r.status));
+
+    return tr;
+}
+
+function td(tr, html) {
+    var cell = document.createElement('td');
+    cell.innerHTML = html;
+    tr.appendChild(cell);
+}
+
+function statusBadge(raw) {
+    var s = (raw || 'ATTEMPT').toUpperCase().trim();
+    var cls = 'badge-attempt', ico = '&#8594;';
+    if (s === 'SUCCESS') { cls = 'badge-success'; ico = '&#10003;'; }
+    else if (s === 'FAILED' || s === 'FAIL') { cls = 'badge-failed'; ico = '&#10005;'; }
+    return '<span class="badge ' + cls + '">' + ico + ' ' + s + '</span>';
+}
+
+/* ── Summary cards ───────────────────────────────────────── */
+function updateCards(rows) {
+    var total    = rows.length;
+    var ips      = countUnique(rows.map(function(r) { return r.ip; }).filter(function(ip) { return ip && ip !== '(this browser)'; }));
+    var mfaCnt   = rows.filter(function(r) { return r.mfa === '1' || r.mfa === 1; }).length;
+    var lastRow  = rows[0];
+    var lastDate = lastRow ? fmtDate(lastRow.ts).short : '—';
+    var lastSub  = lastRow ? timeAgo(lastRow.ts) : 'No data yet';
+
+    setText('cLastLogin',    lastDate);
+    setText('cLastLoginSub', lastSub);
+    setText('cTotal',        total > 0 ? String(total) : '0');
+    setText('cIPs',          total > 0 ? String(ips)   : '0');
+    setText('cMFA',          total > 0 ? mfaCnt + ' / ' + total : '—');
+}
+
+function countUnique(arr) {
+    var seen = {};
+    arr.forEach(function(v) { if (v) seen[v] = true; });
+    return Object.keys(seen).length;
+}
+
+/* ── Header / pill ───────────────────────────────────────── */
+function updateHeader(count) {
+    var sub = count === 0
+        ? 'No activity recorded'
+        : count + ' recorded login attempt' + (count !== 1 ? 's' : '') + ' shown';
+    setText('hdrSub',    sub);
+    setText('entryCount', count + ' ' + (count === 1 ? 'entry' : 'entries'));
+}
+
+function updateSrcIndicator() {
+    var ind = el('srcIndicator');
+    var dotCls, label;
+    if (S.source === 'server') {
+        dotCls = 'dot-green';  label = 'names.nsf (server)';
+    } else if (S.source === 'local') {
+        dotCls = 'dot-orange'; label = 'Browser localStorage';
+    } else {
+        dotCls = 'dot-grey';   label = 'No source';
+    }
+    ind.innerHTML = '<span class="dot ' + dotCls + '"></span><span>' + label + '</span>';
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+function updateFooter() {
+    var t = S.loadedAt ? 'Refreshed at ' + S.loadedAt.toLocaleTimeString() : '';
+    el('footerText').innerHTML =
+        'HCL Verse Login Activity Viewer &nbsp;·&nbsp; ' + t;
+}
+
+/* ── Alert ───────────────────────────────────────────────── */
+function addAlert(msg, type) {
+    var div = document.createElement('div');
+    div.className = 'alert alert-' + (type || 'info');
+    var icons = { info: 'ℹ️', warning: '⚠️', success: '✅' };
+    div.innerHTML = '<span class="alert-icon">' + (icons[type] || 'ℹ️') + '</span><span>' + msg + '</span>';
+    el('alertArea').appendChild(div);
+}
+
+/* ── Date utilities ──────────────────────────────────────── */
+function fmtDate(iso) {
+    if (!iso) return { full: '—', short: '—' };
+    try {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return { full: iso, short: iso };
+        return {
+            full: d.toLocaleString(navigator.language, {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            }),
+            short: d.toLocaleDateString(navigator.language, {
+                month: 'short', day: 'numeric', year: 'numeric'
+            })
+        };
+    } catch (e) { return { full: iso, short: iso }; }
+}
+
+function timeAgo(iso) {
+    if (!iso) return '';
+    try {
+        var diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+        if (isNaN(diff) || diff < 0)    return '';
+        if (diff < 60)                   return 'Just now';
+        if (diff < 3600)                 return Math.floor(diff / 60) + ' min ago';
+        if (diff < 86400)                return Math.floor(diff / 3600) + ' hr ago';
+        if (diff < 2592000)              return Math.floor(diff / 86400) + ' days ago';
+        return Math.floor(diff / 2592000) + ' months ago';
+    } catch (e) { return ''; }
+}
+
+/* ── DOM helpers ─────────────────────────────────────────── */
+function el(id)          { return document.getElementById(id); }
+function show(id)        { var e = el(id); if (e) e.style.display = ''; }
+function hide(id)        { var e = el(id); if (e) e.style.display = 'none'; }
+function setText(id, v)  { var e = el(id); if (e) e.textContent = (v !== undefined && v !== null) ? v : '—'; }
+function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

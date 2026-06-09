@@ -1,13 +1,14 @@
 # HCL Domino Custom Login Page
 
-> **Extend Your HCL Domino Login Experience** — A modern, secure, fully accessible login page with TOTP MFA, login attempt tracking, CAPTCHA, 18 languages, dark mode, and streamlined MIME type handling.
+> **Extend Your HCL Domino Login Experience** — A modern, secure, fully accessible login page with TOTP MFA, login attempt tracking, CAPTCHA, 18 languages, dark mode, and a native HCL Verse extension that surfaces login activity directly inside the email client.
 
-![Version](https://img.shields.io/badge/version-2.4.0-blue)
+![Version](https://img.shields.io/badge/version-2.5.0-blue)
 ![Domino](https://img.shields.io/badge/HCL%20Domino-12.x%20%7C%2014.x-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-18-orange)
 ![WCAG](https://img.shields.io/badge/WCAG-2.1%20AA-purple)
 ![MFA](https://img.shields.io/badge/MFA-TOTP%20Ready-red)
+![Verse](https://img.shields.io/badge/HCL%20Verse-Extension%20Ready-blueviolet)
 
 ---
 
@@ -20,19 +21,20 @@
 5. [Logo Configuration](#-logo-configuration)
 6. [Architecture & Technical Details](#-architecture--technical-details)
 7. [FAQ](#-faq)
-8. [What's New in v2.4.0](#-whats-new-in-v240)
+8. [What's New in v2.5.0](#-whats-new-in-v250)
 9. [Quick Start Guide (5 minutes)](#-quick-start-guide-5-minutes)
 10. [Deployment Guide — Step by Step](#-deployment-guide--step-by-step)
 11. [TOTP Multi-Factor Authentication](#-totp-multi-factor-authentication)
 12. [Login Attempt Tracking](#-login-attempt-tracking)
 13. [Person Document Storage](#-person-document-storage)
 14. [LotusScript Agent Deployment](#-lotusscript-agent-deployment)
-15. [Audio CAPTCHA](#-audio-captcha)
-16. [Configuration Reference](#-configuration-reference)
-17. [Internationalization (i18n)](#-internationalization-i18n)
-18. [Accessibility (WCAG 2.1 AA)](#-accessibility-wcag-21-aa)
-19. [Troubleshooting](#-troubleshooting)
-20. [Changelog](#-changelog)
+15. [HCL Verse Login Activity Extension](#-hcl-verse-login-activity-extension)
+16. [Audio CAPTCHA](#-audio-captcha)
+17. [Configuration Reference](#-configuration-reference)
+18. [Internationalization (i18n)](#-internationalization-i18n)
+19. [Accessibility (WCAG 2.1 AA)](#-accessibility-wcag-21-aa)
+20. [Troubleshooting](#-troubleshooting)
+21. [Changelog](#-changelog)
 
 ---
 
@@ -109,6 +111,16 @@ Just paste the HTML, mark it as Pass-Thru HTML, and you're done.
 | **System Announcements** | Scheduled maintenance or important notices |
 | **Version Display** | Track which version is deployed |
 | **Company Branding** | Logo, colors, taglines fully customizable |
+
+### HCL Verse Integration (`verse-login-activity/`)
+
+| Feature | Description |
+|---------|-------------|
+| **Login Activity Popup** | "Login Activity" link in Verse navbar → popup with full history table and summary cards |
+| **Dual Data Source** | Server history from `names.nsf` with automatic `localStorage` fallback |
+| **GetLoginHistory Agent** | Authenticated JSON endpoint; returns only the current user's history |
+| **applications.json Extension** | `com.ibm.action.link` at navbar order `96500` (More dropdown menu) |
+| **Merge-Safe Deploy** | `merge-snippet.json` appends to existing `applications.json` without disrupting other extensions |
 
 ---
 
@@ -417,19 +429,25 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ### Q: Can I see login history in the email client?
 
-**A:** Yes. The `LoginHistory` field is a standard multi-value text item on the Person document and can be exposed in the Domino Directory or any Notes form/view that looks up the Person document. See [Person Document Storage](#-person-document-storage).
+**A:** Yes — two ways. (1) The `LoginHistory` field on the Person document can be surfaced in the Domino Directory or any Notes form/view. See [Person Document Storage](#-person-document-storage). (2) The new **HCL Verse Login Activity Extension** adds a dedicated "Login Activity" popup directly inside Verse via the navbar More menu. See [HCL Verse Login Activity Extension](#-hcl-verse-login-activity-extension).
+
+### Q: I already have an applications.json — will the Verse extension conflict?
+
+**A:** No. The `merge-snippet.json` file contains a single application object to **add** to your existing array. Your current applications and extensions are untouched. See `verse-login-activity/DEPLOYMENT.md` for the step-by-step merge guide and a before/after JSON example.
 
 ---
 
-## 🆕 What's New in v2.4.0
+## 🆕 What's New in v2.5.0
 
 | Feature | Details |
 |---------|---------|
-| **TOTP MFA** | Two-step login flow: credentials → 6-digit TOTP code. Animated 30-second countdown ring. Auto-submit on 6 digits. Full WCAG screen-reader support. |
-| **Login Attempt Tracking** | Client-side fingerprint (browser, timezone, screen) + server IP written to Person document in `names.nsf`. |
-| **Last-Login Banner** | On next page load, shows a non-intrusive banner with the previous attempt's date, browser, timezone, and status. |
-| **LotusScript Agent** | Full agent source in `docs/LotusScript/LoginTracker.lss`. Stores last 5 attempts per user. Optional email notification on each attempt. |
-| **Audio CAPTCHA (v2.3.0)** | Body-level ARIA live regions, spelled-out operators, iOS + Chrome/Edge TTS compatibility. |
+| **HCL Verse Login Activity Extension** | \"Login Activity\" link in Verse navbar More menu opens a popup with login history table, summary cards, and status badges. |
+| **LoginActivityViewer.html** | Self-contained popup UI (all CSS/JS inline). Dual data source: `names.nsf` via agent, with automatic `localStorage` fallback. |
+| **GetLoginHistory Agent** | New LotusScript agent in DOMCFG.NSF. Returns current user's `LoginHistory` as JSON. Anonymous-safe; no cross-user access. |
+| **applications.json + merge-snippet.json** | Ready-to-deploy Verse extension. `merge-snippet.json` lets you add it to an existing `applications.json` array without disrupting other extensions. |
+| **verse-login-activity/DEPLOYMENT.md** | Full deployment guide: agent creation, ACL, notes.ini parameters, and step-by-step merge instructions. |
+
+> Previous release notes: see [Changelog](#-changelog).
 
 ---
 
@@ -889,7 +907,105 @@ loginTracking: {
 
 ---
 
-## 🔊 Audio CAPTCHA
+## � HCL Verse Login Activity Extension
+
+Brings captured login history directly into **HCL Verse** as a popup accessible from the navbar "More" menu — no additional navigation or separate tools required.
+
+### Files
+
+| File | Purpose |
+|------|---------|
+| `verse-login-activity/LoginActivityViewer.html` | Self-contained popup UI — deploy as File Resource in DOMCFG.NSF |
+| `verse-login-activity/GetLoginHistory.lss` | LotusScript agent — returns `LoginHistory` from `names.nsf` as a JSON array |
+| `verse-login-activity/applications.json` | Complete Verse extension definition (use for new deployments) |
+| `verse-login-activity/merge-snippet.json` | Single app object to append to an existing `applications.json` |
+| `verse-login-activity/DEPLOYMENT.md` | Step-by-step deployment guide with ACL, notes.ini, and merge instructions |
+
+### Architecture
+
+```
+HCL Verse (navbar More menu)
+  └─ "Login Activity" link  ← injected by applications.json
+        ↓  (popup window opens)
+  LoginActivityViewer.html  (File Resource in DOMCFG.NSF)
+        ├─ reads  localStorage['lastLoginAttempt']   (instant, same-origin)
+        └─ fetches  /domcfg.nsf/GetLoginHistory?OpenAgent
+                          ↓  (authenticated — session cookie)
+               GetLoginHistory (LotusScript Agent)
+                          ↓
+               reads LoginHistory[] → names.nsf Person document
+                          ↓  returns JSON array
+                  Popup displays: Date | IP | Browser | Platform | Timezone | Screen | MFA | Status
+```
+
+### Popup Features
+
+| Feature | Details |
+|---------|---------|
+| **Summary Cards** | Last login date, total recorded attempts, unique IPs, MFA usage count |
+| **Activity Table** | Full history with absolute timestamps and relative labels ("2 hr ago") |
+| **Status Badges** | Color-coded — ATTEMPT (blue), SUCCESS (green), FAILED (red) |
+| **Pending Sync Tag** | Highlights entries written to `localStorage` but not yet flushed to `names.nsf` |
+| **Data Source Indicator** | Green dot = `names.nsf` (live) · Orange dot = browser localStorage only |
+| **Refresh Button** | Re-fetches without closing the popup |
+| **Graceful Degradation** | Falls back to `localStorage` data with an informational banner if agent is unreachable |
+| **Self-Contained** | All CSS/JS inline — no external files, no MIME type configuration |
+
+### Verse Extension Point Used
+
+```json
+{
+  "type": "com.ibm.action.link",
+  "path": "com.ibm.navbar.order.96500",
+  "payload": {
+    "link": "https://YOUR_DOMINO_SERVER/domcfg.nsf/LoginActivityViewer.html",
+    "window_features": "width=1040,height=720,resizable=yes,scrollbars=yes"
+  }
+}
+```
+
+### Integrating with an Existing applications.json
+
+Your existing `applications.json` is a JSON **array** (`[...]`). Add the new app object from `merge-snippet.json` as an additional element:
+
+```json
+[
+  { "name": "YourExistingApp", "extensions": [...], "services": ["Verse"] },
+  {
+    "name": "DominoLoginActivityViewer",
+    "extensions": [
+      {
+        "id": "domino-login-activity",
+        "type": "com.ibm.action.link",
+        "path": "com.ibm.navbar.order.96500",
+        "title": "Login Activity",
+        "payload": {
+          "link": "https://YOUR_DOMINO_SERVER/domcfg.nsf/LoginActivityViewer.html",
+          "window_features": "width=1040,height=720,resizable=yes,scrollbars=yes"
+        }
+      }
+    ],
+    "services": ["Verse"]
+  }
+]
+```
+
+> Validate your merged JSON at [jsonlint.com](https://jsonlint.com) before deploying.
+
+### Quick Deploy Checklist
+
+- [ ] Deploy `LoginActivityViewer.html` as File Resource in DOMCFG.NSF
+- [ ] Create agent `GetLoginHistory` in DOMCFG.NSF — paste `GetLoginHistory.lss`, sign with an ID that has Reader access to `names.nsf`
+- [ ] Set DOMCFG.NSF ACL: Anonymous → No Access; authenticated users → Reader
+- [ ] Edit `applications.json` (or `merge-snippet.json`): replace `YOUR_DOMINO_SERVER`
+- [ ] Deploy `applications.json` and set `notes.ini` parameters
+- [ ] `tell http restart` · Test: click More menu in Verse
+
+For the complete guide see `verse-login-activity/DEPLOYMENT.md`.
+
+---
+
+## �� Audio CAPTCHA
 
 The math CAPTCHA fully supports visually impaired users via Web Speech API:
 
@@ -905,11 +1021,11 @@ The math CAPTCHA fully supports visually impaired users via Web Speech API:
 
 ## ⚙️ Configuration Reference
 
-### CONFIG / DominoLoginConfig Keys (v2.4.0)
+### CONFIG / DominoLoginConfig Keys (v2.5.0)
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `version` | String | `"2.4.0"` | Displayed in footer |
+| `version` | String | `"2.5.0"` | Displayed in footer |
 | `branding.companyName` | String | `"Your Organization"` | Displayed in header |
 | `branding.logoUrl` | String | `""` | Base64 or URL; leave blank for text only |
 | `theme.primaryColor` | String | `"#0066CC"` | Buttons, links, focus rings |
@@ -1002,6 +1118,15 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 
 ## 📋 Changelog
 
+### Version 2.5.0 (June 2026)
+
+**New Features:**
+- ✅ HCL Verse Login Activity Extension — "Login Activity" link in Verse navbar More menu
+- ✅ `LoginActivityViewer.html` — self-contained popup with history table, summary cards, dual data source (server + localStorage)
+- ✅ `GetLoginHistory.lss` — new LotusScript agent returning `LoginHistory` from `names.nsf` as authenticated JSON
+- ✅ `applications.json` + `merge-snippet.json` — seamless integration with existing or new Verse deployments
+- ✅ `verse-login-activity/DEPLOYMENT.md` — comprehensive step-by-step guide covering agents, ACL, notes.ini, and merge instructions
+
 ### Version 2.4.0 (June 2026)
 
 **New Features:**
@@ -1049,6 +1174,6 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 
 **Repository:** [github.com/rishablearn/DominoCustomWebPageApril26](https://github.com/rishablearn/DominoCustomWebPageApril26)  
 **Compatible with:** HCL Domino 12.x, 14.x  
-**Version:** 2.4.0  
+**Version:** 2.5.0  
 **Last Updated:** June 2026
 

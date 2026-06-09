@@ -1,0 +1,241 @@
+'===========================================================================
+' GetLoginHistory.lss
+' LotusScript Agent — Return current user's login history as JSON
+'
+' Version  : 1.0.0
+' Date     : 2026-06-09
+' Requires : HCL Domino 12.0.1+
+'
+' PURPOSE
+' -------
+' Called via HTTP GET by LoginActivityViewer.html in the HCL Verse
+' extension popup.  Reads the authenticated user's LoginHistory field
+' from their Person document in NAMES.NSF and returns it as a JSON array.
+'
+' Each entry in the JSON array corresponds to one pipe-delimited item
+' previously written by the LogLoginAttempt agent:
+'
+'   TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA
+'
+' RESPONSE FORMAT
+'   Content-Type: application/json
+'   [
+'     { "ts":"2026-06-09T08:00:00Z", "ip":"192.168.1.5",
+'       "status":"ATTEMPT", "browser":"Chrome", "platform":"Win32",
+'       "tz":"Asia/Kolkata", "scr":"1920x1080", "mfa":"0" },
+'     ...
+'   ]
+'
+' HOW TO DEPLOY
+' -------------
+' 1. Open DOMCFG.NSF in Domino Designer.
+' 2. Create → Agent.
+'      Name     : GetLoginHistory
+'      Trigger  : On demand  (responds to ?OpenAgent URL)
+'      Run as   : Current user in web context (authenticated)
+'      Context  : None
+' 3. In the Script editor, paste this entire file.
+' 4. Save and sign the agent with an ID that has Reader access to NAMES.NSF.
+' 5. In DOMCFG.NSF ACL:
+'      Authenticated users : at minimum Reader access
+'      Anonymous           : No access  (prevents unauthenticated queries)
+' 6. Verify:
+'      Open a browser where you are logged in to Domino.
+'      Navigate to:  https://yourserver/domcfg.nsf/GetLoginHistory?OpenAgent
+'      Expected response: a JSON array (possibly empty [])
+'
+' SECURITY NOTES
+' --------------
+'  - Agent returns ONLY the data of the currently authenticated user.
+'  - Anonymous requests are silently returned as [].
+'  - No user-controlled input is accepted — no injection risk.
+'  - LoginHistory field contains no passwords or PII beyond browser info.
+'
+'===========================================================================
+Option Public
+Option Declare
+
+Const NAMES_SERVER  = ""          ' "" = current server; "Server/Org" for remote
+Const NAMES_DB_PATH = "names.nsf"
+
+'===========================================================================
+Sub Initialize()
+    Dim session As New NotesSession
+    On Error GoTo ErrorHandler
+
+    ' Write JSON content-type first
+    Print "Content-type: application/json"
+    Print "X-Content-Type-Options: nosniff"
+    Print "Cache-Control: no-store"
+    Print ""
+
+    '-- 1. Identify the authenticated user -----------------------------------
+    Dim currentUser As String
+    currentUser = session.CommonUserName
+
+    If currentUser = "" Or StrConv(currentUser, 1) = "ANONYMOUS" Then
+        Print "[]"
+        Exit Sub
+    End If
+
+    '-- 2. Open NAMES.NSF ----------------------------------------------------
+    Dim namesDb As NotesDatabase
+    Set namesDb = New NotesDatabase(NAMES_SERVER, NAMES_DB_PATH)
+
+    If Not namesDb.IsOpen Then
+        Call namesDb.Open(NAMES_SERVER, NAMES_DB_PATH)
+    End If
+
+    If Not namesDb.IsOpen Then
+        Print "[]"
+        Exit Sub
+    End If
+
+    '-- 3. Locate the Person document ----------------------------------------
+    Dim personDoc As NotesDocument
+    Set personDoc = Nothing
+
+    ' Attempt 1: short name lookup via ($Users) view
+    Dim usersView As NotesView
+    Set usersView = namesDb.GetView("($Users)")
+
+    If Not (usersView Is Nothing) Then
+        Set personDoc = usersView.GetDocumentByKey(currentUser, False)
+    End If
+
+    ' Attempt 2: full canonical name
+    If personDoc Is Nothing Then
+        Dim fullName As String
+        fullName = session.UserName
+        If Not (usersView Is Nothing) And fullName <> "" Then
+            Set personDoc = usersView.GetDocumentByKey(fullName, True)
+        End If
+    End If
+
+    ' Attempt 3: internet (email) address view
+    If personDoc Is Nothing Then
+        Dim inetView As NotesView
+        Set inetView = namesDb.GetView("($VIMPeople)")
+        If Not (inetView Is Nothing) Then
+            Set personDoc = inetView.GetDocumentByKey(currentUser, False)
+            If personDoc Is Nothing Then
+                Set personDoc = inetView.GetDocumentByKey(session.UserName, True)
+            End If
+            Call inetView.Recycle()
+        End If
+    End If
+
+    If Not (usersView Is Nothing) Then Call usersView.Recycle()
+
+    If personDoc Is Nothing Then
+        Print "[]"
+        GoTo Cleanup
+    End If
+
+    '-- 4. Read LoginHistory field -------------------------------------------
+    Dim histItems As Variant
+    histItems = personDoc.GetItemValue("LoginHistory")
+
+    '-- 5. Parse each pipe-delimited entry into a JSON object ---------------
+    Dim jsonParts() As String
+    Dim count As Integer
+    count = 0
+
+    ' Maximum entries: prevent oversized response
+    Dim maxItems As Integer
+    maxItems = UBound(histItems) + 1
+    If maxItems > 20 Then maxItems = 20
+
+    ReDim jsonParts(maxItems - 1)
+
+    Dim i As Integer
+    For i = 0 To maxItems - 1
+        Dim raw As String
+        raw = Trim(CStr(histItems(i)))
+        If raw <> "" Then
+            Dim parts() As String
+            parts = Split(raw, "|")
+
+            Dim ts       As String : ts       = SafePart(parts, 0)
+            Dim ip       As String : ip       = SafePart(parts, 1)
+            Dim status_  As String : status_  = SafePart(parts, 2)
+            Dim browser_ As String : browser_ = SafePart(parts, 3)
+            Dim plat     As String : plat     = SafePart(parts, 4)
+            Dim tz       As String : tz       = SafePart(parts, 5)
+            Dim scr      As String : scr      = SafePart(parts, 6)
+            Dim mfa      As String : mfa      = SafePart(parts, 7)
+
+            jsonParts(count) = _
+                "{" & _
+                Q("ts")       & ":" & Q(JsonEscape(ts))      & "," & _
+                Q("ip")       & ":" & Q(JsonEscape(ip))       & "," & _
+                Q("status")   & ":" & Q(JsonEscape(status_))  & "," & _
+                Q("browser")  & ":" & Q(JsonEscape(browser_)) & "," & _
+                Q("platform") & ":" & Q(JsonEscape(plat))     & "," & _
+                Q("tz")       & ":" & Q(JsonEscape(tz))       & "," & _
+                Q("scr")      & ":" & Q(JsonEscape(scr))      & "," & _
+                Q("mfa")      & ":" & Q(JsonEscape(mfa))      & _
+                "}"
+            count = count + 1
+        End If
+    Next i
+
+    '-- 6. Emit JSON ---------------------------------------------------------
+    If count = 0 Then
+        Print "[]"
+    Else
+        Dim resultArr() As String
+        ReDim resultArr(count - 1)
+        Dim j As Integer
+        For j = 0 To count - 1
+            resultArr(j) = jsonParts(j)
+        Next j
+        Print "[" & Join(resultArr, ",") & "]"
+    End If
+
+Cleanup:
+    If Not (personDoc Is Nothing) Then Call personDoc.Recycle()
+    If Not (namesDb Is Nothing)   Then Call namesDb.Recycle()
+    Exit Sub
+
+ErrorHandler:
+    ' Return empty array on any error — never expose internal messages
+    Print "[]"
+    Resume Cleanup
+End Sub
+
+'===========================================================================
+' SafePart — safely extract a pipe-split token by index
+'===========================================================================
+Function SafePart(parts() As String, idx As Integer) As String
+    On Error Resume Next
+    If idx >= 0 And idx <= UBound(parts) Then
+        SafePart = Trim(CStr(parts(idx)))
+    Else
+        SafePart = ""
+    End If
+    On Error GoTo 0
+End Function
+
+'===========================================================================
+' Q — wraps a string in JSON double quotes
+'===========================================================================
+Function Q(s As String) As String
+    Q = Chr(34) & s & Chr(34)
+End Function
+
+'===========================================================================
+' JsonEscape — escapes a string for safe embedding in JSON
+'===========================================================================
+Function JsonEscape(s As String) As String
+    Dim r As String
+    r = s
+    r = Join(Split(r, "\"),    "\\")
+    r = Join(Split(r, Chr(34)), "\" & Chr(34))
+    r = Join(Split(r, Chr(8)),  "\b")
+    r = Join(Split(r, Chr(12)), "\f")
+    r = Join(Split(r, Chr(10)), "\n")
+    r = Join(Split(r, Chr(13)), "\r")
+    r = Join(Split(r, Chr(9)),  "\t")
+    JsonEscape = r
+End Function
