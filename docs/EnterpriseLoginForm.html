@@ -356,7 +356,23 @@ Option 4: Hide logo
             backupLinkText: "Contact IT Support",
             backupLinkUrl: "mailto:itsupport@yourorg.com",
             verifyButtonText: "Verify Code",
-            backButtonText: "\u2190 Back to Login"
+            backButtonText: "\u2190 Back to Login",
+
+            // ── First-time setup assistance ─────────────────────────────────────
+            // URL of Domino's built-in TOTP enrollment page (inside domcfg.nsf).
+            // Domino redirects un-enrolled users here automatically; this link
+            // lets users reach it proactively from the login page.
+            // Default path after standard domcfg.nsf deployment:
+            setupUrl: "/domcfg.nsf/fmpgMFASetup?OpenForm",
+
+            // Show a collapsible "First time? Set up your authenticator" guide
+            // inside the TOTP step.  Harmless when MFA is disabled — set false to hide.
+            showFirstTimeHelp: true,
+
+            // Allow users to submit an 8-character scratch (backup) code instead of
+            // the 6-digit TOTP code.  Domino accepts both in the same OTP field.
+            // Scratch codes are generated on the Domino enrollment page above.
+            showScratchCodeOption: true
         },
 
         // =====================================================================
@@ -1678,6 +1694,116 @@ Option 4: Hide logo
             margin-top: 12px; }
         .mfa-support-link { color: var(--primary-color); }
 
+        /* ===== MFA First-Time Setup Help ===== */
+        .mfa-setup-details {
+            margin-top: 18px;
+            border: 1px solid var(--input-border);
+            border-radius: 10px;
+            overflow: hidden;
+            text-align: left;
+        }
+        .mfa-setup-summary {
+            padding: 11px 16px;
+            cursor: pointer;
+            font-size: 0.83rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            background: var(--input-bg);
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            user-select: none;
+        }
+        .mfa-setup-summary::-webkit-details-marker { display: none; }
+        .mfa-setup-details[open] .mfa-setup-summary {
+            border-bottom: 1px solid var(--input-border);
+        }
+        .mfa-setup-body {
+            padding: 16px;
+            background: var(--bg-color);
+        }
+        .mfa-setup-intro {
+            font-size: 0.81rem;
+            color: var(--text-secondary);
+            margin: 0 0 12px;
+            line-height: 1.55;
+        }
+        .mfa-setup-ol {
+            padding-left: 20px;
+            margin: 0 0 14px;
+            font-size: 0.81rem;
+            color: var(--text-secondary);
+            line-height: 1.9;
+        }
+        .mfa-setup-ol li strong { color: var(--text-primary); }
+        .mfa-enroll-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            background: var(--primary-color);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: opacity 0.18s;
+            margin-bottom: 12px;
+        }
+        .mfa-enroll-btn:hover { opacity: 0.86; color: #fff; }
+        .mfa-scratch-prompt {
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .mfa-scratch-link {
+            background: none; border: none;
+            color: var(--primary-color);
+            cursor: pointer; font-size: inherit;
+            padding: 0; text-decoration: underline;
+            font-family: inherit;
+        }
+        .mfa-scratch-link:hover { color: var(--primary-hover); }
+
+        /* ===== Scratch Code Panel ===== */
+        .mfa-scratch-panel {
+            margin-top: 14px;
+            padding: 16px;
+            border: 1px solid var(--input-border);
+            border-radius: 10px;
+            background: var(--input-bg);
+            display: none;
+            text-align: left;
+        }
+        .mfa-scratch-panel.visible { display: block; }
+        .mfa-scratch-panel-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .mfa-scratch-back {
+            background: none; border: none;
+            color: var(--primary-color);
+            cursor: pointer; font-size: 0.79rem;
+            text-decoration: underline;
+            font-family: inherit; padding: 0;
+        }
+        .mfa-scratch-back:hover { color: var(--primary-hover); }
+        .scratch-code-input {
+            letter-spacing: 0.3em !important;
+            font-family: 'Courier New', Courier, monospace !important;
+            text-transform: uppercase !important;
+            font-size: 1.5rem !important;
+        }
+        [data-theme="dark"] .mfa-setup-body  { background: var(--card-bg); }
+        [data-theme="dark"] .mfa-scratch-panel { background: var(--card-bg); }
+
         /* ===== Last Login Banner ===== */
         .last-login-banner {
             display: none; margin-bottom: 16px;
@@ -2222,6 +2348,86 @@ Option 4: Hide logo
                             <span id="mfaBackupText">Can't access your authenticator? </span>
                             <a href="mailto:itsupport@yourorg.com" class="mfa-support-link" id="mfaSupportLink">Contact IT Support</a>
                         </p>
+
+                        <!-- ── FIRST-TIME SETUP GUIDE (collapsible) ────────────────────
+                             Shown when mfa.showFirstTimeHelp = true (default).
+                             Directs un-enrolled users to Domino's enrollment page.
+                        ── -->
+                        <details class="mfa-setup-details" id="mfaSetupDetails">
+                            <summary class="mfa-setup-summary" id="mfaSetupSummary">
+                                <span aria-hidden="true">&#x1F195;</span>
+                                First time? Set up your authenticator app
+                            </summary>
+                            <div class="mfa-setup-body">
+                                <p class="mfa-setup-intro">
+                                    Before you can sign in with two-factor authentication you need to
+                                    link your account to an authenticator app. This takes about two minutes.
+                                </p>
+                                <ol class="mfa-setup-ol">
+                                    <li>Install <strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong>,
+                                        or any TOTP-compatible app on your phone.</li>
+                                    <li>Click <strong>"Open Setup Page"</strong> below. The page will display
+                                        a <strong>QR code</strong> — scan it with your authenticator app.</li>
+                                    <li><strong>Copy your scratch codes</strong> (one-time backup codes shown during
+                                        setup) and store them somewhere safe — you can use them to log in
+                                        if you ever lose your phone.</li>
+                                    <li>Return here and sign in normally. The 6-digit code from your
+                                        authenticator app will be requested after your password.</li>
+                                </ol>
+                                <a href="/domcfg.nsf/fmpgMFASetup?OpenForm"
+                                   id="mfaEnrollLink"
+                                   class="mfa-enroll-btn"
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   aria-label="Open the authenticator setup page in a new tab">
+                                    Open Setup Page &#x2192;
+                                </a>
+                                <p class="mfa-scratch-prompt" id="mfaScratchPrompt">
+                                    Already set up and have a backup code?
+                                    <button type="button" class="mfa-scratch-link" id="mfaScratchSwitch">
+                                        Use scratch code instead
+                                    </button>
+                                </p>
+                            </div>
+                        </details>
+
+                        <!-- ── SCRATCH CODE PANEL ──────────────────────────────────────
+                             Shown when user clicks "Use scratch code instead".
+                             mfa.showScratchCodeOption must be true (default).
+                             Domino accepts scratch codes in the same OTP field as TOTP.
+                        ── -->
+                        <div class="mfa-scratch-panel" id="mfaScratchPanel"
+                             role="region" aria-label="Scratch code entry">
+                            <div class="mfa-scratch-panel-hdr">
+                                <span>&#x1F511; Backup (Scratch) Code</span>
+                                <button type="button" class="mfa-scratch-back" id="mfaScratchBack"
+                                        aria-label="Return to 6-digit TOTP entry">
+                                    &#x2190; Back to 6-digit code
+                                </button>
+                            </div>
+                            <div class="totp-input-group">
+                                <label for="scratchCodeInput" class="sr-only">
+                                    8-character scratch code from your setup page
+                                </label>
+                                <input type="text" id="scratchCodeInput"
+                                       class="totp-input scratch-code-input"
+                                       maxlength="8"
+                                       autocomplete="off"
+                                       spellcheck="false"
+                                       placeholder="A1B2C3D4"
+                                       aria-label="Enter your 8-character backup scratch code"
+                                       aria-describedby="scratchCodeHint scratchCodeError">
+                                <div class="totp-hint" id="scratchCodeHint">
+                                    Enter one of the 8-character codes shown on the setup page
+                                </div>
+                                <div class="totp-error" id="scratchCodeError"
+                                     role="alert" aria-live="assertive"></div>
+                            </div>
+                            <button type="button" class="submit-button" id="verifyScratchBtn">
+                                <span class="button-text">Use Backup Code</span>
+                                <span class="button-icon">&#x2192;</span>
+                            </button>
+                        </div>
 
                     </div><!-- /#mfaStep -->
 
@@ -3504,6 +3710,7 @@ Option 4: Hide logo
             setupCaptcha();
             setupWCAG();
             setupMFA();
+            setupMFAEnrollment();
             setupLoginTracking();
             
             // Real-time validation - enables submit only when all fields valid
@@ -3660,6 +3867,149 @@ Option 4: Hide logo
 
         // Stop timer when navigating away
         window.addEventListener('pagehide', stopTOTPTimer);
+
+        // =====================================================================
+        // MFA FIRST-TIME SETUP + SCRATCH CODE  (Added v2.6.0)
+        // =====================================================================
+        // setupMFAEnrollment() wires up:
+        //   1. The "Open Setup Page" link → Domino's enrollment URL (QR + scratch codes)
+        //   2. "Use scratch code instead" toggle → scratch panel
+        //   3. Scratch code submission (same OTP field — Domino accepts both formats)
+        // All behaviour is gated by mfa.showFirstTimeHelp and mfa.showScratchCodeOption.
+        // =====================================================================
+
+        function setupMFAEnrollment() {
+            var cfg = CONFIG.mfa || {};
+            if (!CONFIG.features?.enableMFA || !cfg?.enable) return;
+
+            // Point enrollment link to configured URL
+            var link = document.getElementById('mfaEnrollLink');
+            if (link) {
+                link.href = cfg.setupUrl || '/domcfg.nsf/fmpgMFASetup?OpenForm';
+            }
+
+            // Hide first-time help section if opt-out in config
+            var details = document.getElementById('mfaSetupDetails');
+            if (details && cfg.showFirstTimeHelp === false) {
+                details.style.display = 'none';
+            }
+
+            // Hide scratch code option if opt-out in config
+            var scratchPrompt = document.getElementById('mfaScratchPrompt');
+            var scratchPanel  = document.getElementById('mfaScratchPanel');
+            if (cfg.showScratchCodeOption === false) {
+                if (scratchPrompt) scratchPrompt.style.display = 'none';
+                if (scratchPanel)  scratchPanel.style.display  = 'none';
+            }
+
+            // "Use scratch code instead" button
+            var switchBtn = document.getElementById('mfaScratchSwitch');
+            if (switchBtn) switchBtn.addEventListener('click', activateScratchMode);
+
+            // "Back to 6-digit code" button
+            var backBtn = document.getElementById('mfaScratchBack');
+            if (backBtn) backBtn.addEventListener('click', deactivateScratchMode);
+
+            // "Use Backup Code" verify button
+            var verifyBtn = document.getElementById('verifyScratchBtn');
+            if (verifyBtn) verifyBtn.addEventListener('click', submitWithScratchCode);
+
+            // Scratch input: uppercase + alphanumeric + Enter
+            var scratchInp = document.getElementById('scratchCodeInput');
+            if (scratchInp) {
+                scratchInp.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+                });
+                scratchInp.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') { e.preventDefault(); submitWithScratchCode(); }
+                });
+            }
+        }
+
+        function activateScratchMode() {
+            var cfg = CONFIG.mfa || {};
+            // Hide normal TOTP elements
+            var totpGrp   = document.querySelector('#mfaStep .totp-input-group');
+            var timerWrap = document.getElementById('totpTimerWrap');
+            var timerSR   = document.getElementById('totpTimerSR');
+            var verifyBtn = document.getElementById('verifyMfaBtn');
+            var setupDet  = document.getElementById('mfaSetupDetails');
+
+            if (totpGrp)   totpGrp.style.display   = 'none';
+            if (timerWrap) timerWrap.style.display  = 'none';
+            if (timerSR)   timerSR.style.display    = 'none';
+            if (verifyBtn) verifyBtn.style.display  = 'none';
+            if (setupDet)  setupDet.style.display   = 'none';
+
+            stopTOTPTimer();
+
+            // Show scratch panel and clear any previous error
+            var panel = document.getElementById('mfaScratchPanel');
+            if (panel) panel.classList.add('visible');
+            var errEl = document.getElementById('scratchCodeError');
+            if (errEl) errEl.textContent = '';
+
+            setTimeout(function() {
+                var inp = document.getElementById('scratchCodeInput');
+                if (inp) { inp.value = ''; inp.focus(); }
+            }, 60);
+
+            srAnnounce('Scratch code entry. Enter your 8-character backup code.', 'polite');
+        }
+
+        function deactivateScratchMode() {
+            var cfg = CONFIG.mfa || {};
+            // Restore normal TOTP elements
+            var totpGrp   = document.querySelector('#mfaStep .totp-input-group');
+            var timerWrap = document.getElementById('totpTimerWrap');
+            var timerSR   = document.getElementById('totpTimerSR');
+            var verifyBtn = document.getElementById('verifyMfaBtn');
+            var setupDet  = document.getElementById('mfaSetupDetails');
+
+            if (totpGrp)   totpGrp.style.display   = '';
+            if (timerWrap) timerWrap.style.display  = '';
+            if (timerSR)   timerSR.style.display    = '';
+            if (verifyBtn) verifyBtn.style.display  = '';
+            if (cfg.showFirstTimeHelp !== false && setupDet) setupDet.style.display = '';
+
+            // Hide scratch panel
+            var panel = document.getElementById('mfaScratchPanel');
+            if (panel) panel.classList.remove('visible');
+
+            // Clear scratch error and restart TOTP countdown
+            var errEl = document.getElementById('scratchCodeError');
+            if (errEl) errEl.textContent = '';
+
+            if (cfg.showTimer !== false) startTOTPTimer(cfg.totpWindow || 30);
+
+            setTimeout(function() {
+                var inp = document.getElementById('totpCode');
+                if (inp) { inp.value = ''; inp.focus(); }
+            }, 60);
+
+            srAnnounce('Returned to 6-digit code entry.', 'polite');
+        }
+
+        function submitWithScratchCode() {
+            var code  = (document.getElementById('scratchCodeInput')?.value || '').toUpperCase().trim();
+            var errEl = document.getElementById('scratchCodeError');
+
+            if (!/^[A-Z0-9]{8}$/.test(code)) {
+                if (errEl) errEl.textContent = '\u26A0\uFE0F Scratch codes are 8 characters (letters A\u2013Z and digits 0\u20139).';
+                srAnnounce('Invalid scratch code. Enter the 8-character code from your setup page.', 'assertive');
+                document.getElementById('scratchCodeInput')?.focus();
+                return;
+            }
+            if (errEl) errEl.textContent = '';
+
+            // Domino accepts scratch codes in the same OTP field as the 6-digit TOTP
+            var hf = document.getElementById('totpHiddenField');
+            if (hf) hf.value = code;
+
+            trackLoginAttempt({ mfa: true }, function() {
+                document.getElementById('loginForm')?.submit();
+            });
+        }
 
         // =====================================================================
         // LOGIN ATTEMPT TRACKING  (Section added v2.4.0)
