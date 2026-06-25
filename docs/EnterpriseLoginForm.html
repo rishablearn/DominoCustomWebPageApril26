@@ -1008,7 +1008,7 @@ Option 4: Hide logo
             display: flex;
             align-items: flex-start;
             justify-content: center;
-            padding: 40px 20px;
+            padding: 80px 20px 40px; /* 80px clears the ~68px fixed top-bar at all zoom levels */
             /* Allow natural height growth so card never clips */
             min-height: calc(100vh - 60px);
             min-height: calc(100dvh - 60px);
@@ -1508,7 +1508,7 @@ Option 4: Hide logo
         
         /* Tablets (768px - 1024px) */
         @media (max-width: 1024px) {
-            .main-container { padding: 24px; }
+            .main-container { padding: 80px 24px 24px; }
             .login-card { max-width: 440px; }
             .card-header, .card-body { padding: 28px; }
             .top-bar { padding: 12px 16px; }
