@@ -1,58 +1,128 @@
 '===========================================================================
 ' LoginTracker.lss
-' LotusScript Agent — Log Login Attempts to Person Document
+' LotusScript Agent — Log Login Attempts to Person Document in NAMES.NSF
 '
-' Version  : 1.0.0
-' Date     : 2026-06-04
-' Requires : HCL Domino 12.0.1+  (NAMES.NSF accessible from DOMCFG.NSF)
+' Version  : 1.1.0
+' Date     : 2026-06-25
+' Requires : HCL Domino 12.0.1+
 '
 ' PURPOSE
 ' -------
 ' Receives a web POST from the custom login page, reads the client-supplied
-' browser fingerprint plus the server-side IP address, then updates the
-' matching Person document in NAMES.NSF with the last N login attempts.
+' browser fingerprint plus the server-side IP address, then prepends a new
+' entry to the LoginHistory multi-value field on the matching Person document
+' in NAMES.NSF, retaining the last MAX_HISTORY entries.
 '
-' Each attempt is stored as one pipe-delimited item in the multi-value
-' field  LoginHistory  on the Person document.
-' Format per item:
+' FIELD FORMAT (pipe-delimited per entry)
+' ----------------------------------------
 '   TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA
 '
-' Example:
-'   2026-06-04T12:30:00Z|192.168.1.5|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0
+'   Example:
+'   2026-06-25T07:30:00Z|192.168.1.10|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0
 '
-' HOW TO DEPLOY
-' -------------
-' 1. Open DOMCFG.NSF in Domino Designer (or create agent in your own NSF).
-' 2. Create a new LotusScript Agent:
-'      Name     : LogLoginAttempt
-'      Trigger  : On demand  (HTTP agents respond to ?OpenAgent)
-'      Run as   : Web user   (allow anonymous in ACL — see step 4)
-'      Context  : None (runs without a specific document)
-' 3. Paste this entire file into the agent code editor (Script area).
-' 4. Set ACL on the database containing this agent:
-'      Anonymous access  : Reader  (minimum; agent runs under "Web user")
-'      Ensure "Run unrestricted methods" is NOT needed — this agent
-'      only reads/writes a document it opens directly.
-' 5. In  Domino Administrator → Server → Server Document → Security:
-'      "Run unrestricted LotusScript/Java agents" — add the server ID.
-' 6. Save and sign the agent with an ID that has Write access to NAMES.NSF.
-' 7. Verify the agent URL works:
-'      https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
-'      Should return HTTP 200 with text "OK".
-' 8. Enable tracking in the login page CONFIG:
-'      features.enableLoginTracking = true
-'      loginTracking.agentUrl = "/domcfg.nsf/LogLoginAttempt?OpenAgent"
+'   Field positions:
+'     0 = ISO 8601 timestamp (UTC)
+'     1 = Client IP address (from REMOTE_ADDR / X-Forwarded-For)
+'     2 = Status: ATTEMPT (always; server cannot confirm success/failure)
+'     3 = Browser name  (Chrome, Firefox, Edge, Safari, Opera)
+'     4 = Platform/OS   (Windows, macOS, Linux, Android, etc.)
+'     5 = Timezone      (IANA format, e.g. Asia/Kolkata)
+'     6 = Screen size   (e.g. 1920x1080)
+'     7 = MFA used      (1 = yes, 0 = no)
 '
-' PERSON DOCUMENT FIELDS WRITTEN
-' --------------------------------
-'  LoginHistory     Multi-value Text  — last N attempts (pipe-delimited)
-'  LoginHistoryUpdated  Date/Time     — when the field was last updated
+' =========================================================================
+' PREREQUISITES — complete ALL steps before enabling in login page config
+' =========================================================================
 '
-' EMAIL NOTIFICATION (optional, disabled by default)
-' ---------------------------------------------------
-'  Set SEND_EMAIL_ON_NEW_ATTEMPT = True below.
-'  The agent sends a memo to the user on every new attempt.
-'  Requires a properly configured Domino mail router.
+' A. PERSON DOCUMENT FIELD PROVISIONING
+'    ------------------------------------
+'    The agent writes two fields directly to the Person document:
+'      LoginHistory         (Multi-value Text)  — last N login entries
+'      LoginHistoryUpdated  (Date/Time)         — timestamp of last update
+'
+'    No schema change is required — Domino allows arbitrary fields on
+'    existing documents.  The fields are created automatically on first run.
+'
+'    OPTIONAL — to make LoginHistory visible in Domino Administrator UI:
+'      1. Open pubnames.ntf in Domino Designer
+'      2. Open the "Person" form → subform "($PersonBasicInfo)" or similar
+'      3. Add a multi-value Text field named exactly "LoginHistory"
+'      4. Add a DateTime field named "LoginHistoryUpdated"
+'      5. Save, sign, and replace the design of names.nsf with pubnames.ntf
+'      NOTE: This step is cosmetic only and NOT required for tracking to work.
+'
+' B. MAIL TEMPLATE (ONLY if SEND_EMAIL_ON_NEW_ATTEMPT = True)
+'    ----------------------------------------------------------
+'    The email notification uses the standard Domino Memo form.
+'    No mail template changes are required.
+'    Prerequisites for email:
+'      - Domino mail router must be running on the server
+'      - The Person document must have a valid InternetAddress or FullName
+'      - The signing ID must have sufficient rights to send mail
+'
+' =========================================================================
+' DEPLOYMENT CHECKLIST
+' =========================================================================
+'
+' Step 1 — Create the Agent
+'   [ ] Open DOMCFG.NSF in Domino Designer
+'   [ ] Shared Code → Agents → New Agent
+'         Name    : LogLoginAttempt          (exact — matches agentUrl in config)
+'         Type    : LotusScript
+'         Trigger : On demand                (HTTP ?OpenAgent calls this)
+'         Target  : None                     (no document context needed)
+'   [ ] Paste the entire contents of this file into the Script area
+'   [ ] Save the agent (do NOT sign yet)
+'
+' Step 2 — Configure Constants (top of Initialize sub)
+'   [ ] NAMES_SERVER  — "" for current server, or "ServerName/Org" for remote
+'   [ ] NAMES_DB_PATH — "names.nsf" (default; change if your directory differs)
+'   [ ] MAX_HISTORY   — number of past entries to keep per user (default: 5)
+'   [ ] SEND_EMAIL_ON_NEW_ATTEMPT — False (default); set True to send email alerts
+'
+' Step 3 — Sign the Agent
+'   [ ] In Domino Designer: select the agent → File → Sign
+'         Sign with an ID that has:
+'           - Editor or Author access on NAMES.NSF  (to write LoginHistory)
+'           - Reader access on DOMCFG.NSF           (to run as web user)
+'   [ ] Confirm the signer appears in the agent properties
+'
+' Step 4 — Set Database ACL
+'   [ ] DOMCFG.NSF ACL:
+'         Anonymous    : Reader      (minimum — required for web POST)
+'         LocalDomainServers : Manager
+'   [ ] NAMES.NSF ACL:
+'         The signing ID must have Author or Editor access
+'         (standard Domino Directory ACL usually grants this to server IDs)
+'
+' Step 5 — Server Security Settings
+'   [ ] Domino Administrator → Configuration → Server → Security tab
+'         "Run restricted LotusScript/Java agents"  — add the signing ID
+'         OR
+'         "Run unrestricted LotusScript/Java agents" — add the signing ID
+'         (this agent uses only basic Notes classes; restricted is sufficient)
+'
+' Step 6 — Verify the Agent
+'   [ ] Browse to: https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
+'         Expected response body: OK
+'         (username param is empty so agent exits early but returns OK)
+'   [ ] Submit the login page once with a real username
+'   [ ] Check Person document in Domino Administrator — LoginHistory should
+'       have one new entry
+'
+' Step 7 — Enable in Login Page Config
+'   [ ] In EnterpriseLoginForm.html or DominoEmbeddedForm.html:
+'         loginTracking: { enable: true, agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent" }
+'   [ ] Reload the login page — the banner should appear immediately
+'       (first load shows "Tracking Active" placeholder; after first submit
+'        it shows the actual last attempt details)
+'
+' =========================================================================
+' EMAIL NOTIFICATION (optional — disabled by default)
+' =========================================================================
+'   Set SEND_EMAIL_ON_NEW_ATTEMPT = True below.
+'   The agent sends a plain-text memo to the user on every new attempt.
+'   Requires: Domino mail router running + valid recipient address on Person doc.
 '
 '===========================================================================
 Option Public

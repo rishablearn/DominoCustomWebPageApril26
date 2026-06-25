@@ -80,7 +80,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
      */
     const DominoLoginConfig = {
         // Version info - displayed at bottom of page
-        version: "2.4.1",
+        version: "2.4.2",
         versionDate: "2026-06-25",
         
         branding: {
@@ -238,7 +238,36 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
 
         // =====================================================================
         // LOGIN ATTEMPT TRACKING
-        // See docs/LotusScript/LoginTracker.lss and README.md for agent setup
+        // =====================================================================
+        // WHAT IT DOES:
+        //   1. On each login attempt, client-side data is collected:
+        //      timestamp, timezone, browser/platform, screen resolution, MFA flag.
+        //   2. An async POST fires to agentUrl (LotusScript agent below).
+        //   3. The agent reads the real client IP from CGI headers and prepends
+        //      a new entry to LoginHistory on the Person document in names.nsf.
+        //   4. The same payload is saved to localStorage. On the NEXT login, a
+        //      "Last Login Attempt" banner is shown at the top of the form.
+        //
+        // PREREQUISITES (complete BEFORE setting enable: true):
+        //   a) Deploy LoginTracker.lss as agent "LogLoginAttempt" in DOMCFG.NSF
+        //      — full steps in docs/LotusScript/LoginTracker.lss
+        //   b) Sign the agent with an ID that has Author/Editor access to names.nsf
+        //   c) Set DOMCFG.NSF ACL: Anonymous = Reader (agent runs as web user)
+        //   d) No Person document form changes required — LoginHistory is written
+        //      dynamically. To make it visible in Domino Administrator:
+        //      optionally add a text field "LoginHistory" to the Person subform
+        //      in pubnames.ntf (not mandatory for tracking to work).
+        //
+        // LoginHistory field format (pipe-delimited, last 5 entries retained):
+        //   TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA
+        //   Example:
+        //   "2026-06-25T07:30:00Z|192.168.1.10|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0"
+        //
+        // QUICK START:
+        //   1. Set enable: true below
+        //   2. Deploy the agent (see prerequisite above)
+        //   3. Open the login page — the banner immediately confirms tracking is
+        //      active. Submit once; on the next load it shows your last attempt.
         // =====================================================================
         loginTracking: {
             enable: false,
@@ -1672,6 +1701,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         border: 1px solid var(--input-border); border-radius: 10px; padding: 10px 14px;
         font-size: 0.78rem; color: var(--text-secondary); }
     .last-login-banner.visible { display: block; }
+    .last-login-banner.tracking-active-only { border-color: var(--primary-color); border-style: dashed; opacity: 0.85; }
     .last-login-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
         font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
     .last-login-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
@@ -1681,6 +1711,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
     .last-login-status-ok   { color: #28a745; font-weight: 700; }
     .last-login-status-fail { color: #dc3545; font-weight: 700; }
+    .last-login-status-warn { color: #e67e22; font-weight: 700; }
+    .last-login-first-use { font-size: 0.76rem; color: var(--text-secondary); font-style: italic; padding: 2px 0; }
     [data-theme="dark"] .last-login-banner { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
     @media (prefers-reduced-motion: reduce) { .totp-ring-fill { transition: none; } }
     @media (forced-colors: active) { .totp-input:focus, .totp-input.filled { outline: 3px solid ButtonText; } }
@@ -1874,6 +1906,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                         <div class="last-login-row"><span class="last-login-label">Status:</span><span class="last-login-val" id="llStatus">—</span></div>
                         <div class="last-login-row"><span class="last-login-label">Browser:</span><span class="last-login-val" id="llBrowser">—</span></div>
                         <div class="last-login-row"><span class="last-login-label">Timezone:</span><span class="last-login-val" id="llTimezone">—</span></div>
+                        <div class="last-login-row"><span class="last-login-label">Screen:</span><span class="last-login-val" id="llScreen">—</span></div>
+                        <div class="last-login-row"><span class="last-login-label">MFA Used:</span><span class="last-login-val" id="llMFA">—</span></div>
                     </div>
                 </div>
 
@@ -2083,7 +2117,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 <strong>HCL Domino</strong>
             </div>
             <div class="version-info" id="versionInfo">
-                <span>Version <span id="versionNumber">2.4.1</span></span>
+                <span>Version <span id="versionNumber">2.4.2</span></span>
                 <span class="version-date" id="versionDate">2026-06-25</span>
             </div>
         </footer>
@@ -3396,7 +3430,9 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         // =====================================================================
         function setupLoginTracking() {
             var cfg = DominoLoginConfig.loginTracking || {};
-            if (!DominoLoginConfig.features?.enableLoginTracking && !cfg.enable) return;
+            // features.enableLoginTracking is a shorthand; sync it into loginTracking.enable
+            if (DominoLoginConfig.features?.enableLoginTracking) cfg.enable = true;
+            if (!cfg.enable) return;
             showLastLoginBanner();
         }
         function buildAttemptPayload(extra) {
@@ -3447,23 +3483,49 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         function showLastLoginBanner() {
             var banner = document.getElementById('lastLoginBanner');
             if (!banner) return;
-            var raw; try { raw = localStorage.getItem('lastLoginAttempt'); } catch (e) { return; }
-            if (!raw) return;
-            var d; try { d = JSON.parse(raw); } catch (e) { return; }
+
+            var raw;
+            try { raw = localStorage.getItem('lastLoginAttempt'); } catch (e) {}
+
+            if (!raw) {
+                // Tracking enabled but no prior attempt on this device yet.
+                // Show placeholder so admins can confirm tracking is wired up.
+                var titleSpan = banner.querySelector('.last-login-title span:last-child');
+                if (titleSpan) titleSpan.textContent = 'Login Activity Tracking Active';
+                var rowsEl = banner.querySelector('.last-login-rows');
+                if (rowsEl) rowsEl.innerHTML =
+                    '<div class="last-login-first-use">' +
+                    'No previous login recorded on this device. ' +
+                    'Your next attempt will be stored here.' +
+                    '</div>';
+                banner.classList.add('visible', 'tracking-active-only');
+                return;
+            }
+
+            var d;
+            try { d = JSON.parse(raw); } catch (e) { return; }
+
             var fmt = function(iso) {
                 try { return new Date(iso).toLocaleString(navigator.language, {
                     year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
                 catch(e) { return iso; }
             };
             var setVal = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val || '—'; };
-            setVal('llDate', fmt(d.ts));
+
+            setVal('llDate',    fmt(d.ts));
             setVal('llBrowser', d.browser + (d.platform ? ' / ' + d.platform : ''));
             setVal('llTimezone', d.tz || '—');
+            setVal('llScreen',  d.scr || '—');
+            setVal('llMFA',     d.mfa === '1' ? 'Yes ✓' : 'No');
+
             var statusEl = document.getElementById('llStatus');
             if (statusEl) {
                 var st = (d.status || 'ATTEMPT').toUpperCase();
                 statusEl.textContent = st;
-                statusEl.className = 'last-login-val ' + (st === 'SUCCESS' ? 'last-login-status-ok' : 'last-login-status-fail');
+                statusEl.className = 'last-login-val ' +
+                    (st === 'SUCCESS' ? 'last-login-status-ok'  :
+                     st === 'FAILED'  ? 'last-login-status-fail' :
+                                        'last-login-status-warn');
             }
             banner.classList.add('visible');
         }

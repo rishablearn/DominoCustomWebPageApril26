@@ -97,7 +97,7 @@ Option 4: Hide logo
     <script>
     const CONFIG = {
         // Version info - displayed at bottom of page
-        version: "2.4.1",
+        version: "2.4.2",
         versionDate: "2026-06-25",
         
         // =====================================================================
@@ -379,24 +379,35 @@ Option 4: Hide logo
         // =====================================================================
         // LOGIN ATTEMPT TRACKING
         // =====================================================================
-        // HOW IT WORKS:
-        //   1. Before each login attempt, client-side browser info is collected
-        //      (timestamp, user-agent, timezone, screen, language)
-        //   2. An async POST is fired to a Domino agent (agentUrl below)
-        //   3. The agent reads the real IP from HTTP headers and updates
-        //      the Person document in names.nsf with the last N attempts
-        //   4. The last login info is also saved in localStorage and shown
-        //      as a "Last login" banner on the next page load
+        // WHAT IT DOES:
+        //   1. On each login attempt, client-side data is collected:
+        //      timestamp, timezone, browser/platform, screen resolution, MFA flag.
+        //   2. An async POST fires to agentUrl (LotusScript agent below).
+        //   3. The agent reads the real client IP from CGI headers and prepends
+        //      a new entry to LoginHistory on the Person document in names.nsf.
+        //   4. The same payload is saved to localStorage. On the NEXT login, a
+        //      "Last Login Attempt" banner is shown at the top of the form.
         //
-        // AGENT SETUP (see docs/LotusScript/LoginTracker.lss for full code):
-        //   - Create an agent in DOMCFG.NSF named "LogLoginAttempt"
-        //   - Run as: Web user / anonymous (no auth required)
-        //   - Trigger: Web - REST style (receives form POST)
-        //   - The agent updates names.nsf Person document field: LoginHistory
+        // PREREQUISITES (complete BEFORE setting enable: true):
+        //   a) Deploy LoginTracker.lss as agent "LogLoginAttempt" in DOMCFG.NSF
+        //      — full steps in docs/LotusScript/LoginTracker.lss
+        //   b) Sign the agent with an ID that has Author/Editor access to names.nsf
+        //   c) Set DOMCFG.NSF ACL: Anonymous = Reader (agent runs as web user)
+        //   d) No Person document form changes required — LoginHistory is written
+        //      dynamically. To make it visible in Domino Administrator:
+        //      optionally add a text field "LoginHistory" to the Person subform
+        //      in pubnames.ntf (not mandatory for tracking to work).
         //
-        // Person Document field format (multi-value, last 5 entries):
-        //   LoginHistory[0] = "2026-06-04T12:30:00Z|192.168.1.5|ATTEMPT|Chrome 125|Windows 11|Asia/Kolkata"
-        //   LoginHistory[1] = "2026-06-03T09:15:00Z|192.168.1.5|FAILED |Firefox 126|macOS 14|Asia/Kolkata"
+        // LoginHistory field format (pipe-delimited, last 5 entries retained):
+        //   TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA
+        //   Example:
+        //   "2026-06-25T07:30:00Z|192.168.1.10|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0"
+        //
+        // QUICK START:
+        //   1. Set enable: true below
+        //   2. Deploy the agent (see prerequisite above)
+        //   3. Open the login page — the banner immediately confirms tracking is
+        //      active. Submit once; on the next load it shows your last attempt.
         // =====================================================================
         loginTracking: {
             enable: false,
@@ -1819,6 +1830,9 @@ Option 4: Hide logo
             font-size: 0.78rem; color: var(--text-secondary);
         }
         .last-login-banner.visible { display: block; }
+        .last-login-banner.tracking-active-only {
+            border-color: var(--primary-color); border-style: dashed; opacity: 0.85;
+        }
         .last-login-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
             font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
         .last-login-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
@@ -1826,8 +1840,10 @@ Option 4: Hide logo
         .last-login-label { color: var(--text-secondary); font-size: 0.72rem; white-space: nowrap; }
         .last-login-val { color: var(--text-primary); font-weight: 500; font-size: 0.78rem;
             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
-        .last-login-status-ok  { color: #28a745; font-weight: 700; }
-        .last-login-status-fail{ color: #dc3545; font-weight: 700; }
+        .last-login-status-ok   { color: #28a745; font-weight: 700; }
+        .last-login-status-fail { color: #dc3545; font-weight: 700; }
+        .last-login-status-warn { color: #e67e22; font-weight: 700; }
+        .last-login-first-use { font-size: 0.76rem; color: var(--text-secondary); font-style: italic; padding: 2px 0; }
         [data-theme="dark"] .last-login-banner { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
 
         /* ===== Top Bar (Theme Toggle) ===== */
@@ -2132,6 +2148,14 @@ Option 4: Hide logo
                         <div class="last-login-row">
                             <span class="last-login-label">Timezone:</span>
                             <span class="last-login-val" id="llTimezone">—</span>
+                        </div>
+                        <div class="last-login-row">
+                            <span class="last-login-label">Screen:</span>
+                            <span class="last-login-val" id="llScreen">—</span>
+                        </div>
+                        <div class="last-login-row">
+                            <span class="last-login-label">MFA Used:</span>
+                            <span class="last-login-val" id="llMFA">—</span>
                         </div>
                     </div>
                 </div>
@@ -2469,7 +2493,7 @@ Option 4: Hide logo
             Powered by <a href="https://www.hcl-software.com/domino" target="_blank" rel="noopener">HCL Domino</a>
         </p>
         <div class="version-info" id="versionInfo">
-            <span>Version <span id="versionNumber">2.4.1</span></span>
+            <span>Version <span id="versionNumber">2.4.2</span></span>
             <span class="version-date" id="versionDate">2026-06-25</span>
         </div>
     </footer>
@@ -4034,7 +4058,10 @@ Option 4: Hide logo
         // =====================================================================
 
         function setupLoginTracking() {
-            if (!CONFIG.features?.enableLoginTracking && !CONFIG.loginTracking?.enable) return;
+            var cfg = CONFIG.loginTracking || {};
+            // features.enableLoginTracking is a shorthand; sync it into loginTracking.enable
+            if (CONFIG.features?.enableLoginTracking) cfg.enable = true;
+            if (!cfg.enable) return;
             showLastLoginBanner();
         }
 
@@ -4106,9 +4133,24 @@ Option 4: Hide logo
         function showLastLoginBanner() {
             var banner = document.getElementById('lastLoginBanner');
             if (!banner) return;
+
             var raw;
-            try { raw = localStorage.getItem('lastLoginAttempt'); } catch (e) { return; }
-            if (!raw) return;
+            try { raw = localStorage.getItem('lastLoginAttempt'); } catch (e) {}
+
+            if (!raw) {
+                // Tracking is enabled but no prior attempt stored on this device yet.
+                // Show a confirmation placeholder so admins can verify it is wired up.
+                var titleSpan = banner.querySelector('.last-login-title span:last-child');
+                if (titleSpan) titleSpan.textContent = 'Login Activity Tracking Active';
+                var rowsEl = banner.querySelector('.last-login-rows');
+                if (rowsEl) rowsEl.innerHTML =
+                    '<div class="last-login-first-use">' +
+                    'No previous login recorded on this device. ' +
+                    'Your next attempt will be stored here.' +
+                    '</div>';
+                banner.classList.add('visible', 'tracking-active-only');
+                return;
+            }
 
             var d;
             try { d = JSON.parse(raw); } catch (e) { return; }
@@ -4130,13 +4172,17 @@ Option 4: Hide logo
             setVal('llDate',     fmt(d.ts));
             setVal('llBrowser',  d.browser + (d.platform ? ' / ' + d.platform : ''));
             setVal('llTimezone', d.tz || '—');
+            setVal('llScreen',   d.scr || '—');
+            setVal('llMFA',      d.mfa === '1' ? 'Yes ✓' : 'No');
 
             var statusEl = document.getElementById('llStatus');
             if (statusEl) {
                 var st = (d.status || 'ATTEMPT').toUpperCase();
                 statusEl.textContent = st;
                 statusEl.className = 'last-login-val ' +
-                    (st === 'SUCCESS' ? 'last-login-status-ok' : 'last-login-status-fail');
+                    (st === 'SUCCESS' ? 'last-login-status-ok'  :
+                     st === 'FAILED'  ? 'last-login-status-fail' :
+                                        'last-login-status-warn');
             }
 
             banner.classList.add('visible');
