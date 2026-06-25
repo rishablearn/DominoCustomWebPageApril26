@@ -1014,8 +1014,10 @@ Option 4: Hide logo
             min-height: calc(100dvh - 60px);
         }
         
-        /* Center vertically only when there is enough room */
-        @media (min-height: 700px) {
+        /* Center vertically only when viewport is tall enough to fit the full card
+           (~800px card + 120px padding ≈ 920px). Below this, flex-start keeps the
+           logo/top at a reachable scroll position. */
+        @media (min-height: 1000px) {
             .main-container {
                 align-items: center;
             }
@@ -2864,10 +2866,15 @@ Option 4: Hide logo
         
         // Initialize form validation with error messages - unified with CAPTCHA
         function initFormValidation() {
-            const form = document.getElementById('loginForm');
+            // When Domino wraps the page in its own <form>, browsers discard nested
+            // <form> tags (invalid HTML), so getElementById may return null.
+            // Fall back to querySelector to find the functional form element.
+            const form = document.getElementById('loginForm')
+                      || document.querySelector('form.login-form')
+                      || document.querySelector('form');
             
             if (!form) {
-                console.error('[LoginForm] Form element not found');
+                console.warn('[LoginForm] No form element found — skipping client-side validation');
                 return;
             }
             

@@ -1061,8 +1061,10 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         overflow-y: auto;
     }
 
-    /* Center vertically only when viewport is tall enough */
-    @media (min-height: 700px) {
+    /* Center vertically only when viewport is tall enough to fit the full card
+       (~800px card + 104px body padding ≈ 904px). Below this threshold the card
+       starts at flex-start so the logo/top is always reachable by scrolling. */
+    @media (min-height: 1000px) {
         body { align-items: center; }
     }
     
