@@ -85,11 +85,13 @@ Open the URL in a browser where you are **already logged in** to Domino. You sho
    |---|---|
    | **Name** | `GetLoginHistory` |
    | **Language** | LotusScript |
-   | **When should this agent run** | **On Event** |
+   | **When should this agent run** | **On Schedule → Never** |
    | **Which document(s) should it act on** | **None** |
    | **Run as web user** | **Checked** — agent runs as the authenticated Verse user |
 
-   > **Run as web user must be checked.** The Verse popup calls this agent while the user is already authenticated. Running as the web user ensures the agent returns only the calling user's own `LoginHistory` — not another user's data.
+   > **Trigger must be "On Schedule → Never".** Any "On Event" sub-option causes HTTP 500 "Unsupported trigger and search in the background or embedded agent" when the agent is called via `?OpenAgent`.
+   >
+   > **Run as web user must be checked.** The Verse popup calls this agent while the user is already authenticated. Running as the web user ensures the agent returns only the calling user's own `LoginHistory`.
 
 3. In the Script area, paste the entire contents of `GetLoginHistory.lss`.
 4. Click **File → Compile** to verify there are no syntax errors.

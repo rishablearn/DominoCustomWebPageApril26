@@ -32,7 +32,8 @@
 ' 2. Create → Agent.
 '      Name                              : GetLoginHistory
 '      Language                          : LotusScript
-'      When should this agent run        : On Event
+'      When should this agent run        : On Schedule → Never
+'        *** Any 'On Event' option causes HTTP 500 on ?OpenAgent calls ***
 '      Which document(s) should it act on: None
 '      Run as web user                   : CHECKED
 '        (agent runs as authenticated Verse user — ensures only their own

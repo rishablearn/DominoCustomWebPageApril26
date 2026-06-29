@@ -760,11 +760,13 @@ This pushes the updated Person form design to the live `names.nsf`.
 | Database | `domcfg.nsf` |
 | Agent Name | `LogLoginAttempt` *(exact — must match `agentUrl` in CONFIG)* |
 | Language | LotusScript |
-| **When should this agent run** | **On Event** |
+| **When should this agent run** | **On Schedule → Never** |
 | **Which document(s) should it act on** | **None** |
 | **Run as web user** | **Unchecked** — agent must run as signer's identity to write to `names.nsf` |
 
-> **Important — Run as web user must be unchecked.** The login form POSTs to this agent *before* authentication completes, so the web context is Anonymous. If "Run as web user" were checked, the agent would run as Anonymous and would have no write access to `names.nsf`. The agent signer's identity (which has Author/Editor on `names.nsf`) must be used instead.
+> **Trigger must be "On Schedule → Never".** This is the only trigger that allows `?OpenAgent` URL invocation. Any "On Event" sub-option causes HTTP 500 "Unsupported trigger and search in the background or embedded agent".
+>
+> **Run as web user must be unchecked.** The login form POSTs before authentication completes, so the web context is Anonymous. Checking this box would give the agent no write access to `names.nsf`.
 
 1. Open `domcfg.nsf` in **Domino Designer**.
 2. **Shared Code → Agents → New Agent** with settings above.

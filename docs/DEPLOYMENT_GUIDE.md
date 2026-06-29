@@ -1412,11 +1412,13 @@ The full agent source is at `docs/LotusScript/LoginTracker.lss`.
 |----------|-------|
 | Name | `LogLoginAttempt` |
 | Language | LotusScript |
-| **When should this agent run** | **On Event** |
+| **When should this agent run** | **On Schedule → Never** |
 | **Which document(s) should it act on** | **None** |
 | **Run as web user** | **Unchecked** — agent runs as signer's identity |
 
-> **Run as web user must be unchecked.** The login form calls this agent before the user is authenticated, so the web context is Anonymous. The agent must run as the signer (who has write access to `names.nsf`).
+> **Trigger must be "On Schedule → Never".** Any "On Event" sub-option causes HTTP 500 "Unsupported trigger and search in the background or embedded agent" when the agent is called via `?OpenAgent`.
+>
+> **Run as web user must be unchecked.** The login form POSTs before authentication, so the web context is Anonymous. The agent must run as the signer (who has write access to `names.nsf`).
 
 1. Open DOMCFG.NSF in Domino Designer.
 2. **Shared Code → Agents → New Agent** with settings above.
