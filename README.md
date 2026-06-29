@@ -695,22 +695,38 @@ mfa: {
 <a id="phase-1-provision-person-document-fields"></a>
 ### Phase 1: Provision Person Document Fields in pubnames.ntf
 
-**Purpose:** Add `LoginHistory` and `LoginHistoryUpdated` fields to the **Person form** in `pubnames.ntf` so they are visible directly in the Notes UI. The `LogLoginAttempt` agent writes these fields automatically — they do not need to exist in the form template for tracking to work. This phase makes them **visible** without having to open Document Properties.
+**Purpose:** Surface the `LoginHistory` and `LoginHistoryUpdated` fields (written by the agent) in the **Person form** in `pubnames.ntf` so they are visible directly in the Notes UI.
 
-> **Can this phase be skipped?** Yes — tracking still works and fields are still written. However, without this step you must use Document Properties (Tools → Document Properties → Fields tab) to view them. Complete this phase for a proper Notes UI experience.
+> **Can this phase be skipped?** Yes — the agent still writes data. Without this step, view the fields via Tools → Document Properties → Fields tab. Complete this phase for a proper Notes client experience.
+
+**Approach — SubForm Inheritance:**  
+The correct Domino Designer pattern is to create a **SubForm** (`LoginTracking`) containing the custom fields, then include it in the Person form via `Create → Insert Subform`. This:
+- Isolates custom fields from the core Person form design
+- Survives Domino template upgrades (SubForm is a separate design element)
+- Ensures field values written by the agent are preserved on every form save
+
+---
 
 #### Step 1.1 — Open pubnames.ntf in Domino Designer
 
 1. Launch **HCL Domino Designer**.
 2. **File → Open Application** → select your server → open `pubnames.ntf`.
-3. In the left panel expand **Forms**.
-4. Open the **Person** form.
 
-#### Step 1.2 — Add the LoginHistory Field
+---
 
-1. Position the cursor where the field should appear (e.g., a new section near the bottom of the form).
-2. **Create → Field** from the menu bar.
-3. Configure the field properties:
+#### Step 1.2 — Create the LoginTracking SubForm
+
+1. In the left panel, right-click **Subforms** → **New Subform**.
+2. Name it exactly: **`LoginTracking`**
+3. Add a section heading (static text): `── Login Activity Tracking ──`
+
+---
+
+#### Step 1.3 — Add the LoginHistory Field to the SubForm
+
+1. In the SubForm, position cursor below the heading label.
+2. Add a static text label: `Login History`
+3. **Create → Field** and configure:
 
    | Property | Value |
    |----------|-------|
@@ -718,16 +734,19 @@ mfa: {
    | Type | **Text** |
    | Allow multiple values | ✅ Yes |
    | Computed type | **Computed** |
-   | Formula | `LoginHistory` |
+   | Formula | `@If(@IsNewDoc; ""; LoginHistory)` |
 
-   > **Why "Computed" not "Computed for display"?**  
-   > "Computed for display" is computed in the UI only — the value is never re-saved by the form. While the agent writes `LoginHistory` directly to the document via `ReplaceItemValue`, using "Computed for display" means the field would appear empty until data is written by the agent, and some Notes views/forms may not surface it correctly.  
-   > **"Computed"** with formula `LoginHistory` reads the existing stored item (written by the agent) and preserves it on form save. This makes the field visible in the form immediately and correctly indexed by views.
+   > **Why this formula?**
+   > - `@IsNewDoc` is `@True` when a new Person document is being created — returns `""` so no empty item is written to brand-new documents.
+   > - For **existing** documents: evaluates to the current `LoginHistory` item (written by the `LogLoginAttempt` agent via `ReplaceItemValue`) and saves it back unchanged.
+   > - Result: agent-written data is **never overwritten or lost** when an admin opens and saves the Person document.
+   > - **"Computed for display"** must NOT be used here — it computes only for UI display and never saves the value, so the item would disappear from the document on the next form save.
 
-4. Add a static text label above the field: `Login History`.
-5. Optional: set the font to Monospace and rows to 5 for readability.
+4. Optional: set font to **Monospace**, rows to **5**, for readability.
 
-#### Step 1.3 — Add the LoginHistoryUpdated Field
+---
+
+#### Step 1.4 — Add the LoginHistoryUpdated Field to the SubForm
 
 1. Below `LoginHistory`, **Create → Field**:
 
@@ -736,20 +755,38 @@ mfa: {
    | Name | `LoginHistoryUpdated` |
    | Type | **Date/Time** |
    | Computed type | **Computed** |
-   | Formula | `LoginHistoryUpdated` |
+   | Formula | `@If(@IsNewDoc; ""; LoginHistoryUpdated)` |
 
-2. Add a label: `Last Login Record Updated`.
+2. Add a static text label: `Last Updated`
 
-   > Both fields use "Computed" (not "Computed for display") so that the values written by the `LogLoginAttempt` agent are preserved and visible whenever the Person document is opened in the Notes client. The agent writes these items directly using `ReplaceItemValue` — the form formula `LoginHistory` simply reads that stored value back.
+---
 
-#### Step 1.4 — Save and Sign pubnames.ntf
+#### Step 1.5 — Save and Close the SubForm
 
-1. Save: **Ctrl+S**.
-2. Sign: **File → Application → Sign** using an ID with **Manager** access on `pubnames.ntf`.
+**Ctrl+S** → confirm name is `LoginTracking` → close.
 
-#### Step 1.5 — Replace Design of names.nsf
+---
 
-This pushes the updated Person form design to the live `names.nsf`.
+#### Step 1.6 — Insert the SubForm into the Person Form
+
+1. In Designer left panel, expand **Forms** → open the **Person** form.
+2. Scroll to the bottom of the form — position cursor after the last existing section (e.g., after the "Internet" or "Administration" section).
+3. **Create → Insert Subform**.
+4. In the dialog, select **`LoginTracking`** → click **OK**.
+5. The SubForm placeholder appears in the form.
+6. **Ctrl+S** to save the Person form.
+
+---
+
+#### Step 1.7 — Sign pubnames.ntf
+
+**File → Application → Sign** using an ID with **Manager** access on `pubnames.ntf`.
+
+---
+
+#### Step 1.8 — Replace Design of names.nsf
+
+This pushes the updated design (new SubForm + updated Person form) to the live `names.nsf`.
 
 1. In **HCL Notes Client** (not Designer): **File → Application → Replace Design**.
 2. In the dialog:
@@ -760,10 +797,14 @@ This pushes the updated Person form design to the live `names.nsf`.
 
 *Alternatively:* Domino Administrator → Files tab → right-click `names.nsf` → Application → Replace Design.
 
-#### Step 1.6 — Verify Field Visibility
+---
+
+#### Step 1.9 — Verify SubForm and Field Visibility
 
 1. Domino Administrator → **People & Groups → People** → open any Person document.
-2. After at least one login attempt is recorded, `Login History` should be visible directly in the form body.
+2. Scroll to the bottom — the **Login Activity Tracking** section should be visible.
+3. Before any login is tracked, the fields will be empty (expected — agent has not written data yet).
+4. After at least one login attempt is recorded by the agent, `Login History` shows pipe-delimited entries and `Last Updated` shows the timestamp.
 
 ---
 
