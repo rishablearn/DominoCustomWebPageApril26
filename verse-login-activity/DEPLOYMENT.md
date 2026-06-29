@@ -84,10 +84,11 @@ Open the URL in a browser where you are **already logged in** to Domino. You sho
    | Property | Value |
    |---|---|
    | **Name** | `GetLoginHistory` |
-   | **Trigger** | On demand (HTTP GET via `?OpenAgent`) |
-   | **Runtime** | LotusScript |
-   | **Run as** | Current user in web context |
-   | **Context** | None |
+   | **When should this agent run** | **Manually From Actions Menu** |
+   | **Which document(s) should it act on** | None |
+   | **Language** | LotusScript |
+
+   > **"Manually From Actions Menu"** is the correct Domino Designer setting for agents invoked via `?OpenAgent` URL. It prevents the agent from running on any automatic schedule.
 
 3. In the Script area, paste the entire contents of `GetLoginHistory.lss`.
 4. Click **File → Compile** to verify there are no syntax errors.

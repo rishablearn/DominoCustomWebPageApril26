@@ -70,7 +70,7 @@
 '   [ ] Shared Code → Agents → New Agent
 '         Name    : LogLoginAttempt          (exact — matches agentUrl in config)
 '         Type    : LotusScript
-'         Trigger : On demand                (HTTP ?OpenAgent calls this)
+'         Trigger : Manually From Actions Menu  (enables ?OpenAgent URL invocation)
 '         Target  : None                     (no document context needed)
 '   [ ] Paste the entire contents of this file into the Script area
 '   [ ] Save the agent (do NOT sign yet)

@@ -760,8 +760,10 @@ This pushes the updated Person form design to the live `names.nsf`.
 | Database | `domcfg.nsf` |
 | Agent Name | `LogLoginAttempt` *(exact — must match `agentUrl` in CONFIG)* |
 | Language | LotusScript |
-| When to run | On demand *(HTTP `?OpenAgent`)* |
-| Which documents | None |
+| When should this agent run | **Manually From Actions Menu** |
+| Which document(s) should it act on | None |
+
+> **Why "Manually From Actions Menu"?** This prevents the agent running on a schedule. Any enabled agent with this setting can also be invoked via an HTTP `?OpenAgent` URL — which is exactly how the login page calls it.
 
 1. Open `domcfg.nsf` in **Domino Designer**.
 2. **Shared Code → Agents → New Agent** with settings above.
@@ -777,7 +779,10 @@ Const MAX_HISTORY  = 5              ' Entries to retain per user (newest first)
 Const NAMES_SERVER = ""             ' "" = current server; "ServerName/Org" for remote
 Const NAMES_DB_PATH = "names.nsf"   ' Path to Domino Directory
 Const SEND_EMAIL_ON_NEW_ATTEMPT = False  ' True = send email alert per attempt
+Const DEBUG_MODE = True             ' True = full trace in response; False = "OK" only
 ```
+
+> Set `DEBUG_MODE = False` once the agent is confirmed working. While `True`, every call returns a full step-by-step trace in the HTTP response body — useful for diagnosing lookup or save failures.
 
 #### Step 2.3 — Save Then Sign the Agent
 

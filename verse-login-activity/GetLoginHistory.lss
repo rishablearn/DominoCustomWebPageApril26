@@ -31,7 +31,7 @@
 ' 1. Open DOMCFG.NSF in Domino Designer.
 ' 2. Create → Agent.
 '      Name     : GetLoginHistory
-'      Trigger  : On demand  (responds to ?OpenAgent URL)
+'      When should this agent run : Manually From Actions Menu  (enables ?OpenAgent URL)
 '      Run as   : Current user in web context (authenticated)
 '      Context  : None
 ' 3. In the Script editor, paste this entire file.

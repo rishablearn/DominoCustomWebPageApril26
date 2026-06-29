@@ -1412,8 +1412,10 @@ The full agent source is at `docs/LotusScript/LoginTracker.lss`.
 |---------|-------|
 | Name | `LogLoginAttempt` |
 | Type | LotusScript |
-| Trigger | On demand (HTTP `?OpenAgent`) |
-| Target | None |
+| When should this agent run | **Manually From Actions Menu** |
+| Which document(s) should it act on | None |
+
+> **"Manually From Actions Menu"** prevents the agent from running on a schedule. Any enabled agent with this setting can be invoked via an HTTP `?OpenAgent` URL.
 
 1. Open DOMCFG.NSF in Domino Designer.
 2. **Shared Code → Agents → New Agent** with settings above.
