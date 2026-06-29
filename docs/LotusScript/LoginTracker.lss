@@ -351,10 +351,7 @@ Sub Initialize()
         Call SendNotificationEmail(session, namesDb, personDoc, entry, ipAddress)
     End If
 
-    '-- 10. Clean up --------------------------------------------------------
-    Call personDoc.Recycle()
-    Call namesDb.Recycle()
-
+    '-- 10. Clean up — Domino runtime releases back-end objects on sub exit --
     If DEBUG_MODE Then
         dbg = dbg & "OK" & Chr(10)
         Call RespondDebug(dbg)
@@ -477,7 +474,6 @@ Sub SendNotificationEmail(session As NotesSession, namesDb As NotesDatabase, _
     Call bodyItem.AppendText(body)
 
     Call memo.Send(False)
-    Call mailDb.Recycle()
     Exit Sub
 
 EmailError:

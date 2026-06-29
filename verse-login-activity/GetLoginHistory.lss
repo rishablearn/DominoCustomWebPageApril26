@@ -202,8 +202,7 @@ Sub Initialize()
     End If
 
 Cleanup:
-    If Not (personDoc Is Nothing) Then Call personDoc.Recycle()
-    If Not (namesDb Is Nothing)   Then Call namesDb.Recycle()
+    ' Domino runtime releases all back-end objects when the sub exits
     Exit Sub
 
 ErrorHandler:
