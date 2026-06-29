@@ -83,6 +83,9 @@
 
         // Handle error messages from Domino
         handleErrorMessages(config.errorMessages);
+
+        // Initialize login attempt tracking
+        initLoginTracking(config.loginTracking);
     }
 
     /**
@@ -1700,6 +1703,91 @@
         }
         
         announcer.textContent = message;
+    }
+
+    // ============================================================
+    // LOGIN ATTEMPT TRACKING
+    // Intercepts form submission, collects browser fingerprint data,
+    // and fires a form-encoded POST to the LogLoginAttempt agent.
+    // The POST uses application/x-www-form-urlencoded so Domino's
+    // session.DocumentContext can read each field by name.
+    // ============================================================
+
+    function initLoginTracking(trackingConfig) {
+        if (!trackingConfig || !trackingConfig.enable || !trackingConfig.agentUrl) return;
+
+        var form = document.getElementById('loginForm');
+        if (!form) return;
+
+        form.addEventListener('submit', function() {
+            try {
+                var usernameEl = document.getElementById('Username') ||
+                                 document.querySelector('input[name="Username"]') ||
+                                 document.querySelector('input[type="text"]');
+                var username = usernameEl ? (usernameEl.value || '') : '';
+
+                var ts       = new Date().toISOString();
+                var tz       = (typeof Intl !== 'undefined' && Intl.DateTimeFormat)
+                                   ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                                   : '';
+                var scr      = screen.width + 'x' + screen.height;
+                var lang     = navigator.language || navigator.userLanguage || '';
+                var mfaEl    = document.getElementById('mfaCode') ||
+                               document.querySelector('input[name="mfaCode"]');
+                var mfa      = (mfaEl && mfaEl.value) ? '1' : '0';
+
+                var ua       = navigator.userAgent || '';
+                var browser  = 'Unknown';
+                if      (/Edg\//.test(ua))                         browser = 'Edge';
+                else if (/OPR\/|Opera/.test(ua))                   browser = 'Opera';
+                else if (/Chrome\//.test(ua))                      browser = 'Chrome';
+                else if (/Firefox\//.test(ua))                     browser = 'Firefox';
+                else if (/Safari\//.test(ua))                      browser = 'Safari';
+                else if (/MSIE |Trident\//.test(ua))              browser = 'IE';
+
+                var platform = 'Unknown';
+                if      (/Windows/.test(ua))                       platform = 'Windows';
+                else if (/Android/.test(ua))                       platform = 'Android';
+                else if (/iPhone|iPad|iPod/.test(ua))              platform = 'iOS';
+                else if (/Macintosh|Mac OS/.test(ua))              platform = 'macOS';
+                else if (/Linux/.test(ua))                         platform = 'Linux';
+
+                // Persist in localStorage for Verse Login Activity extension
+                try {
+                    localStorage.setItem('lastLoginAttempt', JSON.stringify({
+                        username: username, ts: ts, browser: browser,
+                        platform: platform, tz: tz, scr: scr, mfa: mfa, lang: lang
+                    }));
+                } catch(lsErr) {}
+
+                // Build form-encoded body — MUST be application/x-www-form-urlencoded.
+                // Domino DocumentContext only parses this content-type into field values.
+                var body = 'username='  + encodeURIComponent(username)  +
+                           '&ts='       + encodeURIComponent(ts)        +
+                           '&browser='  + encodeURIComponent(browser)   +
+                           '&platform=' + encodeURIComponent(platform)  +
+                           '&tz='       + encodeURIComponent(tz)        +
+                           '&scr='      + encodeURIComponent(scr)       +
+                           '&mfa='      + encodeURIComponent(mfa)       +
+                           '&lang='     + encodeURIComponent(lang);
+
+                // sendBeacon: fire-and-forget; browser guarantees delivery
+                // even as the page navigates away to the Domino auth endpoint.
+                if (navigator.sendBeacon) {
+                    var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
+                    navigator.sendBeacon(trackingConfig.agentUrl, blob);
+                } else {
+                    // Fallback: synchronous XHR for older browsers
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', trackingConfig.agentUrl, false);
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    try { xhr.send(body); } catch(xhrErr) {}
+                }
+            } catch(e) {
+                // Tracking must never block or break the actual login
+            }
+            // Do NOT call preventDefault() — Domino auth must proceed normally
+        }, true); // capture phase: runs before any other submit handler
     }
 
     // ============================================================

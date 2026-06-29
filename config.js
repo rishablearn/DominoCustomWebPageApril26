@@ -805,6 +805,27 @@ const DominoLoginConfig = {
             showIcon: true,
             position: "top"         // "top", "bottom"
         }
+    },
+
+    // ============================================================
+    // LOGIN ATTEMPT TRACKING
+    // Records each login attempt to the Person document in names.nsf
+    // via the LogLoginAttempt LotusScript agent in domcfg.nsf.
+    // ============================================================
+    loginTracking: {
+        // Master switch — set to true once the agent is deployed and signed
+        enable: true,
+
+        // Full URL to the LogLoginAttempt agent
+        // Trigger MUST be "On Schedule → Never" in Domino Designer
+        agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
+
+        // Maximum entries to keep per user (mirrors agent MAX_HISTORY constant)
+        maxHistory: 5,
+
+        // Also track failed client-side validation (CAPTCHA, empty fields, etc.)
+        // These never reach the Domino auth endpoint; set false in production
+        trackValidationFailures: false
     }
 };
 
