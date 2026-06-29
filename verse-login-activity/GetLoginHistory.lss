@@ -76,7 +76,7 @@ Sub Initialize()
     Dim currentUser As String
     currentUser = session.CommonUserName
 
-    If currentUser = "" Or StrConv(currentUser, 1) = "ANONYMOUS" Then
+    If currentUser = "" Or UCase(currentUser) = "ANONYMOUS" Then
         Print "[]"
         Exit Sub
     End If
@@ -151,33 +151,41 @@ Sub Initialize()
 
     ReDim jsonParts(maxItems - 1)
 
-    Dim i As Integer
+    Dim i        As Integer
+    Dim raw      As String
+    Dim parts()  As String
+    Dim entryTs  As String
+    Dim entryIp  As String
+    Dim entrySt  As String
+    Dim entryBr  As String
+    Dim entryPl  As String
+    Dim entryTz  As String
+    Dim entryScr As String
+    Dim entryMfa As String
+
     For i = 0 To maxItems - 1
-        Dim raw As String
         raw = Trim(CStr(histItems(i)))
         If raw <> "" Then
-            Dim parts() As String
-            parts = Split(raw, "|")
-
-            Dim ts       As String : ts       = SafePart(parts, 0)
-            Dim ip       As String : ip       = SafePart(parts, 1)
-            Dim status_  As String : status_  = SafePart(parts, 2)
-            Dim browser_ As String : browser_ = SafePart(parts, 3)
-            Dim plat     As String : plat     = SafePart(parts, 4)
-            Dim tz       As String : tz       = SafePart(parts, 5)
-            Dim scr      As String : scr      = SafePart(parts, 6)
-            Dim mfa      As String : mfa      = SafePart(parts, 7)
+            parts    = Split(raw, "|")
+            entryTs  = SafePart(parts, 0)
+            entryIp  = SafePart(parts, 1)
+            entrySt  = SafePart(parts, 2)
+            entryBr  = SafePart(parts, 3)
+            entryPl  = SafePart(parts, 4)
+            entryTz  = SafePart(parts, 5)
+            entryScr = SafePart(parts, 6)
+            entryMfa = SafePart(parts, 7)
 
             jsonParts(count) = _
                 "{" & _
-                Q("ts")       & ":" & Q(JsonEscape(ts))      & "," & _
-                Q("ip")       & ":" & Q(JsonEscape(ip))       & "," & _
-                Q("status")   & ":" & Q(JsonEscape(status_))  & "," & _
-                Q("browser")  & ":" & Q(JsonEscape(browser_)) & "," & _
-                Q("platform") & ":" & Q(JsonEscape(plat))     & "," & _
-                Q("tz")       & ":" & Q(JsonEscape(tz))       & "," & _
-                Q("scr")      & ":" & Q(JsonEscape(scr))      & "," & _
-                Q("mfa")      & ":" & Q(JsonEscape(mfa))      & _
+                Q("ts")       & ":" & Q(JsonEscape(entryTs))  & "," & _
+                Q("ip")       & ":" & Q(JsonEscape(entryIp))  & "," & _
+                Q("status")   & ":" & Q(JsonEscape(entrySt))  & "," & _
+                Q("browser")  & ":" & Q(JsonEscape(entryBr))  & "," & _
+                Q("platform") & ":" & Q(JsonEscape(entryPl))  & "," & _
+                Q("tz")       & ":" & Q(JsonEscape(entryTz))  & "," & _
+                Q("scr")      & ":" & Q(JsonEscape(entryScr)) & "," & _
+                Q("mfa")      & ":" & Q(JsonEscape(entryMfa)) & _
                 "}"
             count = count + 1
         End If

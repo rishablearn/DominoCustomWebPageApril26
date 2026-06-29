@@ -337,7 +337,13 @@ Sub Initialize()
     saveOk = personDoc.Save(True, False)
 
     If DEBUG_MODE Then
-        dbg = dbg & "Save result : " & IIf(saveOk, "SUCCESS", "FAILED — check ACL and signer rights on names.nsf") & Chr(10)
+        Dim saveResult As String
+        If saveOk Then
+            saveResult = "SUCCESS"
+        Else
+            saveResult = "FAILED — check ACL and signer rights on names.nsf"
+        End If
+        dbg = dbg & "Save result : " & saveResult & Chr(10)
         dbg = dbg & "---" & Chr(10)
     End If
 
@@ -409,16 +415,16 @@ End Sub
 '===========================================================================
 Function GetField(doc As NotesDocument, fieldName As String) As String
     On Error Resume Next
-    Dim val As Variant
-    val = doc.GetItemValue(fieldName)
-    If IsArray(val) Then
-        If UBound(val) >= 0 Then
-            GetField = CStr(val(0))
+    Dim fldVal As Variant
+    fldVal = doc.GetItemValue(fieldName)
+    If IsArray(fldVal) Then
+        If UBound(fldVal) >= 0 Then
+            GetField = CStr(fldVal(0))
         Else
             GetField = ""
         End If
     Else
-        GetField = CStr(val)
+        GetField = CStr(fldVal)
     End If
     On Error GoTo 0
 End Function
