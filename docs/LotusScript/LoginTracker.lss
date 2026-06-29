@@ -382,20 +382,20 @@ End Sub
 '===========================================================================
 ' RespondDebug  — returns the full debug log as plain text
 '===========================================================================
-Sub RespondDebug(log As String)
+Sub RespondDebug(trace As String)
     Print "Content-type: text/plain"
     Print ""
-    Print log
+    Print trace
 End Sub
 
 '===========================================================================
 ' RespondError — returns an error message as plain text
 '===========================================================================
-Sub RespondError(msg As String, log As String)
+Sub RespondError(msg As String, trace As String)
     Print "Content-type: text/plain"
     Print ""
     If DEBUG_MODE Then
-        Print log & "FATAL: " & msg
+        Print trace & "FATAL: " & msg
     Else
         Print "ERROR: " & msg
     End If
