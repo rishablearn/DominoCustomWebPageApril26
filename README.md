@@ -14,30 +14,35 @@
 
 ## 📖 Table of Contents
 
-1. [Introduction](#-introduction)
-2. [How This Solution Augments Domino](#-how-this-solution-augments-domino)
-3. [Features at a Glance](#-features-at-a-glance)
-4. [Detailed Feature Documentation](#-detailed-feature-documentation)
-5. [Logo Configuration](#-logo-configuration)
-6. [Architecture & Technical Details](#-architecture--technical-details)
-7. [FAQ](#-faq)
-8. [What's New in v2.5.0](#-whats-new-in-v250)
-9. [Quick Start Guide (5 minutes)](#-quick-start-guide-5-minutes)
-10. [Deployment Guide — Step by Step](#-deployment-guide--step-by-step)
-11. [TOTP Multi-Factor Authentication](#-totp-multi-factor-authentication)
-12. [Login Attempt Tracking](#-login-attempt-tracking)
-13. [Person Document Storage](#-person-document-storage)
-14. [LotusScript Agent Deployment](#-lotusscript-agent-deployment)
-15. [HCL Verse Login Activity Extension](#-hcl-verse-login-activity-extension)
-16. [Audio CAPTCHA](#-audio-captcha)
-17. [Configuration Reference](#-configuration-reference)
-18. [Internationalization (i18n)](#-internationalization-i18n)
-19. [Accessibility (WCAG 2.1 AA)](#-accessibility-wcag-21-aa)
-20. [Troubleshooting](#-troubleshooting)
-21. [Changelog](#-changelog)
+1. [Introduction](#introduction)
+2. [How This Solution Augments Domino](#augments-domino)
+3. [Features at a Glance](#features)
+4. [Detailed Feature Documentation](#detailed-features)
+5. [Logo Configuration](#logo-configuration)
+6. [Architecture & Technical Details](#architecture)
+7. [FAQ](#faq)
+8. [What's New in v2.5.0](#whats-new)
+9. [Quick Start Guide (5 minutes)](#quick-start)
+10. [Deployment Guide — Step by Step](#deployment-guide)
+11. [TOTP Multi-Factor Authentication](#mfa)
+12. [Login Activity Tracker — Complete Guide](#login-activity-tracker)
+    - [Phase 1: Provision Person Document Fields](#phase-1-provision-person-document-fields)
+    - [Phase 2: Deploy LogLoginAttempt Agent](#phase-2-deploy-the-logloginattempt-agent)
+    - [Phase 3: Configure Login Page](#phase-3-configure-the-login-page)
+    - [Phase 4: Verify End-to-End](#phase-4-verify-end-to-end)
+    - [Accessing Login History](#accessing-login-history)
+    - [LoginHistory Field Reference](#loginhistory-field-reference)
+13. [HCL Verse Login Activity Extension](#hcl-verse-extension)
+14. [Audio CAPTCHA](#audio-captcha)
+15. [Configuration Reference](#configuration-reference)
+16. [Internationalization (i18n)](#i18n)
+17. [Accessibility (WCAG 2.1 AA)](#accessibility)
+18. [Troubleshooting](#troubleshooting)
+19. [Changelog](#changelog)
 
 ---
 
+<a id="introduction"></a>
 ## 🌟 Introduction
 
 When organizations deploy HCL Domino for enterprise collaboration, this solution extends the default login experience to meet modern UX expectations and corporate branding requirements. This project provides a **login page** that:
@@ -59,6 +64,7 @@ When organizations deploy HCL Domino for enterprise collaboration, this solution
 
 ---
 
+<a id="augments-domino"></a>
 ## 🎯 How This Solution Augments Domino
 
 ### MIME Type Configuration Context
@@ -85,6 +91,7 @@ Just paste the HTML, mark it as Pass-Thru HTML, and you're done.
 
 ---
 
+<a id="features"></a>
 ## ✨ Features at a Glance
 
 ### Core Features
@@ -124,6 +131,7 @@ Just paste the HTML, mark it as Pass-Thru HTML, and you're done.
 
 ---
 
+<a id="detailed-features"></a>
 ##  Detailed Feature Documentation
 
 ### 🌓 Dark/Light Mode
@@ -279,6 +287,7 @@ captcha: {
 
 ---
 
+<a id="logo-configuration"></a>
 ## 🖼️ Logo Configuration
 
 ### Supported Logo Formats
@@ -335,6 +344,7 @@ This hides the logo and shows only the company name.
 
 ---
 
+<a id="architecture"></a>
 ## 🏗️ Architecture & Technical Details
 
 ### Project Structure
@@ -393,6 +403,7 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ---
 
+<a id="faq"></a>
 ## ❓ FAQ
 
 ### Q: Can I use this without Domino Designer?
@@ -421,15 +432,15 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ### Q: Does this support two-factor authentication?
 
-**A:** Yes — v2.4.0 adds full TOTP MFA support. Set `features.enableMFA: true` and `mfa.enable: true` after configuring Domino MFA server-side. See the [TOTP section](#-totp-multi-factor-authentication).
+**A:** Yes — v2.4.0 adds full TOTP MFA support. Set `features.enableMFA: true` and `mfa.enable: true` after configuring Domino MFA server-side. See the [TOTP section](#mfa).
 
 ### Q: Where is login history stored?
 
-**A:** On the **Person document** in `names.nsf`, field `LoginHistory` (multi-value text). A LotusScript agent in DOMCFG.NSF writes to it on each attempt. See the [Login Tracking section](#-login-attempt-tracking).
+**A:** On the **Person document** in `names.nsf`, field `LoginHistory` (multi-value text). A LotusScript agent in DOMCFG.NSF writes to it on each attempt. See the [Login Activity Tracker — Complete Guide](#login-activity-tracker).
 
 ### Q: Can I see login history in the email client?
 
-**A:** Yes — two ways. (1) The `LoginHistory` field on the Person document can be surfaced in the Domino Directory or any Notes form/view. See [Person Document Storage](#-person-document-storage). (2) The new **HCL Verse Login Activity Extension** adds a dedicated "Login Activity" popup directly inside Verse via the navbar More menu. See [HCL Verse Login Activity Extension](#-hcl-verse-login-activity-extension).
+**A:** Yes — two ways. (1) The `LoginHistory` field on the Person document can be surfaced in the Domino Directory or any Notes form/view. See [Accessing Login History](#accessing-login-history). (2) The new **HCL Verse Login Activity Extension** adds a dedicated "Login Activity" popup directly inside Verse via the navbar More menu. See [HCL Verse Login Activity Extension](#hcl-verse-extension).
 
 ### Q: I already have an applications.json — will the Verse extension conflict?
 
@@ -437,6 +448,7 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ---
 
+<a id="whats-new"></a>
 ## 🆕 What's New in v2.5.0
 
 | Feature | Details |
@@ -451,6 +463,7 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ---
 
+<a id="quick-start"></a>
 ## 🚀 Quick Start Guide (5 minutes)
 
 ### Step 1 — Choose Your File
@@ -486,6 +499,7 @@ const CONFIG = {
 
 ---
 
+<a id="deployment-guide"></a>
 ## 📦 Deployment Guide — Step by Step
 
 ### Prerequisites
@@ -568,6 +582,7 @@ All customization is done in the `CONFIG` / `DominoLoginConfig` JavaScript block
 
 ---
 
+<a id="mfa"></a>
 ## 🔐 TOTP Multi-Factor Authentication
 
 ### How It Works
@@ -657,63 +672,190 @@ mfa: {
 
 ---
 
-## 📊 Login Attempt Tracking
+<a id="login-activity-tracker"></a>
+## 📊 Login Activity Tracker — Complete Guide
 
-### Architecture
+> Follow the four phases **in order**. Do not set `loginTracking.enable: true` (Phase 3) before completing Phases 1 and 2.
 
+---
+
+<a id="phase-1-provision-person-document-fields"></a>
+### Phase 1: Provision Person Document Fields in pubnames.ntf
+
+**Purpose:** Add `LoginHistory` and `LoginHistoryUpdated` fields to the **Person form** in `pubnames.ntf` so they are visible directly in the Notes UI. The `LogLoginAttempt` agent writes these fields automatically — they do not need to exist in the form template for tracking to work. This phase makes them **visible** without having to open Document Properties.
+
+> **Can this phase be skipped?** Yes — tracking still works and fields are still written. However, without this step you must use Document Properties (Tools → Document Properties → Fields tab) to view them. Complete this phase for a proper Notes UI experience.
+
+#### Step 1.1 — Open pubnames.ntf in Domino Designer
+
+1. Launch **HCL Domino Designer**.
+2. **File → Open Application** → select your server → open `pubnames.ntf`.
+3. In the left panel expand **Forms**.
+4. Open the **Person** form.
+
+#### Step 1.2 — Add the LoginHistory Field
+
+1. Position the cursor where the field should appear (e.g., a new section near the bottom of the form).
+2. **Create → Field** from the menu bar.
+3. Configure the field properties:
+
+   | Property | Value |
+   |----------|-------|
+   | Name | `LoginHistory` |
+   | Type | Text |
+   | Allow multiple values | ✅ Yes |
+   | Computed type | Computed for display |
+   | Formula | `LoginHistory` |
+
+4. Add a static text label above the field: `Login History`.
+5. Optional: set the font to Monospace and rows to 5 for readability.
+
+#### Step 1.3 — Add the LoginHistoryUpdated Field
+
+1. Below `LoginHistory`, **Create → Field**:
+
+   | Property | Value |
+   |----------|-------|
+   | Name | `LoginHistoryUpdated` |
+   | Type | Date/Time |
+   | Computed type | Computed for display |
+   | Formula | `LoginHistoryUpdated` |
+
+2. Add a label: `Last Login Record Updated`.
+
+#### Step 1.4 — Save and Sign pubnames.ntf
+
+1. Save: **Ctrl+S**.
+2. Sign: **File → Application → Sign** using an ID with **Manager** access on `pubnames.ntf`.
+
+#### Step 1.5 — Replace Design of names.nsf
+
+This pushes the updated Person form design to the live `names.nsf`.
+
+1. In **HCL Notes Client** (not Designer): **File → Application → Replace Design**.
+2. In the dialog:
+   - Template server: *(your Domino server)*
+   - Select **pubnames.ntf**
+   - Check **"Replace existing design elements"**
+3. Click **OK** and wait for completion.
+
+*Alternatively:* Domino Administrator → Files tab → right-click `names.nsf` → Application → Replace Design.
+
+#### Step 1.6 — Verify Field Visibility
+
+1. Domino Administrator → **People & Groups → People** → open any Person document.
+2. After at least one login attempt is recorded, `Login History` should be visible directly in the form body.
+
+---
+
+<a id="phase-2-deploy-the-logloginattempt-agent"></a>
+### Phase 2: Deploy the LogLoginAttempt Agent
+
+**Source file:** `docs/LotusScript/LoginTracker.lss` — copy the entire file into the agent.
+
+#### Step 2.1 — Create Agent in DOMCFG.NSF
+
+| Setting | Value |
+|---------|-------|
+| Database | `domcfg.nsf` |
+| Agent Name | `LogLoginAttempt` *(exact — must match `agentUrl` in CONFIG)* |
+| Language | LotusScript |
+| When to run | On demand *(HTTP `?OpenAgent`)* |
+| Which documents | None |
+
+1. Open `domcfg.nsf` in **Domino Designer**.
+2. **Shared Code → Agents → New Agent** with settings above.
+3. Select **LotusScript** as the language.
+4. Copy the **entire** contents of `docs/LotusScript/LoginTracker.lss` and paste into the Script area.
+
+#### Step 2.2 — Configure Agent Constants
+
+Edit at the top of the agent before saving:
+
+```lotusscript
+Const MAX_HISTORY  = 5              ' Entries to retain per user (newest first)
+Const NAMES_SERVER = ""             ' "" = current server; "ServerName/Org" for remote
+Const NAMES_DB_PATH = "names.nsf"   ' Path to Domino Directory
+Const SEND_EMAIL_ON_NEW_ATTEMPT = False  ' True = send email alert per attempt
 ```
-Browser (login page JS)         Domino Server
-─────────────────────           ──────────────────────────────────
-1. On form submit:
-   Collect payload:
-   { ts, tz, lang, scr,
-     browser, platform, mfa }
-                                
-2. fetch POST (keepalive:true)  →  LogLoginAttempt?OpenAgent
-   + username                       ↓
-                                2a. Reads REMOTE_ADDR (real IP)
-                                2b. Looks up Person doc in names.nsf
-                                2c. Prepends entry to LoginHistory[]
-                                2d. Trims to last 5
-                                2e. Saves Person doc
 
-3. localStorage.setItem(...)    (last attempt for banner)
+#### Step 2.3 — Save Then Sign the Agent
 
-4. form.submit()                →  /names.nsf?Login (Domino auth)
+1. Save: **Ctrl+S**.
+2. Sign: **File → Application → Sign** with an ID that has:
+   - **Author** + Write public documents (minimum) **or** **Editor** access on `names.nsf`
+   - Listed in server Programmability Restrictions (Step 2.5)
+
+#### Step 2.4 — Set ACL on Both Databases
+
+| Database | ACL Entry | Required Access |
+|----------|-----------|-----------------|
+| `domcfg.nsf` | `Anonymous` | `Reader` — allows unauthenticated web POST |
+| `domcfg.nsf` | `LocalDomainServers` | `Manager` |
+| `names.nsf` | *Signing ID* | `Author` + Write public docs **or** `Editor` |
+
+#### Step 2.5 — Server Programmability Restrictions
+
+1. Domino Administrator → **Configuration → Servers → Current Server Document → Security** tab.
+2. Under **Programmability Restrictions**, add the signing ID to:  
+   **"Run restricted LotusScript/Java agents"**
+3. Save. Restart HTTP: `restart task http`
+
+#### Step 2.6 — Verify the Agent
+
+Browse to the agent URL in a browser:
+```
+https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
+```
+Expected: `OK` (plain text, HTTP 200).
+
+Test with a POST (optional):
+```bash
+curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+     -d "username=john.doe&ts=2026-06-25T07:30:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0"
 ```
 
-### Data Collected (Client-Side — No PII)
+---
 
-| Field | Value | Example |
-|-------|-------|---------|
-| `ts` | ISO 8601 timestamp | `2026-06-04T12:30:00.000Z` |
-| `tz` | IANA timezone | `Asia/Kolkata` |
-| `lang` | Browser language | `en-IN` |
-| `scr` | Screen resolution | `1920x1080` |
-| `browser` | Detected browser | `Chrome` |
-| `platform` | OS/platform | `Win32` |
-| `mfa` | MFA used? | `0` or `1` |
-| `username` | Typed username | `john.doe` |
+<a id="phase-3-configure-the-login-page"></a>
+### Phase 3: Configure the Login Page
 
-> **Note:** Passwords are never collected or transmitted by this tracking.
+In `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html`, locate the CONFIG block:
 
-### Data Added Server-Side (Agent)
+```javascript
+loginTracking: {
+    enable: true,                                        // ← flip to true
+    agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",  // exact agent URL
+    maxHistory: 5,                                       // entries to retain
+    trackValidationFailures: false                       // true = also log CAPTCHA failures
+}
+```
 
-| Field | Source |
-|-------|--------|
-| `ip` | `REMOTE_ADDR` CGI variable (real client IP) |
-| Server timestamp | `Now()` in LotusScript |
+> Setting `features.enableLoginTracking: true` is equivalent — either flag alone enables tracking.
 
-### Last-Login Banner
+Save and re-upload to DOMCFG.NSF.
 
-When `loginTracking.enable: true`, the banner appears at the top of the login form immediately:
+---
 
-- **First load (no prior attempt on device):** dashed-border placeholder — *"Login Activity Tracking Active — No previous login recorded on this device"*
-- **Subsequent loads:** full last-attempt details populated from `localStorage`
+<a id="phase-4-verify-end-to-end"></a>
+### Phase 4: Verify End-to-End
+
+1. **Reload the login page.** Banner appears immediately:
+   - *First load* → dashed placeholder: *"Login Activity Tracking Active — No previous login recorded on this device"*
+
+2. **Submit the login form** with a valid username (credentials may be wrong — tracking still fires).
+
+3. **Check the Person document:**
+   - Domino Administrator → People & Groups → People → open the user
+   - If Phase 1 done: `Login History` field visible in the form
+   - If Phase 1 skipped: Tools → Document Properties → Fields tab → find `LoginHistory`
+   - Verify one new pipe-delimited entry was prepended
+
+4. **Reload the login page.** Banner now shows full details:
 
 ```
 🕐 Last Login Attempt
-Date:     Jun 3, 2026, 09:15 AM     Status:   ATTEMPT
+Date:     Jun 25, 2026, 07:30 AM    Status:   ATTEMPT
 Browser:  Chrome / Win32            Timezone: Asia/Kolkata
 Screen:   1920x1080                 MFA Used: No
 ```
@@ -722,66 +864,30 @@ Status colours: **green** = SUCCESS · **red** = FAILED · **orange** = ATTEMPT
 
 ---
 
-## 🗂️ Person Document Storage
+<a id="accessing-login-history"></a>
+### Accessing Login History
 
-### Fields Written
+> `LoginHistory` is on the **Person document** in `names.nsf`.  
+> The mail template (`mail12.ntf`) has no connection to it — do NOT modify it.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `LoginHistory` | Multi-value Text | Last 5 login attempts, newest first |
-| `LoginHistoryUpdated` | Date/Time | Timestamp of last update |
+#### Option A — Domino Administrator
 
-### Entry Format (pipe-delimited)
+- **Phase 1 done:** Domino Administrator → People → open Person doc → `Login History` visible in form.
+- **Phase 1 skipped:** Open Person doc → Tools → Document Properties → Fields → `LoginHistory`.
 
-```
-TIMESTAMP|IP_ADDRESS|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA_USED
-```
+#### Option B — Custom View in names.nsf (All Users)
 
-**Example entries:**
+1. Open `names.nsf` in Designer → **New View**.
+2. Selection formula: `SELECT Form = "Person"`
+3. Columns: `FullName` · `@Text(@Elements(LoginHistory))` · `LoginHistory[1]` · `LoginHistoryUpdated`
+4. Save and sign the view.
 
-```
-LoginHistory:
-  [0] 2026-06-04T12:30:00Z|192.168.1.5|ATTEMPT|Chrome|Win32|Asia/Kolkata|1920x1080|0
-  [1] 2026-06-03T09:15:00Z|10.0.0.22|ATTEMPT|Firefox|MacIntel|Europe/London|2560x1440|1
-  [2] 2026-06-01T16:45:00Z|192.168.1.5|ATTEMPT|Edge|Win32|Asia/Kolkata|1920x1080|0
-```
+#### Option C — HCL Verse Self-Service Popup
 
-### Accessing Login History — Notes Client & HCL Verse
+Deploy `verse-login-activity/`. Users see their own history in a popup from the Verse navbar "More" menu via the `GetLoginHistory` agent.  
+→ See [HCL Verse Login Activity Extension](#hcl-verse-extension).
 
-> **Important:** `LoginHistory` is stored on the **Person document** in `names.nsf`.
-> It has **no connection to the mail template** (`mail12.ntf`) — do NOT modify the mail template.
-> The field is written dynamically; no Person form design change is required for it to work.
-
-#### Option A — Domino Administrator (Quickest)
-
-1. Open **Domino Administrator** → **People & Groups** tab → **People**.
-2. Find and open the user's **Person document**.
-3. View the raw field values: **Tools → Document Properties → Fields** tab.
-4. Locate `LoginHistory` (multi-value Text) and `LoginHistoryUpdated` (Date/Time).
-5. Each entry is a pipe-delimited string: `TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA`.
-
-> **Note:** The field is not visible in the standard Person form UI unless you optionally add it to pubnames.ntf (cosmetic only — not required for tracking to function).
-
-#### Option B — Domino Directory View (Admin, All Users)
-
-1. Open `names.nsf` in Domino Designer.
-2. Create a new **View** named `Login History`:
-   - Selection formula: `SELECT Form = "Person"`
-   - Column 1: `FullName`
-   - Column 2: `@Text(@Elements(LoginHistory))` — count of attempts
-   - Column 3: `LoginHistory[1]` — most recent attempt (newest first)
-   - Column 4: `LoginHistoryUpdated` — date of last update
-3. Categorize by `LoginHistoryUpdated` date for a chronological overview.
-
-#### Option C — HCL Verse (End-User Self-Service)
-
-Deploy the **LoginActivityViewer** extension from `verse-login-activity/`.
-Users see their own history in a popup directly from the Verse navbar "More" menu.
-Data is fetched from the Person document in `names.nsf` via the authenticated
-`GetLoginHistory` agent — no mail template changes involved.
-See [HCL Verse Login Activity Extension](#-hcl-verse-login-activity-extension) for full setup.
-
-#### Option D — Notes Client / LotusScript (Programmatic Read)
+#### Option D — LotusScript (Programmatic Read)
 
 ```lotusscript
 Sub ReadLoginHistory(username As String)
@@ -792,133 +898,80 @@ Sub ReadLoginHistory(username As String)
     Set view = db.GetView("($Users)")
     Dim doc As NotesDocument
     Set doc = view.GetDocumentByKey(username, True)
-    If doc Is Nothing Then
-        MsgBox "User not found"
-        Exit Sub
-    End If
+    If doc Is Nothing Then MsgBox "User not found" : Exit Sub
     Dim history As Variant
     history = doc.GetItemValue("LoginHistory")
     Dim i As Integer
     For i = 0 To UBound(history)
         Dim parts() As String
         parts = Split(CStr(history(i)), "|")
-        If UBound(parts) >= 4 Then
-            Print "Attempt " & (i+1) & ": " & _
-                  parts(0) & " from " & parts(1) & _
-                  " via " & parts(3) & " on " & parts(4)
+        If UBound(parts) >= 7 Then
+            Print "Attempt " & (i+1) & ": " & parts(0) & " | IP: " & parts(1) & _
+                  " | Browser: " & parts(3) & " | Screen: " & parts(6)
         End If
     Next i
-    Call doc.Recycle()
-    Call view.Recycle()
-    Call db.Recycle()
+    Call doc.Recycle() : Call view.Recycle() : Call db.Recycle()
 End Sub
 ```
 
 ---
 
-## 🤖 LotusScript Agent Deployment
+<a id="loginhistory-field-reference"></a>
+### LoginHistory Field Reference
 
-The full agent source is at `docs/LotusScript/LoginTracker.lss`.
+**Storage:** Multi-value Text on Person document in `names.nsf`, newest first.
 
-### Step-by-Step Deployment
-
-#### Step 1 — Open DOMCFG.NSF in Designer
-
-1. Launch Domino Designer.
-2. Open `domcfg.nsf` on your server.
-
-#### Step 2 — Create the Agent
-
-1. Expand **Agents** in the left panel.
-2. Click **New Agent**.
-3. Set:
-   - **Name:** `LogLoginAttempt` (exact name — must match `loginTracking.agentUrl` in CONFIG)
-   - **Alias:** *(optional)*
-   - **When should this agent run:** `On demand`
-   - **Which document(s) should it act on:** `None`
-   - **Runtime security level:** `2 - Restricted` (or higher if your security policy requires)
-   - **Run as web user:** ✅ checked
-
-#### Step 3 — Paste the LotusScript Code
-
-1. Select **LotusScript** as the language.
-2. Open `docs/LotusScript/LoginTracker.lss` from this repository.
-3. Copy the entire content and paste into the agent's **Script** area.
-4. Adjust constants at the top of the file if needed:
-   ```lotusscript
-   Const MAX_HISTORY = 5          ' How many attempts to store
-   Const NAMES_SERVER = ""        ' "" = current server
-   Const NAMES_DB_PATH = "names.nsf"
-   Const SEND_EMAIL_ON_NEW_ATTEMPT = False  ' Set True to email users
-   ```
-
-#### Step 4 — Sign the Agent
-
-1. Go to **File → Application → Sign** in Designer.
-2. Select an ID that has:
-   - **Write access** to `names.nsf` (to update Person documents).
-   - Permission to **run LotusScript agents** on the server.
-3. Sign with that ID.
-
-#### Step 5 — Set ACL on DOMCFG.NSF
-
-1. In Designer (or Domino Administrator), open the ACL for `domcfg.nsf`.
-2. Add/verify:
-   - **Anonymous** → `Reader` access (required for the agent to be called by an unauthenticated web user).
-   - **LocalDomainServers** → `Manager` (needed to sign/run agents).
-3. Save the ACL.
-
-#### Step 6 — Set ACL on NAMES.NSF
-
-The agent signer's ID needs write access to `names.nsf`:
-
-1. Open the ACL for `names.nsf`.
-2. Ensure the signer ID has at minimum `Author` access with **Write public documents** checked, OR `Editor` access.
-
-#### Step 7 — Enable in Server Document
-
-1. In Domino Administrator, open **Configuration → Servers → Current Server Document**.
-2. Go to the **Security** tab.
-3. Under **Programmability Restrictions**:
-   - Add the agent signer to **"Run restricted LotusScript/Java agents"** (or unrestricted if required).
-4. Save.
-
-#### Step 8 — Test the Agent
-
-```bash
-# Open in browser (should return "OK"):
-https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
-
-# Or use curl:
-curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
-     -d "username=testuser&ts=2026-06-04T12:00:00Z&browser=Chrome&platform=Win32&tz=UTC&scr=1920x1080&mfa=0"
+```
+TIMESTAMP|IP_ADDRESS|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA_USED
 ```
 
-Expected response: `OK` (plain text, HTTP 200).
+| # | Field | Description | Example |
+|---|-------|-------------|---------|
+| 0 | `TIMESTAMP` | ISO 8601 UTC | `2026-06-25T07:30:00Z` |
+| 1 | `IP_ADDRESS` | Client IP from `REMOTE_ADDR` | `192.168.1.10` |
+| 2 | `STATUS` | Always `ATTEMPT` at submit time | `ATTEMPT` |
+| 3 | `BROWSER` | Detected browser | `Chrome` |
+| 4 | `PLATFORM` | OS/platform | `Win10` |
+| 5 | `TIMEZONE` | IANA timezone | `Asia/Kolkata` |
+| 6 | `SCREEN` | Resolution | `1920x1080` |
+| 7 | `MFA_USED` | `1` = MFA used, `0` = no MFA | `0` |
 
-#### Step 9 — Enable in Login Page CONFIG
-
-```javascript
-features: {
-    enableLoginTracking: true,  // ← flip to true
-},
-loginTracking: {
-    enable: true,
-    agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
-    maxHistory: 5,
-    trackValidationFailures: false  // set true to also log CAPTCHA failures
-}
+**Example Person document `LoginHistory` field:**
+```
+[0] 2026-06-25T07:30:00Z|192.168.1.10|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0
+[1] 2026-06-24T14:15:00Z|10.0.0.5|ATTEMPT|Edge|Win10|Asia/Kolkata|1920x1080|0
+[2] 2026-06-23T09:00:00Z|192.168.1.10|ATTEMPT|Chrome|Win10|Asia/Kolkata|2560x1440|1
 ```
 
-### Security Considerations
-
-- The agent receives the **typed username** (not authenticated). A malicious actor could send arbitrary usernames. The agent only updates the Person document if the username matches an existing record — no documents are created.
-- Passwords are **never** sent to or stored by the tracking agent.
-- IP addresses are stored server-side only (never in localStorage or the browser).
-- To prevent abuse of the endpoint, consider adding rate-limiting at the Domino HTTP level or a WAF rule.
+**`LoginHistoryUpdated`** — Date/Time field, updated on every write. Use for sorting/filtering in views.
 
 ---
 
+### Data Collected (Client-Side — No Passwords)
+
+| Field | Example |
+|-------|---------|
+| `username` | `john.doe` |
+| `ts` (timestamp) | `2026-06-25T07:30:00.000Z` |
+| `tz` (timezone) | `Asia/Kolkata` |
+| `scr` (screen) | `1920x1080` |
+| `browser` | `Chrome` |
+| `platform` | `Win32` |
+| `mfa` | `0` or `1` |
+
+> Passwords are **never** collected. IP is added server-side from `REMOTE_ADDR` — never from the browser.
+
+---
+
+### Security Considerations
+
+- The agent only updates existing Person documents — no new documents are created.
+- To prevent endpoint abuse, add rate-limiting at the Domino HTTP level or via a WAF rule.
+- IP addresses are stored server-side only; never in `localStorage`.
+
+---
+
+<a id="hcl-verse-extension"></a>
 ## � HCL Verse Login Activity Extension
 
 Brings captured login history directly into **HCL Verse** as a popup accessible from the navbar "More" menu — no additional navigation or separate tools required.
@@ -1017,6 +1070,7 @@ For the complete guide see `verse-login-activity/DEPLOYMENT.md`.
 
 ---
 
+<a id="audio-captcha"></a>
 ## �� Audio CAPTCHA
 
 The math CAPTCHA fully supports visually impaired users via Web Speech API:
@@ -1031,6 +1085,7 @@ The math CAPTCHA fully supports visually impaired users via Web Speech API:
 
 ---
 
+<a id="configuration-reference"></a>
 ## ⚙️ Configuration Reference
 
 ### CONFIG / DominoLoginConfig Keys (v2.5.0)
@@ -1063,6 +1118,7 @@ The math CAPTCHA fully supports visually impaired users via Web Speech API:
 
 ---
 
+<a id="i18n"></a>
 ## 🌍 Internationalization (i18n)
 
 Built-in support for 18 languages: English, Spanish, French, German, Arabic (RTL), Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Gujarati, Punjabi, Chinese, Japanese, Korean, Portuguese.
@@ -1079,6 +1135,7 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 
 ---
 
+<a id="accessibility"></a>
 ## ♿ Accessibility (WCAG 2.1 AA)
 
 | Requirement | Implementation |
@@ -1097,6 +1154,7 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 
 ---
 
+<a id="troubleshooting"></a>
 ## 🔧 Troubleshooting
 
 ### Login page not showing custom form
@@ -1129,6 +1187,7 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 
 ---
 
+<a id="changelog"></a>
 ## 📋 Changelog
 
 ### Version 2.5.0 (June 2026)

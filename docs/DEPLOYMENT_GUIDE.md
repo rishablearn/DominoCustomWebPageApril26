@@ -8,18 +8,20 @@ This guide provides detailed instructions for deploying the custom login page. F
 
 ## Table of Contents
 
-1. [What You Need Before Starting](#what-you-need-before-starting)
-2. [Understanding the Basics](#understanding-the-basics)
-3. [Choosing Your Deployment Option](#choosing-your-deployment-option) ⭐ **Start Here**
-4. [Method 1: Manual Setup in Domino Designer](#method-1-create-form-manually-in-domino-designer-recommended)
-5. [Configuring Your Login Page](#configuring-your-login-page)
-6. [Testing Your Login Page](#testing-your-login-page)
-7. [Troubleshooting Common Problems](#troubleshooting-common-problems)
-8. [Login Attempt Tracking — Deployment](#login-attempt-tracking--deployment) 🔐
-9. [Getting Help](#getting-help)
+1. [What You Need Before Starting](#prerequisites)
+2. [Understanding the Basics](#understanding-basics)
+3. [Choosing Your Deployment Option](#deployment-option) ⭐ **Start Here**
+4. [Method 1: Create Form in Domino Designer](#method-1)
+5. [Method 2: All-In-One Embedded Form](#method-2)
+6. [Configuring Your Login Page](#configuring)
+7. [Testing Your Login Page](#testing)
+8. [Troubleshooting Common Problems](#troubleshooting)
+9. [Login Attempt Tracking — Deployment](#login-tracking) 🔐
+10. [Getting Help](#getting-help)
 
 ---
 
+<a id="prerequisites"></a>
 ## What You Need Before Starting
 
 ### Required Software
@@ -59,6 +61,7 @@ Download or locate these files from this project:
 
 ---
 
+<a id="understanding-basics"></a>
 ## Understanding the Basics
 
 ### What is DOMCFG.NSF?
@@ -77,6 +80,7 @@ A form is like a template. In our case, it's a template for the login page that 
 
 ---
 
+<a id="deployment-option"></a>
 ## Choosing Your Deployment Option
 
 ### 🎯 Quick Decision Guide
@@ -123,6 +127,7 @@ Refused to execute script from 'config.js' because its MIME type ('text/html') i
 
 ---
 
+<a id="method-1"></a>
 ## Method 1: Create Form Manually in Domino Designer (Recommended)
 
 This is the standard and most reliable method for creating the custom login form.
@@ -587,6 +592,7 @@ tell http restart
 
 ---
 
+<a id="method-2"></a>
 ## Method 2: All-In-One Embedded Form (No Separate Files)
 
 If you prefer a simpler setup without separate CSS/JS files, use the embedded version.
@@ -638,6 +644,7 @@ tell http restart
 
 ---
 
+<a id="configuring"></a>
 ## Configuring Your Login Page
 
 After deployment, you'll want to customize the login page for your organization.
@@ -834,6 +841,7 @@ branding: {
 
 ---
 
+<a id="testing"></a>
 ## Testing Your Login Page
 
 ### Step 1: Open a Private/Incognito Browser Window
@@ -880,6 +888,7 @@ Open the same URL on your phone to verify it's responsive.
 
 ---
 
+<a id="troubleshooting"></a>
 ## Troubleshooting Common Problems
 
 ### Problem: Default Domino Login Still Appears
@@ -1018,6 +1027,7 @@ and strict MIME type checking is enabled.
 
 ---
 
+<a id="getting-help"></a>
 ## Getting Help
 
 ### HCL Documentation
@@ -1292,6 +1302,7 @@ Requirements:
 
 ---
 
+<a id="login-tracking"></a>
 ## Login Attempt Tracking — Deployment
 
 Login attempt tracking records each login submission to the user's **Person document** in `names.nsf` and displays a compact banner on the login page for the user's reference.
