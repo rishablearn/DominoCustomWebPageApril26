@@ -119,7 +119,7 @@ Just paste the HTML, mark it as Pass-Thru HTML, and you're done.
 | **Version Display** | Track which version is deployed |
 | **Company Branding** | Logo, colors, taglines fully customizable |
 
-### HCL Verse Integration (`verse-login-activity/`)
+### HCL Verse Integration (`verse-extension/`)
 
 | Feature | Description |
 |---------|-------------|
@@ -352,13 +352,25 @@ This hides the logo and shows only the company name.
 ```
 DominoCustomWebPageApril26/
 │
-├── docs/
-│   ├── EnterpriseLoginForm.html   # ⭐ Full-featured, self-contained
+├── login-forms/
+│   ├── EnterpriseLoginForm.html   # ⭐ Full-featured, self-contained (RECOMMENDED)
 │   ├── DominoEmbeddedForm.html    # ⭐ Simple, self-contained
-│   ├── DEPLOYMENT_GUIDE.md        # Step-by-step deployment
-│   └── COMPLETE_DOCUMENTATION.md  # Technical reference
+│   └── CustomLoginForm-Domino.html # Modular version (requires external files)
 │
-├── CustomLoginForm-Domino.html    # Modular version (requires external files)
+├── lotusscript/
+│   ├── LoginTracker.lss           # LogLoginAttempt agent source
+│   └── GetLoginHistory.lss        # GetLoginHistory agent source
+│
+├── verse-extension/
+│   ├── LoginActivityViewer.html   # Verse popup UI
+│   ├── applications.json          # Verse extension manifest
+│   └── merge-snippet.json         # Snippet for existing applications.json
+│
+├── docs/
+│   ├── 01-Overview.md             # Project overview and structure
+│   ├── 02-Deployment-Guide.md     # Step-by-step deployment
+│   └── 03-Verse-Extension.md      # Verse extension deployment
+│
 ├── config.js                      # Configuration for modular version
 ├── css/login.css                  # Styles for modular version
 ├── js/login.js                    # Scripts for modular version
@@ -444,7 +456,7 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ### Q: I already have an applications.json — will the Verse extension conflict?
 
-**A:** No. The `merge-snippet.json` file contains a single application object to **add** to your existing array. Your current applications and extensions are untouched. See `verse-login-activity/DEPLOYMENT.md` for the step-by-step merge guide and a before/after JSON example.
+**A:** No. The `merge-snippet.json` file contains a single application object to **add** to your existing array. Your current applications and extensions are untouched. See `docs/03-Verse-Extension.md` for the step-by-step merge guide and a before/after JSON example.
 
 ---
 
@@ -457,7 +469,7 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 | **LoginActivityViewer.html** | Self-contained popup UI (all CSS/JS inline). Dual data source: `names.nsf` via agent, with automatic `localStorage` fallback. |
 | **GetLoginHistory Agent** | New LotusScript agent in DOMCFG.NSF. Returns current user's `LoginHistory` as JSON. Anonymous-safe; no cross-user access. |
 | **applications.json + merge-snippet.json** | Ready-to-deploy Verse extension. `merge-snippet.json` lets you add it to an existing `applications.json` array without disrupting other extensions. |
-| **verse-login-activity/DEPLOYMENT.md** | Full deployment guide: agent creation, ACL, notes.ini parameters, and step-by-step merge instructions. |
+| **docs/03-Verse-Extension.md** | Full deployment guide: agent creation, ACL, notes.ini parameters, and step-by-step merge instructions. |
 
 > Previous release notes: see [Changelog](#-changelog).
 
@@ -470,8 +482,8 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 | Use Case | File | Notes |
 |----------|------|-------|
-| Enterprise + all features | `docs/EnterpriseLoginForm.html` | Sidebar quick links, announcement banner |
-| Embedded / compact | `docs/DominoEmbeddedForm.html` | Smaller card, same feature set |
+| Enterprise + all features | `login-forms/EnterpriseLoginForm.html` | Sidebar quick links, announcement banner |
+| Embedded / compact | `login-forms/DominoEmbeddedForm.html` | Smaller card, same feature set |
 
 ### Step 2 — Edit CONFIG (lines ~97-430)
 
@@ -532,7 +544,7 @@ const CONFIG = {
 
 #### A3. Paste the HTML Content
 
-1. Open `docs/EnterpriseLoginForm.html` (or `DominoEmbeddedForm.html`) in a text editor.
+1. Open `login-forms/EnterpriseLoginForm.html` (or `DominoEmbeddedForm.html`) in a text editor.
 2. Select all content (`Ctrl+A`) and copy (`Ctrl+C`).
 3. In the Designer form editor, click once to place the cursor.
 4. Paste (`Ctrl+V`).
@@ -751,7 +763,7 @@ This pushes the updated Person form design to the live `names.nsf`.
 <a id="phase-2-deploy-the-logloginattempt-agent"></a>
 ### Phase 2: Deploy the LogLoginAttempt Agent
 
-**Source file:** `docs/LotusScript/LoginTracker.lss` — copy the entire file into the agent.
+**Source file:** `lotusscript/LoginTracker.lss` — copy the entire file into the agent.
 
 #### Step 2.1 — Create Agent in DOMCFG.NSF
 
@@ -771,7 +783,7 @@ This pushes the updated Person form design to the live `names.nsf`.
 1. Open `domcfg.nsf` in **Domino Designer**.
 2. **Shared Code → Agents → New Agent** with settings above.
 3. Select **LotusScript** as the language.
-4. Copy the **entire** contents of `docs/LotusScript/LoginTracker.lss` and paste into the Script area.
+4. Copy the **entire** contents of `lotusscript/LoginTracker.lss` and paste into the Script area.
 
 #### Step 2.2 — Configure Agent Constants
 
@@ -913,7 +925,7 @@ Status colours: **green** = SUCCESS · **red** = FAILED · **orange** = ATTEMPT
 
 #### Option C — HCL Verse Self-Service Popup
 
-Deploy `verse-login-activity/`. Users see their own history in a popup from the Verse navbar "More" menu via the `GetLoginHistory` agent.  
+Deploy `verse-extension/`. Users see their own history in a popup from the Verse navbar "More" menu via the `GetLoginHistory` agent.  
 → See [HCL Verse Login Activity Extension](#hcl-verse-extension).
 
 #### Option D — LotusScript (Programmatic Read)
@@ -1009,11 +1021,11 @@ Brings captured login history directly into **HCL Verse** as a popup accessible 
 
 | File | Purpose |
 |------|---------|
-| `verse-login-activity/LoginActivityViewer.html` | Self-contained popup UI — deploy as File Resource in DOMCFG.NSF |
-| `verse-login-activity/GetLoginHistory.lss` | LotusScript agent — returns `LoginHistory` from `names.nsf` as a JSON array |
-| `verse-login-activity/applications.json` | Complete Verse extension definition (use for new deployments) |
-| `verse-login-activity/merge-snippet.json` | Single app object to append to an existing `applications.json` |
-| `verse-login-activity/DEPLOYMENT.md` | Step-by-step deployment guide with ACL, notes.ini, and merge instructions |
+| `verse-extension/LoginActivityViewer.html` | Self-contained popup UI — deploy as File Resource in DOMCFG.NSF |
+| `lotusscript/GetLoginHistory.lss` | LotusScript agent — returns `LoginHistory` from `names.nsf` as a JSON array |
+| `verse-extension/applications.json` | Complete Verse extension definition (use for new deployments) |
+| `verse-extension/merge-snippet.json` | Single app object to append to an existing `applications.json` |
+| `docs/03-Verse-Extension.md` | Step-by-step deployment guide with ACL, notes.ini, and merge instructions |
 
 ### Architecture
 
@@ -1095,7 +1107,7 @@ Your existing `applications.json` is a JSON **array** (`[...]`). Add the new app
 - [ ] Deploy `applications.json` and set `notes.ini` parameters
 - [ ] `tell http restart` · Test: click More menu in Verse
 
-For the complete guide see `verse-login-activity/DEPLOYMENT.md`.
+For the complete guide see `docs/03-Verse-Extension.md`.
 
 ---
 
@@ -1230,7 +1242,7 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - ✅ `LoginActivityViewer.html` — self-contained popup with history table, summary cards, dual data source (server + localStorage)
 - ✅ `GetLoginHistory.lss` — new LotusScript agent returning `LoginHistory` from `names.nsf` as authenticated JSON
 - ✅ `applications.json` + `merge-snippet.json` — seamless integration with existing or new Verse deployments
-- ✅ `verse-login-activity/DEPLOYMENT.md` — comprehensive step-by-step guide covering agents, ACL, notes.ini, and merge instructions
+- ✅ `docs/03-Verse-Extension.md` — comprehensive step-by-step guide covering agents, ACL, notes.ini, and merge instructions
 
 ### Version 2.4.2 (June 29, 2026)
 
@@ -1257,7 +1269,7 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 **New Features:**
 - ✅ TOTP Multi-Factor Authentication — two-step login flow with animated countdown ring
 - ✅ Login attempt tracking — client-side fingerprint POSTed to Domino agent
-- ✅ LotusScript agent (`docs/LotusScript/LoginTracker.lss`) for Person document updates
+- ✅ LotusScript agent (`lotusscript/LoginTracker.lss`) for Person document updates
 - ✅ Last-login banner — shows previous attempt info on each page load
 - ✅ Optional email notification per attempt (controlled by `SEND_EMAIL_ON_NEW_ATTEMPT`)
 - ✅ `credentialsStep` / `mfaStep` two-step HTML structure

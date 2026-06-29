@@ -28,6 +28,7 @@
 '
 ' HOW TO DEPLOY
 ' -------------
+' Source file: lotusscript/GetLoginHistory.lss
 ' 1. Open DOMCFG.NSF in Domino Designer.
 ' 2. Create → Agent.
 '      Name                              : GetLoginHistory

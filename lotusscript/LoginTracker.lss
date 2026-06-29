@@ -108,6 +108,7 @@
 '         (this agent uses only basic Notes classes; restricted is sufficient)
 '
 ' Step 6 — Verify the Agent
+'   [ ] Source: lotusscript/LoginTracker.lss
 '   [ ] Browse to: https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
 '         Expected response body: OK
 '         (username param is empty so agent exits early but returns OK)

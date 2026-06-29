@@ -60,7 +60,7 @@ The `LoginActivityViewer.html` must be accessible at a URL your Domino server se
 
 1. In the left navigator, expand **Resources → Files**.
 2. Click **New File Resource** (or double-click an existing one to edit).
-3. In the dialog, select `LoginActivityViewer.html` from this folder.
+3. In the dialog, select `LoginActivityViewer.html` from `verse-extension/`.
 4. Ensure the resource name is exactly: `LoginActivityViewer.html`
 5. Go to the **Web** tab and confirm MIME type is `text/html`.
 6. Save.
@@ -93,7 +93,7 @@ Open the URL in a browser where you are **already logged in** to Domino. You sho
    >
    > **Run as web user must be checked.** The Verse popup calls this agent while the user is already authenticated. Running as the web user ensures the agent returns only the calling user's own `LoginHistory`.
 
-3. In the Script area, paste the entire contents of `GetLoginHistory.lss`.
+3. In the Script area, paste the entire contents of `lotusscript/GetLoginHistory.lss`.
 4. Click **File → Compile** to verify there are no syntax errors.
 5. Save the agent (`Ctrl+S`).
 
@@ -149,7 +149,7 @@ If you see `[]` and have LoginHistory data, check the agent signing and ACL.
 
 ### Option 1: You DO NOT have an existing applications.json
 
-1. Open `applications.json` from this folder.
+1. Open `verse-extension/applications.json`.
 2. Replace `YOUR_DOMINO_SERVER` with your actual server hostname, e.g.:
    ```
    "link": "https://mail.example.com/domcfg.nsf/LoginActivityViewer.html"
@@ -165,7 +165,7 @@ Your existing `applications.json` is an **array** (`[...]`). You need to **add o
 #### Step-by-step merge:
 
 1. Open your existing `applications.json` in a text editor.
-2. Open `merge-snippet.json` from this folder.
+2. Open `verse-extension/merge-snippet.json`.
 3. Replace `YOUR_DOMINO_SERVER` in `merge-snippet.json` with your actual hostname.
 4. In your existing `applications.json`, find the **last `}` before the closing `]`**.
 5. Add a comma after that `}`, then paste the contents of `merge-snippet.json`.
@@ -279,10 +279,10 @@ Your existing `applications.json` is an **array** (`[...]`). You need to **add o
 
 | File | Purpose | Deploy to |
 |---|---|---|
-| `LoginActivityViewer.html` | Popup UI page (self-contained, no external deps) | DOMCFG.NSF → File Resources |
-| `GetLoginHistory.lss` | LotusScript agent returning JSON history | DOMCFG.NSF → Agents (named `GetLoginHistory`) |
-| `applications.json` | Complete Verse extension file (new deployments) | Domino server file system or HTTP server |
-| `merge-snippet.json` | Single app object to add to existing `applications.json` | Merge manually into existing file |
+| `verse-extension/LoginActivityViewer.html` | Popup UI page (self-contained, no external deps) | DOMCFG.NSF → File Resources |
+| `lotusscript/GetLoginHistory.lss` | LotusScript agent returning JSON history | DOMCFG.NSF → Agents (named `GetLoginHistory`) |
+| `verse-extension/applications.json` | Complete Verse extension file (new deployments) | Domino server file system or HTTP server |
+| `verse-extension/merge-snippet.json` | Single app object to add to existing `applications.json` | Merge manually into existing file |
 
 ---
 

@@ -48,11 +48,11 @@ To check if you have admin access:
 Download or locate these files from this project:
 
 **✅ RECOMMENDED (No MIME issues):**
-- `docs/EnterpriseLoginForm.html` - **Enterprise login with all CSS/JS inline**
-- `docs/DominoEmbeddedForm.html` - Simple login with all CSS/JS inline
+- `login-forms/EnterpriseLoginForm.html` - **Enterprise login with all CSS/JS inline**
+- `login-forms/DominoEmbeddedForm.html` - Simple login with all CSS/JS inline
 
 **For modular deployment (requires MIME setup):**
-- `CustomLoginForm-Domino.html` - Login page for Domino (uses external files)
+- `login-forms/CustomLoginForm-Domino.html` - Login page for Domino (uses external files)
 - `config.js` - Configuration settings
 - `css/login.css` - Styling
 - `js/login.js` - Functionality
@@ -100,7 +100,7 @@ A form is like a template. In our case, it's a template for the login page that 
 - Includes enterprise features (quick links, security notice, support info)
 - Inspired by corporate login pages like ONGC Verse and UIIC Mail
 
-**Location:** `docs/EnterpriseLoginForm.html`
+**Location:** `login-forms/EnterpriseLoginForm.html`
 
 ### Why MIME Errors Happen
 
@@ -256,15 +256,15 @@ There are THREE HTML files for Domino deployment:
 
 | File | Location | Best For | MIME Config |
 |------|----------|----------|-------------|
-| `EnterpriseLoginForm.html` | `docs/` | ⭐ **RECOMMENDED** - Enterprise features | ❌ None |
-| `DominoEmbeddedForm.html` | `docs/` | Simple clean login | ❌ None |
-| `CustomLoginForm-Domino.html` | Root | Advanced (external files) | ⚠️ Required |
+| `EnterpriseLoginForm.html` | `login-forms/` | ⭐ **RECOMMENDED** - Enterprise features | ❌ None |
+| `DominoEmbeddedForm.html` | `login-forms/` | Simple clean login | ❌ None |
+| `CustomLoginForm-Domino.html` | `login-forms/` | Advanced (external files) | ⚠️ Required |
 
 **We recommend `EnterpriseLoginForm.html`** - it has all CSS/JS inline, so no MIME configuration needed!
 
 **Step A: Copy the HTML content**
 
-1. Open your chosen HTML file (we recommend **`docs/EnterpriseLoginForm.html`**) in a text editor:
+1. Open your chosen HTML file (we recommend **`login-forms/EnterpriseLoginForm.html`**) in a text editor:
    - **Windows:** Right-click the file → **Open with** → **Notepad** (or Notepad++)
    - **Mac:** Right-click → **Open With** → **TextEdit** (or VS Code)
 
@@ -615,7 +615,7 @@ If you prefer a simpler setup without separate CSS/JS files, use the embedded ve
 
 4. Click **Create** menu → **Pass-Thru HTML**
 
-5. Open the file `docs/DominoEmbeddedForm.html` from this project
+5. Open the file `login-forms/DominoEmbeddedForm.html` from this project
    - This file has ALL CSS and JavaScript embedded inline
    - No separate file resources needed
 
@@ -961,7 +961,7 @@ If you must use external files, paths should be:
 - ✅ Correct: `/domcfg.nsf/login.css`
 - ❌ Wrong: `/domcfg.nsf/css/login.css`
 
-To fix, replace the form content with `docs/EnterpriseLoginForm.html`.
+To fix, replace the form content with `login-forms/EnterpriseLoginForm.html`.
 
 ### Problem: "MIME type is not executable" Error (MIME Not Set)
 
@@ -1044,7 +1044,7 @@ and strict MIME type checking is enabled.
 
 If you need help with this specific login page project:
 1. Check the README.md file
-2. Review the COMPLETE_DOCUMENTATION.md
+2. Review `docs/01-Overview.md`
 3. Look at sample configurations in the `/samples` folder
 
 ---
@@ -1396,15 +1396,15 @@ TIMESTAMP|IP_ADDRESS|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA_USED
 
 #### Method 3 — HCL Verse Self-Service Popup
 
-Deploy the `verse-login-activity/` extension. Users see their own `LoginHistory` in a popup from the Verse navbar "More" menu. The popup fetches data directly from the Person document via an authenticated `GetLoginHistory` agent — no mail template involved.
+Deploy the `verse-extension/` extension. Users see their own `LoginHistory` in a popup from the Verse navbar "More" menu. The popup fetches data directly from the Person document via an authenticated `GetLoginHistory` agent — no mail template involved.
 
-See `verse-login-activity/DEPLOYMENT.md` for full setup steps.
+See `docs/03-Verse-Extension.md` for full setup steps.
 
 ---
 
 ### Deploying the LotusScript Agent (`LogLoginAttempt`)
 
-The full agent source is at `docs/LotusScript/LoginTracker.lss`.
+The full agent source is at `lotusscript/LoginTracker.lss`.
 
 #### Step 1 — Create Agent in DOMCFG.NSF
 
@@ -1422,7 +1422,7 @@ The full agent source is at `docs/LotusScript/LoginTracker.lss`.
 
 1. Open DOMCFG.NSF in Domino Designer.
 2. **Shared Code → Agents → New Agent** with settings above.
-3. Paste the entire contents of `docs/LotusScript/LoginTracker.lss`.
+3. Paste the entire contents of `lotusscript/LoginTracker.lss`.
 4. Configure constants at the top:
    ```lotusscript
    Const MAX_HISTORY  = 5       ' Entries to retain per user

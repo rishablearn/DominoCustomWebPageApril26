@@ -42,7 +42,7 @@ const server = http.createServer((req, res) => {
     
     // Default to index/login page
     if (urlPath === '/' || urlPath === '') {
-        urlPath = '/CustomLoginForm-Domino.html';
+        urlPath = '/login-forms/CustomLoginForm-Domino.html';
     }
 
     // Handle mock login POST (for testing)
