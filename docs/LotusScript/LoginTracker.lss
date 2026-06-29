@@ -433,10 +433,18 @@ Sub SendNotificationEmail(session As NotesSession, namesDb As NotesDatabase, _
                           personDoc As NotesDocument, entry As String, ip As String)
     On Error GoTo EmailError
 
-    Dim mailDb As NotesDatabase
-    Dim mailFile As String
-    mailFile = CStr(personDoc.GetItemValue("MailFile")(0))
+    ' --- All declarations at top (required with Option Declare) ---------------
+    Dim mailDb    As NotesDatabase
+    Dim mailFile  As String
     Dim mailServer As String
+    Dim memo      As NotesDocument
+    Dim recipient As String
+    Dim parts     As Variant        ' Variant required to receive Split() result
+    Dim body      As String
+    Dim bodyItem  As NotesRichTextItem
+    ' -------------------------------------------------------------------------
+
+    mailFile   = CStr(personDoc.GetItemValue("MailFile")(0))
     mailServer = CStr(personDoc.GetItemValue("MailServer")(0))
 
     If mailFile = "" Then Exit Sub
@@ -445,31 +453,25 @@ Sub SendNotificationEmail(session As NotesSession, namesDb As NotesDatabase, _
     If Not mailDb.IsOpen Then Call mailDb.Open(mailServer, mailFile)
     If Not mailDb.IsOpen Then Exit Sub
 
-    Dim memo As NotesDocument
     Set memo = mailDb.CreateDocument()
-
     Call memo.ReplaceItemValue("Form", "Memo")
     Call memo.ReplaceItemValue("Subject", EMAIL_SUBJECT)
 
-    Dim recipient As String
     recipient = CStr(personDoc.GetItemValue("InternetAddress")(0))
     If recipient = "" Then
         recipient = CStr(personDoc.GetItemValue("FullName")(0))
     End If
     Call memo.ReplaceItemValue("SendTo", recipient)
 
-    Dim parts() As String
     parts = Split(entry, "|")
-    Dim body As String
     body = "A new login attempt was recorded for your account." & Chr(10) & Chr(10)
-    If UBound(parts) >= 1 Then body = body & "Time      : " & parts(0) & Chr(10)
+    If UBound(parts) >= 0 Then body = body & "Time      : " & parts(0) & Chr(10)
     If UBound(parts) >= 1 Then body = body & "IP Address: " & parts(1) & Chr(10)
     If UBound(parts) >= 3 Then body = body & "Browser   : " & parts(3) & Chr(10)
     If UBound(parts) >= 4 Then body = body & "Platform  : " & parts(4) & Chr(10)
     If UBound(parts) >= 5 Then body = body & "Timezone  : " & parts(5) & Chr(10)
     body = body & Chr(10) & "If this was not you, please contact IT Support immediately."
 
-    Dim bodyItem As NotesRichTextItem
     Set bodyItem = memo.CreateRichTextItem("Body")
     Call bodyItem.AppendText(body)
 

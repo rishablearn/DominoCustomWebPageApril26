@@ -150,7 +150,7 @@ Sub Initialize()
 
     Dim i        As Integer
     Dim raw      As String
-    Dim parts()  As String
+    Dim parts    As Variant     ' Variant required to receive Split() result
     Dim entryTs  As String
     Dim entryIp  As String
     Dim entrySt  As String
