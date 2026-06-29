@@ -124,11 +124,8 @@ Sub Initialize()
             If personDoc Is Nothing Then
                 Set personDoc = inetView.GetDocumentByKey(session.UserName, True)
             End If
-            Call inetView.Recycle()
         End If
     End If
-
-    If Not (usersView Is Nothing) Then Call usersView.Recycle()
 
     If personDoc Is Nothing Then
         Print "[]"

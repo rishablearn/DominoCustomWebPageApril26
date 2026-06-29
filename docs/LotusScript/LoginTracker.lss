@@ -248,7 +248,6 @@ Sub Initialize()
                 Set personDoc = vimView.GetDocumentByKey(username, False)
                 lookupLog = lookupLog & " partial=[" & (Not personDoc Is Nothing) & "]"
             End If
-            If Not (vimView Is Nothing) Then Call vimView.Recycle()
         Else
             lookupLog = lookupLog & Chr(10) & "  ($VIMPeople) view not found"
         End If
@@ -353,7 +352,6 @@ Sub Initialize()
     End If
 
     '-- 10. Clean up --------------------------------------------------------
-    If Not (usersView Is Nothing) Then Call usersView.Recycle()
     Call personDoc.Recycle()
     Call namesDb.Recycle()
 
