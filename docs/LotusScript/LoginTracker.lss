@@ -135,41 +135,63 @@ Const NAMES_SERVER    = ""    ' "" = current server; or "ServerName/Org"
 Const NAMES_DB_PATH   = "names.nsf"
 Const SEND_EMAIL_ON_NEW_ATTEMPT = False
 Const EMAIL_SUBJECT   = "Login Attempt Notification"
+
+' DEBUG_MODE = True  → response body contains full trace of every step.
+'              False → response is "OK" only (production setting).
+' Set to True to diagnose lookup / save failures, then flip back to False.
+Const DEBUG_MODE = True
 '-----------------------------------------------------------------------------
 
 Sub Initialize()
-    Dim session As New NotesSession
-    Dim context As NotesDatabase
-    Dim web     As NotesDocument     ' pseudo-document holding CGI vars
-    Dim result  As String
+    Dim session  As New NotesSession
+    Dim web      As NotesDocument     ' CGI + POST fields from HTTP context
+    Dim dbg      As String            ' accumulated debug log
 
     On Error GoTo ErrorHandler
 
-    Set context = session.CurrentDatabase
-    Set web     = session.DocumentContext   ' CGI + POST fields available here
+    Set web = session.DocumentContext
 
     '-- 1. Read POST parameters sent by the login page ----------------------
-    Dim ts        As String  : ts        = GetField(web, "ts")
-    Dim tz        As String  : tz        = GetField(web, "tz")
-    Dim lang      As String  : lang      = GetField(web, "lang")
-    Dim scr       As String  : scr       = GetField(web, "scr")
-    Dim browser   As String  : browser   = GetField(web, "browser")
-    Dim platform  As String  : platform  = GetField(web, "platform")
-    Dim mfa       As String  : mfa       = GetField(web, "mfa")
-    Dim username  As String  : username  = GetField(web, "username")
-    Dim status    As String  : status    = "ATTEMPT"
+    Dim ts        As String  : ts       = GetField(web, "ts")
+    Dim tz        As String  : tz       = GetField(web, "tz")
+    Dim lang      As String  : lang     = GetField(web, "lang")
+    Dim scr       As String  : scr      = GetField(web, "scr")
+    Dim browser   As String  : browser  = GetField(web, "browser")
+    Dim platform  As String  : platform = GetField(web, "platform")
+    Dim mfa       As String  : mfa      = GetField(web, "mfa")
+    Dim username  As String  : username = GetField(web, "username")
+    Dim status    As String  : status   = "ATTEMPT"
 
-    '-- 2. Retrieve real IP from CGI environment (server fills this) --------
+    '-- 2. Retrieve real IP -------------------------------------------------
     Dim ipAddress As String
-    ipAddress = GetField(web, "REMOTE_ADDR")     ' Standard CGI variable
-    If ipAddress = "" Then
-        ipAddress = GetField(web, "HTTP_X_FORWARDED_FOR")  ' Behind load balancer
-    End If
+    ipAddress = GetField(web, "REMOTE_ADDR")
+    If ipAddress = "" Then ipAddress = GetField(web, "HTTP_X_FORWARDED_FOR")
     If ipAddress = "" Then ipAddress = "unknown"
 
-    '-- 3. Validate we have a username to look up ---------------------------
+    '-- DEBUG: dump everything received ------------------------------------
+    If DEBUG_MODE Then
+        dbg = dbg & "=== LogLoginAttempt DEBUG ===" & Chr(10)
+        dbg = dbg & "Server time : " & Now() & Chr(10)
+        dbg = dbg & "username    : [" & username   & "]" & Chr(10)
+        dbg = dbg & "ts          : [" & ts         & "]" & Chr(10)
+        dbg = dbg & "browser     : [" & browser    & "]" & Chr(10)
+        dbg = dbg & "platform    : [" & platform   & "]" & Chr(10)
+        dbg = dbg & "tz          : [" & tz         & "]" & Chr(10)
+        dbg = dbg & "scr         : [" & scr        & "]" & Chr(10)
+        dbg = dbg & "mfa         : [" & mfa        & "]" & Chr(10)
+        dbg = dbg & "lang        : [" & lang       & "]" & Chr(10)
+        dbg = dbg & "REMOTE_ADDR : [" & ipAddress  & "]" & Chr(10)
+        dbg = dbg & "---" & Chr(10)
+    End If
+
+    '-- 3. Validate we have a username --------------------------------------
     If username = "" Then
-        Call RespondOK()
+        If DEBUG_MODE Then
+            dbg = dbg & "EXIT: username field is empty — nothing to record." & Chr(10)
+            Call RespondDebug(dbg)
+        Else
+            Call RespondOk()
+        End If
         Exit Sub
     End If
 
@@ -178,44 +200,106 @@ Sub Initialize()
     entry = ts & "|" & ipAddress & "|" & status & "|" & _
             browser & "|" & platform & "|" & tz & "|" & scr & "|" & mfa
 
-    '-- 5. Open NAMES.NSF and find the Person document ----------------------
+    If DEBUG_MODE Then dbg = dbg & "Entry       : " & entry & Chr(10) & "---" & Chr(10)
+
+    '-- 5. Open NAMES.NSF --------------------------------------------------
     Dim namesDb As NotesDatabase
     Set namesDb = New NotesDatabase(NAMES_SERVER, NAMES_DB_PATH)
+    If Not namesDb.IsOpen Then Call namesDb.Open(NAMES_SERVER, NAMES_DB_PATH)
 
     If Not namesDb.IsOpen Then
-        Call namesDb.Open(NAMES_SERVER, NAMES_DB_PATH)
-    End If
-
-    If Not namesDb.IsOpen Then
-        Print "Content-type: text/plain"
-        Print ""
-        Print "ERROR: Could not open " & NAMES_DB_PATH
+        Call RespondError("Could not open " & NAMES_DB_PATH & " on server [" & NAMES_SERVER & "]", dbg)
         Exit Sub
     End If
 
-    ' Look up by short name or internet address in ($Users) view
+    If DEBUG_MODE Then dbg = dbg & "names.nsf   : opened OK (server=[" & NAMES_SERVER & "])" & Chr(10)
+
+    '-- 6. Find Person document — try multiple strategies ------------------
+    Dim personDoc As NotesDocument
+    Dim lookupLog As String
+
+    ' Strategy A: ($Users) view — sorted by all FullName values.
+    '   Works for canonical (CN=.../O=...) or abbreviated names.
+    '   Usually does NOT match short names like "john.doe" directly.
     Dim usersView As NotesView
     Set usersView = namesDb.GetView("($Users)")
+    If Not (usersView Is Nothing) Then
+        Set personDoc = usersView.GetDocumentByKey(username, True)   ' exact
+        lookupLog = lookupLog & "  ($Users) exact=[" & (Not personDoc Is Nothing) & "]"
+        If personDoc Is Nothing Then
+            Set personDoc = usersView.GetDocumentByKey(username, False)  ' partial
+            lookupLog = lookupLog & " partial=[" & (Not personDoc Is Nothing) & "]"
+        End If
+    Else
+        lookupLog = lookupLog & "  ($Users) view not found"
+    End If
 
-    Dim personDoc As NotesDocument
-    Set personDoc = usersView.GetDocumentByKey(username, False)
-
+    ' Strategy B: ($VIMPeople) — sorted by FullName; try as internet address
     If personDoc Is Nothing Then
-        ' Try by internet (email) address
-        Dim inetView As NotesView
-        Set inetView = namesDb.GetView("($VIMPeople)")
-        If Not (inetView Is Nothing) Then
-            Set personDoc = inetView.GetDocumentByKey(username, False)
+        Dim vimView As NotesView
+        Set vimView = namesDb.GetView("($VIMPeople)")
+        If Not (vimView Is Nothing) Then
+            Set personDoc = vimView.GetDocumentByKey(username, True)
+            lookupLog = lookupLog & Chr(10) & "  ($VIMPeople) exact=[" & (Not personDoc Is Nothing) & "]"
+            If personDoc Is Nothing Then
+                Set personDoc = vimView.GetDocumentByKey(username, False)
+                lookupLog = lookupLog & " partial=[" & (Not personDoc Is Nothing) & "]"
+            End If
+            If Not (vimView Is Nothing) Then Call vimView.Recycle()
+        Else
+            lookupLog = lookupLog & Chr(10) & "  ($VIMPeople) view not found"
         End If
     End If
 
+    ' Strategy C: Scan all Person documents comparing ShortName and
+    '   InternetAddress (case-insensitive).  Slower but works when view
+    '   sort keys don't match the typed username format.
     If personDoc Is Nothing Then
-        ' Username not found — still respond OK (do not leak existence)
-        Call RespondOk()
+        lookupLog = lookupLog & Chr(10) & "  Scanning Person docs by ShortName / InternetAddress..."
+        Dim scanCollection As NotesDocumentCollection
+        Set scanCollection = namesDb.Search({Form = "Person"}, Nothing, 0)
+        lookupLog = lookupLog & " count=" & scanCollection.Count
+        Dim scanDoc As NotesDocument
+        Set scanDoc = scanCollection.GetFirstDocument()
+        Dim lowerUser As String
+        lowerUser = LCase(Trim(username))
+        Do While Not (scanDoc Is Nothing)
+            Dim sn As String : sn = LCase(Trim(CStr(scanDoc.GetItemValue("ShortName")(0))))
+            Dim ia As String : ia = LCase(Trim(CStr(scanDoc.GetItemValue("InternetAddress")(0))))
+            Dim fn As String : fn = LCase(Trim(CStr(scanDoc.GetItemValue("FullName")(0))))
+            If sn = lowerUser Or ia = lowerUser Or fn = lowerUser Then
+                Set personDoc = scanDoc
+                lookupLog = lookupLog & " MATCHED(ShortName=[" & sn & "] inet=[" & ia & "])"
+                Exit Do
+            End If
+            Set scanDoc = scanCollection.GetNextDocument(scanDoc)
+        Loop
+        If personDoc Is Nothing Then lookupLog = lookupLog & " NO MATCH"
+    End If
+
+    If DEBUG_MODE Then
+        dbg = dbg & "Lookup results:" & Chr(10) & lookupLog & Chr(10) & "---" & Chr(10)
+    End If
+
+    If personDoc Is Nothing Then
+        If DEBUG_MODE Then
+            dbg = dbg & "EXIT: Person document not found for username=[" & username & "]." & Chr(10)
+            dbg = dbg & "      Check that the user exists in names.nsf and that the" & Chr(10)
+            dbg = dbg & "      typed username matches ShortName or InternetAddress." & Chr(10)
+            Call RespondDebug(dbg)
+        Else
+            Call RespondOk()   ' Do not leak user existence in production
+        End If
         Exit Sub
     End If
 
-    '-- 6. Rotate history — prepend new entry, trim to MAX_HISTORY ----------
+    If DEBUG_MODE Then
+        dbg = dbg & "Person doc  : found. FullName=[" & _
+              CStr(personDoc.GetItemValue("FullName")(0)) & "]" & Chr(10)
+        dbg = dbg & "              ShortName=[" & CStr(personDoc.GetItemValue("ShortName")(0)) & "]" & Chr(10)
+    End If
+
+    '-- 7. Rotate history — prepend new entry, trim to MAX_HISTORY ----------
     Dim existingItems As Variant
     existingItems = personDoc.GetItemValue("LoginHistory")
 
@@ -235,42 +319,86 @@ Sub Initialize()
             filled = filled + 1
         End If
     Next i
-
-    ' Trim unused slots
     ReDim Preserve newHistory(filled - 1)
 
-    '-- 7. Write fields back to Person document -----------------------------
+    If DEBUG_MODE Then
+        dbg = dbg & "History     : previous entries=" & (filled - 1) & Chr(10)
+        dbg = dbg & "              new entry=[" & entry & "]" & Chr(10)
+    End If
+
+    '-- 8. Write fields back to Person document ----------------------------
     Call personDoc.ReplaceItemValue("LoginHistory", newHistory)
     Call personDoc.ReplaceItemValue("LoginHistoryUpdated", Now())
-    Call personDoc.Save(True, False)
 
-    '-- 8. Optional: send email notification --------------------------------
+    Dim saveOk As Boolean
+    saveOk = personDoc.Save(True, False)
+
+    If DEBUG_MODE Then
+        dbg = dbg & "Save result : " & IIf(saveOk, "SUCCESS", "FAILED — check ACL and signer rights on names.nsf") & Chr(10)
+        dbg = dbg & "---" & Chr(10)
+    End If
+
+    '-- 9. Optional: send email notification --------------------------------
     If SEND_EMAIL_ON_NEW_ATTEMPT Then
         Call SendNotificationEmail(session, namesDb, personDoc, entry, ipAddress)
     End If
 
-    '-- 9. Clean up ---------------------------------------------------------
-    Call usersView.Recycle()
+    '-- 10. Clean up --------------------------------------------------------
+    If Not (usersView Is Nothing) Then Call usersView.Recycle()
     Call personDoc.Recycle()
     Call namesDb.Recycle()
 
-    Call RespondOk()
+    If DEBUG_MODE Then
+        dbg = dbg & "OK" & Chr(10)
+        Call RespondDebug(dbg)
+    Else
+        Call RespondOk()
+    End If
     Exit Sub
 
 ErrorHandler:
-    Print "Content-type: text/plain"
-    Print ""
-    Print "ERROR " & Err & ": " & Error$
+    Dim errMsg As String
+    errMsg = "ERROR " & Err & " at line " & Erl & ": " & Error$
+    If DEBUG_MODE Then
+        dbg = dbg & Chr(10) & errMsg & Chr(10)
+        Call RespondDebug(dbg)
+    Else
+        Print "Content-type: text/plain"
+        Print ""
+        Print errMsg
+    End If
     Resume Next
 End Sub
 
 '===========================================================================
-' RespondOk  — writes a minimal HTTP 200 response body
+' RespondOk  — minimal HTTP 200 response body (production)
 '===========================================================================
 Sub RespondOk()
     Print "Content-type: text/plain"
     Print ""
     Print "OK"
+End Sub
+
+'===========================================================================
+' RespondDebug  — returns the full debug log as plain text
+'===========================================================================
+Sub RespondDebug(log As String)
+    Print "Content-type: text/plain"
+    Print ""
+    Print log
+End Sub
+
+'===========================================================================
+' RespondError — returns an error message as plain text
+'===========================================================================
+Sub RespondError(msg As String, log As String)
+    Print "Content-type: text/plain"
+    Print ""
+    If DEBUG_MODE Then
+        Print log & "FATAL: " & msg
+    Else
+        Print "ERROR: " & msg
+    End If
 End Sub
 
 '===========================================================================
