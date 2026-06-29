@@ -828,20 +828,41 @@ curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
 <a id="phase-3-configure-the-login-page"></a>
 ### Phase 3: Configure the Login Page
 
-In `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html`, locate the CONFIG block:
+The steps depend on which login page you deployed.
+
+---
+
+#### Option A — `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` *(self-contained, recommended)*
+
+All JavaScript is embedded inline in these files. Locate the `loginTracking` block in the inline `CONFIG` object (search for `loginTracking:`) and flip `enable` to `true`:
 
 ```javascript
 loginTracking: {
-    enable: true,                                        // ← flip to true
+    enable: true,                                        // ← flip false → true
     agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",  // exact agent URL
     maxHistory: 5,                                       // entries to retain
-    trackValidationFailures: false                       // true = also log CAPTCHA failures
+    trackValidationFailures: false
 }
 ```
 
-> Setting `features.enableLoginTracking: true` is equivalent — either flag alone enables tracking.
+> `features.enableLoginTracking: true` is equivalent shorthand — either flag alone activates tracking.
 
-Save and re-upload to DOMCFG.NSF.
+Save the file and **re-upload it to DOMCFG.NSF as a File Resource** (overwrite the existing version), then restart HTTP: `restart task http`.
+
+---
+
+#### Option B — `CustomLoginForm-Domino.html` *(external files)*
+
+This form loads `config.js` and `login.js` from DOMCFG.NSF. Both files have been updated — tracking is already `enable: true` in `config.js` and the `initLoginTracking()` function is in `login.js`.
+
+**Upload both updated files to DOMCFG.NSF as File Resources (overwrite existing):**
+
+| Local file | File Resource name in DOMCFG.NSF |
+|------------|----------------------------------|
+| `config.js` | `config.js` |
+| `js/login.js` | `login.js` |
+
+> **How it works:** `login.js` intercepts the form submit event (capture phase), collects browser fingerprint data (username, timestamp, browser, platform, timezone, screen, MFA flag, language), and POSTs it as `application/x-www-form-urlencoded` to the agent via `navigator.sendBeacon` with synchronous XHR as fallback. The POST fires before Domino authentication, so tracking records every attempt regardless of whether credentials are correct. The same payload is saved to `localStorage['lastLoginAttempt']` for the Verse Login Activity extension.
 
 ---
 
@@ -1114,7 +1135,7 @@ The math CAPTCHA fully supports visually impaired users via Web Speech API:
 | `mfa.totpWindow` | Number | `30` | Seconds per TOTP code (must match server) |
 | `mfa.autoSubmit` | Boolean | `true` | Submit automatically when 6 digits entered |
 | `mfa.backupLinkUrl` | String | `"mailto:..."` | Fallback support link |
-| `loginTracking.enable` | Boolean | `false` | Master tracking switch |
+| `loginTracking.enable` | Boolean | `false` (HTML forms) / `true` (config.js) | Master tracking switch |
 | `loginTracking.agentUrl` | String | `"/domcfg.nsf/LogLoginAttempt?OpenAgent"` | Tracking agent URL |
 | `loginTracking.maxHistory` | Number | `5` | Attempts kept on Person document |
 | `loginTracking.trackValidationFailures` | Boolean | `false` | Also track CAPTCHA/validation failures |
@@ -1182,8 +1203,12 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - Test the agent URL directly in a browser: `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent`.
 - Check the Domino server console log for agent errors (`show log`).
 
-### Last-login banner not appearing
-- Set `loginTracking: { enable: true }` in CONFIG (preferred) or `features.enableLoginTracking: true` — either flag is sufficient.
+### Last-login banner not appearing / no LoginHistory written
+- **EnterpriseLoginForm / DominoEmbeddedForm:** Set `loginTracking.enable: true` (or `features.enableLoginTracking: true`) in the inline CONFIG, then re-upload the HTML file to DOMCFG.NSF.
+- **CustomLoginForm-Domino.html:** Upload the updated `config.js` (already has `enable: true`) and `js/login.js` (contains `initLoginTracking()`) to DOMCFG.NSF as File Resources.
+- Verify the agent trigger is **On Schedule → Never** — any "On Event" option causes HTTP 500.
+- Verify `domcfg.nsf` ACL has **Anonymous = Reader** (agent is called before authentication).
+- Open browser DevTools → Network tab → submit the login form → confirm a POST to `/domcfg.nsf/LogLoginAttempt?OpenAgent` appears with form-encoded body.
 - **First load (no prior attempt):** a dashed-border placeholder *"Login Activity Tracking Active"* should appear immediately. If it does not, the flag is not set or `setupLoginTracking()` is not running.
 - **Subsequent loads:** full last-attempt details are shown from `localStorage`. If still empty, the form submit event may not have fired — check the browser console for errors.
 - Private/incognito mode blocks `localStorage` — the banner will not persist across sessions in private mode.

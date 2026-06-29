@@ -1460,18 +1460,43 @@ Expected response: plain text `OK` (HTTP 200).
 
 ### Enable in Login Page CONFIG
 
-In `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html`, edit the CONFIG block:
+The method depends on which login page you deployed.
+
+---
+
+#### Option A — `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` *(self-contained, recommended)*
+
+Both files contain all JavaScript inline. Locate the `loginTracking` block in the `CONFIG` object and set `enable: true`:
 
 ```javascript
 loginTracking: {
-    enable: true,                                          // ← flip to true
+    enable: true,                                          // ← flip false → true
     agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
     maxHistory: 5,
     trackValidationFailures: false
 }
 ```
 
-On the next page load the banner will appear immediately:
+> `features.enableLoginTracking: true` is an equivalent shorthand — either flag alone activates tracking.
+
+Save the file and **re-upload it to DOMCFG.NSF as a File Resource** (overwrite), then restart HTTP.
+
+---
+
+#### Option B — `CustomLoginForm-Domino.html` *(external files)*
+
+Tracking is already `enable: true` in the updated `config.js`. Upload both updated files to DOMCFG.NSF as File Resources:
+
+| Local file | File Resource name |
+|------------|-------------------|
+| `config.js` | `config.js` |
+| `js/login.js` | `login.js` |
+
+The `login.js` `initLoginTracking()` function intercepts the form submit, collects browser fingerprint data, and POSTs `application/x-www-form-urlencoded` to the agent via `navigator.sendBeacon` (XHR fallback for older browsers). The POST fires before Domino authentication proceeds.
+
+---
+
+On the next page load the tracking banner will appear:
 - **First load:** dashed placeholder — *"Login Activity Tracking Active — No previous login recorded on this device"*
 - **After first submit:** full last-attempt details (Date, Status, Browser, Timezone, Screen, MFA Used)
 
@@ -1479,13 +1504,23 @@ On the next page load the banner will appear immediately:
 
 ### Login Tracking Checklist
 
-- [ ] Agent `LogLoginAttempt` created in DOMCFG.NSF
-- [ ] Agent signed with ID that has Author/Editor on names.nsf
+**Agent (both deployment types):**
+- [ ] Agent `LogLoginAttempt` created in DOMCFG.NSF with trigger **On Schedule → Never**
+- [ ] Agent signed with ID that has Author/Editor on `names.nsf`
 - [ ] DOMCFG.NSF ACL: Anonymous = Reader
-- [ ] names.nsf ACL: signing ID = Author or Editor
+- [ ] `names.nsf` ACL: signing ID = Author or Editor
 - [ ] Server Programmability Restrictions: signing ID listed
 - [ ] Agent URL returns `OK`: `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent`
-- [ ] `loginTracking: { enable: true }` set in CONFIG
+
+**Login page — Option A (`EnterpriseLoginForm.html` / `DominoEmbeddedForm.html`):**
+- [ ] `loginTracking.enable: true` set in inline CONFIG
+- [ ] Updated HTML file re-uploaded to DOMCFG.NSF as File Resource
+
+**Login page — Option B (`CustomLoginForm-Domino.html`):**
+- [ ] Updated `config.js` uploaded to DOMCFG.NSF (`loginTracking.enable: true`)
+- [ ] Updated `js/login.js` uploaded to DOMCFG.NSF (contains `initLoginTracking()`)
+
+**Verification:**
 - [ ] Login page reloaded — tracking-active banner visible
 - [ ] Test submit performed — check Person document for `LoginHistory` field
 - [ ] Banner on next load shows last attempt details
