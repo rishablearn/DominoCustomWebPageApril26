@@ -4069,15 +4069,19 @@ Option 4: Hide logo
         function buildAttemptPayload(extra) {
             var ua = navigator.userAgent;
             var browser = detectBrowser(ua);
+            var usernameEl = document.getElementById('Username') ||
+                             document.querySelector('input[name="Username"]') ||
+                             document.querySelector('input[type="text"]');
             return {
-                ts:     new Date().toISOString(),
-                tz:     Intl.DateTimeFormat().resolvedOptions().timeZone,
-                lang:   navigator.language,
-                scr:    screen.width + 'x' + screen.height,
-                browser: browser,
+                username: usernameEl ? (usernameEl.value || '') : '',
+                ts:       new Date().toISOString(),
+                tz:       Intl.DateTimeFormat().resolvedOptions().timeZone,
+                lang:     navigator.language,
+                scr:      screen.width + 'x' + screen.height,
+                browser:  browser,
                 platform: (navigator.userAgentData?.platform || navigator.platform || '').substring(0, 30),
-                mfa:    extra?.mfa ? '1' : '0',
-                status: 'ATTEMPT'   // server agent may update to SUCCESS/FAILED
+                mfa:      extra?.mfa ? '1' : '0',
+                status:   'ATTEMPT'
             };
         }
 
@@ -4107,24 +4111,18 @@ Option 4: Hide logo
             var body = Object.keys(payload).map(function(k) {
                 return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
             }).join('&');
-            body += '&username=' + encodeURIComponent(
-                document.getElementById('Username')?.value || '');
 
-            // Send async — do not block form submission
-            if (typeof fetch !== 'undefined') {
-                fetch(agentUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: body,
-                    keepalive: true    // survives page navigation
-                }).catch(function() {});
-            } else {
-                // XHR fallback (IE11)
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', agentUrl, true);
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                xhr.send(body);
-            }
+            try {
+                if (navigator.sendBeacon) {
+                    var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
+                    navigator.sendBeacon(agentUrl, blob);
+                } else {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', agentUrl, false);
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    try { xhr.send(body); } catch(xhrErr) {}
+                }
+            } catch(e) {}
 
             if (callback) callback();
         }

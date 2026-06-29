@@ -3437,15 +3437,19 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         }
         function buildAttemptPayload(extra) {
             var ua = navigator.userAgent;
+            var usernameEl = document.getElementById('Username') ||
+                             document.querySelector('input[name="Username"]') ||
+                             document.querySelector('input[type="text"]');
             return {
-                ts: new Date().toISOString(),
-                tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                lang: navigator.language,
-                scr: screen.width + 'x' + screen.height,
-                browser: detectBrowserDE(ua),
+                username: usernameEl ? (usernameEl.value || '') : '',
+                ts:       new Date().toISOString(),
+                tz:       Intl.DateTimeFormat().resolvedOptions().timeZone,
+                lang:     navigator.language,
+                scr:      screen.width + 'x' + screen.height,
+                browser:  detectBrowserDE(ua),
                 platform: (navigator.userAgentData?.platform || navigator.platform || '').substring(0, 30),
-                mfa: extra?.mfa ? '1' : '0',
-                status: 'ATTEMPT'
+                mfa:      extra?.mfa ? '1' : '0',
+                status:   'ATTEMPT'
             };
         }
         function detectBrowserDE(ua) {
@@ -3467,17 +3471,17 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             var body = Object.keys(payload).map(function(k) {
                 return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
             }).join('&');
-            body += '&username=' + encodeURIComponent(document.getElementById('Username')?.value || '');
-            if (typeof fetch !== 'undefined') {
-                fetch(agentUrl, { method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: body, keepalive: true }).catch(function() {});
-            } else {
-                var xhr = new XMLHttpRequest();
-                xhr.open('POST', agentUrl, true);
-                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                xhr.send(body);
-            }
+            try {
+                if (navigator.sendBeacon) {
+                    var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
+                    navigator.sendBeacon(agentUrl, blob);
+                } else {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', agentUrl, false);
+                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+                    try { xhr.send(body); } catch(xhrErr) {}
+                }
+            } catch(e) {}
             if (callback) callback();
         }
         function showLastLoginBanner() {

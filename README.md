@@ -824,17 +824,18 @@ Const DEBUG_MODE = True             ' True = full trace in response; False = "OK
 
 #### Step 2.6 — Verify the Agent
 
-Browse to the agent URL in a browser:
+**Step A — Confirm the agent is reachable (GET):**
 ```
 https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
 ```
-Expected: `OK` (plain text, HTTP 200).
+Expected: `OK` (plain text, HTTP 200). If you see the DEBUG output with all empty `[]` fields — that is **normal for a GET request** and does not indicate a problem. The agent only records data from a POST with a body.
 
-Test with a POST (optional):
+**Step B — Confirm the agent reads POST data (curl):**
 ```bash
 curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
-     -d "username=john.doe&ts=2026-06-25T07:30:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0"
+     -d "username=john.doe&ts=2026-06-25T07:30:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
 ```
+Expected DEBUG output shows the fields populated (not `[]` empty). If this works, the agent is correctly reading POST data and the login form's JavaScript is the only remaining piece.
 
 ---
 
@@ -1217,13 +1218,30 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - Check the Domino server console log for agent errors (`show log`).
 
 ### Last-login banner not appearing / no LoginHistory written
-- **DominoEmbeddedForm.html / EnterpriseLoginForm.html:** Open the HTML file in a text editor, set `loginTracking.enable: true` in the **inline `CONFIG`** (search for `loginTracking:`), then re-upload the file to DOMCFG.NSF as a File Resource. **Do not touch `config.js` or `login.js` — they are not used by these self-contained forms.**
-- **CustomLoginForm-Domino.html:** Upload `config.js` (set `loginTracking.enable: true`) and `js/login.js` (contains `initLoginTracking()`) to DOMCFG.NSF as File Resources.
+
+#### Where session data is stored
+Login tracking writes to **two places**:
+1. **`localStorage['lastLoginAttempt']`** (browser-side) — written by JavaScript immediately on form submit. Powers the "Last Login" banner on the next page load.
+2. **`LoginHistory` field on the Person document in `names.nsf`** — written by the `LogLoginAttempt` LotusScript agent on the server. Persists across devices.
+
+#### ⚠️ Important: how NOT to test
+Browsing directly to `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent` in a browser sends a **GET** request with no body — all fields will always show `[]` empty. This is not a valid test of login tracking.
+
+#### Correct verification method
+1. Open **browser DevTools → Network tab** (F12) before submitting the login form.
+2. Submit the login form with a real username.
+3. In the Network tab, look for a request to `/domcfg.nsf/LogLoginAttempt?OpenAgent`.
+4. Click that request → **Payload** tab → confirm it shows form fields: `username`, `ts`, `browser`, `tz`, `scr`, `mfa`, `lang`.
+5. After login succeeds, open Domino Administrator → People → open the Person document → check for the `LoginHistory` field (or Document Properties → Fields tab).
+
+#### Checklist if still not working
+- **DominoEmbeddedForm.html / EnterpriseLoginForm.html:** Set `loginTracking.enable: true` in the **inline `CONFIG`** (search `loginTracking:` in the HTML file), then **re-upload** the file to DOMCFG.NSF as a File Resource and restart HTTP. **Do not touch `config.js` or `login.js` — they are not used by these self-contained forms.**
+- **CustomLoginForm-Domino.html:** Upload `config.js` (set `loginTracking.enable: true`) and `js/login.js` to DOMCFG.NSF.
 - Verify the agent trigger is **On Schedule → Never** — any "On Event" option causes HTTP 500.
-- Verify `domcfg.nsf` ACL has **Anonymous = Reader** (agent is called before authentication).
-- Open browser DevTools → Network tab → submit the login form → confirm a POST to `/domcfg.nsf/LogLoginAttempt?OpenAgent` appears with form-encoded body.
-- **First load (no prior attempt):** a dashed-border placeholder *"Login Activity Tracking Active"* should appear immediately. If it does not, the flag is not set or `setupLoginTracking()` is not running.
-- **Subsequent loads:** full last-attempt details are shown from `localStorage`. If still empty, the form submit event may not have fired — check the browser console for errors.
+- Verify `domcfg.nsf` ACL has **Anonymous = Reader** (agent is invoked before authentication completes).
+- Agent returns `OK` when called directly? That confirms it's reachable. Empty fields from a direct GET call are **expected and normal**.
+- **First load after enabling:** a dashed-border placeholder *"Login Activity Tracking Active — No previous login recorded on this device"* appears immediately. If it does not, the `enable` flag is not set or the file was not re-uploaded.
+- **No entry in Person document after submitting?** Agent may not be signed correctly — right-click agent in Designer → Sign with the ID that has Author/Editor access to `names.nsf`.
 - Private/incognito mode blocks `localStorage` — the banner will not persist across sessions in private mode.
 
 ### Logo not displaying
