@@ -715,10 +715,14 @@ mfa: {
    | Property | Value |
    |----------|-------|
    | Name | `LoginHistory` |
-   | Type | Text |
+   | Type | **Text** |
    | Allow multiple values | ✅ Yes |
-   | Computed type | Computed for display |
+   | Computed type | **Computed** |
    | Formula | `LoginHistory` |
+
+   > **Why "Computed" not "Computed for display"?**  
+   > "Computed for display" is computed in the UI only — the value is never re-saved by the form. While the agent writes `LoginHistory` directly to the document via `ReplaceItemValue`, using "Computed for display" means the field would appear empty until data is written by the agent, and some Notes views/forms may not surface it correctly.  
+   > **"Computed"** with formula `LoginHistory` reads the existing stored item (written by the agent) and preserves it on form save. This makes the field visible in the form immediately and correctly indexed by views.
 
 4. Add a static text label above the field: `Login History`.
 5. Optional: set the font to Monospace and rows to 5 for readability.
@@ -730,11 +734,13 @@ mfa: {
    | Property | Value |
    |----------|-------|
    | Name | `LoginHistoryUpdated` |
-   | Type | Date/Time |
-   | Computed type | Computed for display |
+   | Type | **Date/Time** |
+   | Computed type | **Computed** |
    | Formula | `LoginHistoryUpdated` |
 
 2. Add a label: `Last Login Record Updated`.
+
+   > Both fields use "Computed" (not "Computed for display") so that the values written by the `LogLoginAttempt` agent are preserved and visible whenever the Person document is opened in the Notes client. The agent writes these items directly using `ReplaceItemValue` — the form formula `LoginHistory` simply reads that stored value back.
 
 #### Step 1.4 — Save and Sign pubnames.ntf
 

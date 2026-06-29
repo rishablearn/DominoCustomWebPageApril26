@@ -275,6 +275,16 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             maxHistory: 5,
             trackValidationFailures: false
         },
+
+        // =====================================================================
+        // ADMIN / DEBUG
+        // showStatusPanel: shows a small status badge on the login page indicating
+        //   which features are active. Set true while configuring, false in production.
+        // =====================================================================
+        debug: {
+            showStatusPanel: false
+        },
+
         session: {
             warningMinutes: 25,
             timeoutMinutes: 30
@@ -861,6 +871,35 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         background: rgba(0, 0, 0, 0.2);
         border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
+
+    .feature-status-panel {
+        display: none;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 14px;
+        padding: 7px 12px;
+        background: rgba(0,0,0,0.04);
+        border-radius: 6px;
+        border: 1px solid rgba(0,0,0,0.09);
+        font-size: 0.7rem;
+        font-family: monospace;
+        letter-spacing: 0.02em;
+    }
+    .fsp-item {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .fsp-on  { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .fsp-off { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    [data-theme="dark"] .feature-status-panel {
+        background: rgba(255,255,255,0.04);
+        border-color: rgba(255,255,255,0.1);
+    }
+    [data-theme="dark"] .fsp-on  { background: rgba(21,128,61,0.25);  color: #86efac; border-color: rgba(134,239,172,0.4); }
+    [data-theme="dark"] .fsp-off { background: rgba(185,28,28,0.25);  color: #fca5a5; border-color: rgba(252,165,165,0.4); }
     
     [data-theme="dark"] .top-bar-btn {
         background: rgba(255, 255, 255, 0.1);
@@ -2107,6 +2146,13 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             
             <!-- Quick Links -->
             <div class="quick-links" id="quickLinksContainer"></div>
+
+            <!-- Feature Status Panel (admin reference — set CONFIG.debug.showStatusPanel = true to show) -->
+            <div id="featureStatusPanel" class="feature-status-panel" role="status" aria-label="Feature status">
+                <span id="fspTracking" class="fsp-item"></span>
+                <span id="fspMFA"      class="fsp-item"></span>
+                <span id="fspCaptcha"  class="fsp-item"></span>
+            </div>
         </div>
         
         <!-- Footer -->
@@ -3186,6 +3232,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             setupMFA();
             setupMFAEnrollment();
             setupLoginTracking();
+            setupStatusPanel();
 
             // Real-time validation - enables submit only when all fields valid
             setupRealtimeValidation();
@@ -3435,6 +3482,33 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             if (!cfg.enable) return;
             showLastLoginBanner();
         }
+
+        // =====================================================================
+        // FEATURE STATUS PANEL
+        // Shown when CONFIG.debug.showStatusPanel = true.
+        // Displays active/inactive state of LoginTracking, MFA, and CAPTCHA.
+        // =====================================================================
+        function setupStatusPanel() {
+            var cfg = DominoLoginConfig;
+            if (!cfg.debug?.showStatusPanel) return;
+            var panel = document.getElementById('featureStatusPanel');
+            if (!panel) return;
+            var trackingOn = !!(cfg.loginTracking?.enable || cfg.features?.enableLoginTracking);
+            var mfaOn      = !!(cfg.features?.enableMFA || cfg.mfa?.enable);
+            var captchaOn  = !!(cfg.features?.enableCaptcha);
+            [
+                { id: 'fspTracking', label: 'Tracking', on: trackingOn },
+                { id: 'fspMFA',      label: 'MFA',      on: mfaOn      },
+                { id: 'fspCaptcha',  label: 'CAPTCHA',  on: captchaOn  }
+            ].forEach(function(item) {
+                var el = document.getElementById(item.id);
+                if (!el) return;
+                el.textContent = (item.on ? '✅' : '❌') + '\u2009' + item.label;
+                el.className = 'fsp-item ' + (item.on ? 'fsp-on' : 'fsp-off');
+            });
+            panel.style.display = 'flex';
+        }
+
         function buildAttemptPayload(extra) {
             var ua = navigator.userAgent;
             var usernameEl = document.getElementById('Username') ||
