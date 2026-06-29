@@ -51,14 +51,15 @@
 '      5. Save, sign, and replace the design of names.nsf with pubnames.ntf
 '      NOTE: This step is cosmetic only and NOT required for tracking to work.
 '
-' B. MAIL TEMPLATE (ONLY if SEND_EMAIL_ON_NEW_ATTEMPT = True)
-'    ----------------------------------------------------------
-'    The email notification uses the standard Domino Memo form.
-'    No mail template changes are required.
-'    Prerequisites for email:
+' B. EMAIL NOTIFICATION PREREQUISITES (ONLY if SEND_EMAIL_ON_NEW_ATTEMPT = True)
+'    -------------------------------------------------------------------------
+'    Notification emails use the standard Domino Memo form.
+'    NO changes to the mail template (mail12.ntf or equivalent) are required.
+'    The mail template is completely unrelated to login history storage.
+'    Prerequisites for email alerts only:
 '      - Domino mail router must be running on the server
 '      - The Person document must have a valid InternetAddress or FullName
-'      - The signing ID must have sufficient rights to send mail
+'      - The signing ID must have sufficient rights to send mail on this server
 '
 ' =========================================================================
 ' DEPLOYMENT CHECKLIST

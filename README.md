@@ -706,13 +706,19 @@ Browser (login page JS)         Domino Server
 
 ### Last-Login Banner
 
-When `enableLoginTracking: true`, after each login attempt the data is saved to `localStorage`. On the **next page load** (next login), a compact info banner appears showing:
+When `loginTracking.enable: true`, the banner appears at the top of the login form immediately:
+
+- **First load (no prior attempt on device):** dashed-border placeholder — *"Login Activity Tracking Active — No previous login recorded on this device"*
+- **Subsequent loads:** full last-attempt details populated from `localStorage`
 
 ```
 🕐 Last Login Attempt
-Date: Jun 3, 2026, 09:15 AM    Status: ATTEMPT
-Browser: Chrome / Win32         Timezone: Asia/Kolkata
+Date:     Jun 3, 2026, 09:15 AM     Status:   ATTEMPT
+Browser:  Chrome / Win32            Timezone: Asia/Kolkata
+Screen:   1920x1080                 MFA Used: No
 ```
+
+Status colours: **green** = SUCCESS · **red** = FAILED · **orange** = ATTEMPT
 
 ---
 
@@ -740,36 +746,42 @@ LoginHistory:
   [2] 2026-06-01T16:45:00Z|192.168.1.5|ATTEMPT|Edge|Win32|Asia/Kolkata|1920x1080|0
 ```
 
-### Show in Notes Mail / Web Mail
+### Accessing Login History — Notes Client & HCL Verse
 
-To display login history in the HCL Notes client or web mail interface:
+> **Important:** `LoginHistory` is stored on the **Person document** in `names.nsf`.
+> It has **no connection to the mail template** (`mail12.ntf`) — do NOT modify the mail template.
+> The field is written dynamically; no Person form design change is required for it to work.
 
-#### Option A — Subform on Mail Template
+#### Option A — Domino Administrator (Quickest)
 
-1. Open the mail template (`mail12.ntf` or your org's template) in Domino Designer.
-2. Create a new **Subform** named `LoginHistorySubform`.
-3. Add a computed field:
-   - Name: `LoginHistoryDisplay`
-   - Type: Rich Text (computed for display)
-   - Formula:
-     ```notes
-     @If(@IsAvailable(LoginHistory);
-         "Last 5 Login Attempts:" + @NewLine + @Implode(LoginHistory; @NewLine);
-         "")
-     ```
-4. Include the subform in the **Memo** form or a dedicated **Person Info** page.
+1. Open **Domino Administrator** → **People & Groups** tab → **People**.
+2. Find and open the user's **Person document**.
+3. View the raw field values: **Tools → Document Properties → Fields** tab.
+4. Locate `LoginHistory` (multi-value Text) and `LoginHistoryUpdated` (Date/Time).
+5. Each entry is a pipe-delimited string: `TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA`.
 
-#### Option B — Domino Directory View
+> **Note:** The field is not visible in the standard Person form UI unless you optionally add it to pubnames.ntf (cosmetic only — not required for tracking to function).
+
+#### Option B — Domino Directory View (Admin, All Users)
 
 1. Open `names.nsf` in Domino Designer.
 2. Create a new **View** named `Login History`:
-   - Selection: `SELECT Form = "Person"`
+   - Selection formula: `SELECT Form = "Person"`
    - Column 1: `FullName`
    - Column 2: `@Text(@Elements(LoginHistory))` — count of attempts
-   - Column 3: `LoginHistory[1]` — most recent attempt
-3. Categorize by `LoginHistoryUpdated` date.
+   - Column 3: `LoginHistory[1]` — most recent attempt (newest first)
+   - Column 4: `LoginHistoryUpdated` — date of last update
+3. Categorize by `LoginHistoryUpdated` date for a chronological overview.
 
-#### Option C — Notes Client Agent (Read History)
+#### Option C — HCL Verse (End-User Self-Service)
+
+Deploy the **LoginActivityViewer** extension from `verse-login-activity/`.
+Users see their own history in a popup directly from the Verse navbar "More" menu.
+Data is fetched from the Person document in `names.nsf` via the authenticated
+`GetLoginHistory` agent — no mail template changes involved.
+See [HCL Verse Login Activity Extension](#-hcl-verse-login-activity-extension) for full setup.
+
+#### Option D — Notes Client / LotusScript (Programmatic Read)
 
 ```lotusscript
 Sub ReadLoginHistory(username As String)
@@ -1105,9 +1117,10 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - Check the Domino server console log for agent errors (`show log`).
 
 ### Last-login banner not appearing
-- `features.enableLoginTracking` must be `true`.
-- The banner only shows on the **second** page load (first attempt is stored, shown on next).
-- Check browser console for localStorage errors (private/incognito mode may block it).
+- Set `loginTracking: { enable: true }` in CONFIG (preferred) or `features.enableLoginTracking: true` — either flag is sufficient.
+- **First load (no prior attempt):** a dashed-border placeholder *"Login Activity Tracking Active"* should appear immediately. If it does not, the flag is not set or `setupLoginTracking()` is not running.
+- **Subsequent loads:** full last-attempt details are shown from `localStorage`. If still empty, the form submit event may not have fired — check the browser console for errors.
+- Private/incognito mode blocks `localStorage` — the banner will not persist across sessions in private mode.
 
 ### Logo not displaying
 - Domino does **NOT** support SVG — use PNG, JPG, or GIF only.
@@ -1126,6 +1139,26 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - ✅ `GetLoginHistory.lss` — new LotusScript agent returning `LoginHistory` from `names.nsf` as authenticated JSON
 - ✅ `applications.json` + `merge-snippet.json` — seamless integration with existing or new Verse deployments
 - ✅ `verse-login-activity/DEPLOYMENT.md` — comprehensive step-by-step guide covering agents, ACL, notes.ini, and merge instructions
+
+### Version 2.4.2 (June 29, 2026)
+
+**Login Tracking — Fixes & Documentation Overhaul:**
+- ✅ Banner now shows immediately when `loginTracking.enable: true` — dashed placeholder on first load (previously: silent/invisible until second load)
+- ✅ Banner expanded from 4 to 6 fields: Date, Status, Browser, Timezone, **Screen resolution**, **MFA Used**
+- ✅ Status colour corrected: SUCCESS = green · FAILED = red · ATTEMPT = orange (was incorrectly red)
+- ✅ Dual enable flags unified — `features.enableLoginTracking` syncs into `loginTracking.enable`; either flag alone is sufficient
+- ✅ `LoginTracker.lss` (v1.1.0): full Deployment Checklist, Prerequisites, field-by-field format reference
+- ✅ README corrected: `LoginHistory` is stored on the **Person document** in `names.nsf` — **no mail template changes needed or applicable**
+- ✅ Documentation restructured: "Accessing Login History" section replaces incorrect "Show in Notes Mail" content
+
+### Version 2.4.1 (June 25, 2026)
+
+**Bug Fixes:**
+- ✅ `initFormValidation` fallback to `querySelector` when Domino's outer form nests and discards inner form tag
+- ✅ `align-items: center` threshold raised to 1000px — fixes page content clipped above scroll at 100% zoom
+- ✅ Logo text fallback shown instead of hiding container when image fails to load
+- ✅ Language selector `type=button` + `stopPropagation()` — prevents unintended form submission
+- ✅ `padding-top: 80px` on main container at all breakpoints — title no longer clipped under fixed top bar
 
 ### Version 2.4.0 (June 2026)
 
@@ -1174,6 +1207,6 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 
 **Repository:** [github.com/rishablearn/DominoCustomWebPageApril26](https://github.com/rishablearn/DominoCustomWebPageApril26)  
 **Compatible with:** HCL Domino 12.x, 14.x  
-**Version:** 2.5.0  
-**Last Updated:** June 2026
+**Version:** 2.5.0 (HTML files: 2.4.2)  
+**Last Updated:** June 29, 2026
 

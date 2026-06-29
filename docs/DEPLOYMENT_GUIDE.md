@@ -15,7 +15,8 @@ This guide provides detailed instructions for deploying the custom login page. F
 5. [Configuring Your Login Page](#configuring-your-login-page)
 6. [Testing Your Login Page](#testing-your-login-page)
 7. [Troubleshooting Common Problems](#troubleshooting-common-problems)
-8. [Getting Help](#getting-help)
+8. [Login Attempt Tracking — Deployment](#login-attempt-tracking--deployment) 🔐
+9. [Getting Help](#getting-help)
 
 ---
 
@@ -1291,6 +1292,190 @@ Requirements:
 
 ---
 
+## Login Attempt Tracking — Deployment
+
+Login attempt tracking records each login submission to the user's **Person document** in `names.nsf` and displays a compact banner on the login page for the user's reference.
+
+> **Key principle:** Login history is stored in the **Person document** (`names.nsf`), NOT in the mail template. The mail template (`mail12.ntf` or equivalent) does NOT need to be modified.
+
+---
+
+### Architecture Overview
+
+```
+Browser (login page)                    Domino Server
+─────────────────────────               ──────────────────────────────────
+On form submit:
+  Collect: timestamp, timezone,
+  browser, screen, MFA flag
+                                ──POST──▶  LogLoginAttempt?OpenAgent
+                                               │
+                                               ├─ Read REMOTE_ADDR (real IP)
+                                               ├─ Lookup Person doc in names.nsf
+                                               ├─ Prepend entry to LoginHistory[]
+                                               ├─ Trim to last 5 entries
+                                               └─ Save Person document
+
+Save to localStorage                    ◀──OK──
+(for banner on next load)
+
+Submit to /names.nsf?Login ──────────▶  Domino authenticates user
+```
+
+---
+
+### Where Login History is Stored
+
+The `LogLoginAttempt` LotusScript agent writes two fields directly to the **Person document** in `names.nsf`:
+
+| Field | Type | Contents |
+|-------|------|----------|
+| `LoginHistory` | Multi-value Text | Last 5 login attempts, newest first |
+| `LoginHistoryUpdated` | Date/Time | Timestamp of the most recent update |
+
+**Entry format** (pipe-delimited):
+```
+TIMESTAMP|IP_ADDRESS|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA_USED
+```
+
+**Example:**
+```
+2026-06-25T07:30:00Z|192.168.1.10|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0
+```
+
+| Position | Field | Description |
+|----------|-------|-------------|
+| 0 | TIMESTAMP | ISO 8601 UTC |
+| 1 | IP_ADDRESS | Real client IP (from CGI REMOTE_ADDR) |
+| 2 | STATUS | Always `ATTEMPT` (server cannot confirm success/failure at this point) |
+| 3 | BROWSER | Chrome, Firefox, Edge, Safari, Opera |
+| 4 | PLATFORM | Win10, MacOS, Linux, Android, iOS |
+| 5 | TIMEZONE | IANA timezone (e.g. Asia/Kolkata) |
+| 6 | SCREEN | Resolution (e.g. 1920x1080) |
+| 7 | MFA_USED | 1 = MFA step completed · 0 = no MFA |
+
+---
+
+### Accessing Login History in Notes Client
+
+> **Do NOT modify the mail template.** The mail template is for email messages only and has no access to Person document fields.
+
+#### Method 1 — Domino Administrator (Fastest for Admins)
+
+1. Open **Domino Administrator** → **People & Groups** → **People**.
+2. Find and open the user's **Person document**.
+3. Click **Tools** → **Document Properties** → **Fields** tab.
+4. Scroll to `LoginHistory` — each value is one login entry.
+5. `LoginHistoryUpdated` shows when the field was last written.
+
+> The field does not appear in the standard Person form view. It is in the document's raw field list (Document Properties). This is normal — no design change to pubnames.ntf is needed for it to work.
+
+#### Method 2 — Custom View in names.nsf (Admin, All Users)
+
+1. Open `names.nsf` in Domino Designer.
+2. Create a **New View**:
+   - Name: `Login History`
+   - Selection: `SELECT Form = "Person"`
+3. Add columns:
+   - `FullName` — user's display name
+   - `@Text(@Elements(LoginHistory))` — count of recorded attempts
+   - `LoginHistory[1]` — most recent entry (raw pipe-delimited string)
+   - `LoginHistoryUpdated` — date/time of last update
+4. Save and sign the view.
+
+#### Method 3 — HCL Verse Self-Service Popup
+
+Deploy the `verse-login-activity/` extension. Users see their own `LoginHistory` in a popup from the Verse navbar "More" menu. The popup fetches data directly from the Person document via an authenticated `GetLoginHistory` agent — no mail template involved.
+
+See `verse-login-activity/DEPLOYMENT.md` for full setup steps.
+
+---
+
+### Deploying the LotusScript Agent (`LogLoginAttempt`)
+
+The full agent source is at `docs/LotusScript/LoginTracker.lss`.
+
+#### Step 1 — Create Agent in DOMCFG.NSF
+
+| Setting | Value |
+|---------|-------|
+| Name | `LogLoginAttempt` |
+| Type | LotusScript |
+| Trigger | On demand (HTTP `?OpenAgent`) |
+| Target | None |
+
+1. Open DOMCFG.NSF in Domino Designer.
+2. **Shared Code → Agents → New Agent** with settings above.
+3. Paste the entire contents of `docs/LotusScript/LoginTracker.lss`.
+4. Configure constants at the top:
+   ```lotusscript
+   Const MAX_HISTORY  = 5       ' Entries to retain per user
+   Const NAMES_SERVER = ""      ' "" = current server
+   Const NAMES_DB_PATH = "names.nsf"
+   Const SEND_EMAIL_ON_NEW_ATTEMPT = False  ' True for email alerts
+   ```
+
+#### Step 2 — Sign the Agent
+
+- **File → Sign** with an ID that has:
+  - **Author or Editor** access on `names.nsf` (to write `LoginHistory`)
+  - Permission to run agents on the server (Programmability Restrictions)
+
+#### Step 3 — Set ACL
+
+| Database | Entry | Access |
+|----------|-------|--------|
+| `DOMCFG.NSF` | Anonymous | Reader (minimum — allows web POST) |
+| `DOMCFG.NSF` | LocalDomainServers | Manager |
+| `names.nsf` | Signing ID | Author + Write public docs, or Editor |
+
+#### Step 4 — Server Security (Programmability Restrictions)
+
+1. Domino Administrator → **Configuration → Server → Current Server Document → Security** tab.
+2. Under **Programmability Restrictions**, add the signing ID to:
+   `"Run restricted LotusScript/Java agents"`
+
+#### Step 5 — Verify
+
+Browse to: `https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent`
+Expected response: plain text `OK` (HTTP 200).
+
+---
+
+### Enable in Login Page CONFIG
+
+In `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html`, edit the CONFIG block:
+
+```javascript
+loginTracking: {
+    enable: true,                                          // ← flip to true
+    agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
+    maxHistory: 5,
+    trackValidationFailures: false
+}
+```
+
+On the next page load the banner will appear immediately:
+- **First load:** dashed placeholder — *"Login Activity Tracking Active — No previous login recorded on this device"*
+- **After first submit:** full last-attempt details (Date, Status, Browser, Timezone, Screen, MFA Used)
+
+---
+
+### Login Tracking Checklist
+
+- [ ] Agent `LogLoginAttempt` created in DOMCFG.NSF
+- [ ] Agent signed with ID that has Author/Editor on names.nsf
+- [ ] DOMCFG.NSF ACL: Anonymous = Reader
+- [ ] names.nsf ACL: signing ID = Author or Editor
+- [ ] Server Programmability Restrictions: signing ID listed
+- [ ] Agent URL returns `OK`: `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent`
+- [ ] `loginTracking: { enable: true }` set in CONFIG
+- [ ] Login page reloaded — tracking-active banner visible
+- [ ] Test submit performed — check Person document for `LoginHistory` field
+- [ ] Banner on next load shows last attempt details
+
+---
+
 ## Checklist: Before Going Live
 
 Use this checklist before deploying:
@@ -1345,5 +1530,5 @@ Use this checklist before deploying:
 
 ---
 
-*Document Version: 2.1.0 | April 2026*
+*Document Version: 2.4.2 | June 29, 2026*
 *Complete step-by-step deployment guide for Domino administrators*
