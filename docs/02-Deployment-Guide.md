@@ -47,16 +47,18 @@ To check if you have admin access:
 
 Download or locate these files from this project:
 
-**✅ RECOMMENDED (No MIME issues):**
-- `login-forms/EnterpriseLoginForm.html` - **Enterprise login with all CSS/JS inline**
-- `login-forms/DominoEmbeddedForm.html` - Simple login with all CSS/JS inline
+**⭐ RECOMMENDED — Self-contained (no `config.js`/`login.js` needed, no MIME issues):**
+- `login-forms/DominoEmbeddedForm.html` — **Clean login, all CSS/JS embedded inline**
+- `login-forms/EnterpriseLoginForm.html` — Enterprise login with sidebar quick links and banner, all CSS/JS inline
 
-**For modular deployment (requires MIME setup):**
-- `login-forms/CustomLoginForm-Domino.html` - Login page for Domino (uses external files)
-- `config.js` - Configuration settings
-- `css/login.css` - Styling
-- `js/login.js` - Functionality
-- `i18n/translations.js` - Language translations
+> Both self-contained forms manage all configuration **inside the HTML file itself** via an inline `CONFIG` block. There is no `config.js` or `login.js` for these forms.
+
+**For modular deployment only (requires MIME setup):**
+- `login-forms/CustomLoginForm-Domino.html` — Login page that loads external files
+- `config.js` — Configuration (only for `CustomLoginForm-Domino.html`)
+- `css/login.css` — Styling (only for `CustomLoginForm-Domino.html`)
+- `js/login.js` — Functionality incl. login tracking (only for `CustomLoginForm-Domino.html`)
+- `i18n/translations.js` — Language translations (only for `CustomLoginForm-Domino.html`)
 - Your logo file (PNG, JPG, or GIF formats are supported)
 
 ---
@@ -1464,9 +1466,12 @@ The method depends on which login page you deployed.
 
 ---
 
-#### Option A — `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` *(self-contained, recommended)*
+#### Option A — `DominoEmbeddedForm.html` or `EnterpriseLoginForm.html` *(self-contained — **no config.js / login.js needed**)*
 
-Both files contain all JavaScript inline. Locate the `loginTracking` block in the `CONFIG` object and set `enable: true`:
+> **These files are fully self-contained.** Tracking JavaScript is embedded inline inside the HTML. **Do not upload or modify `config.js` or `login.js` for this option — they are not used.**
+
+1. Open `login-forms/DominoEmbeddedForm.html` (or `EnterpriseLoginForm.html`) in a text editor.
+2. Search for `loginTracking:` and set `enable: true`:
 
 ```javascript
 loginTracking: {
@@ -1479,20 +1484,22 @@ loginTracking: {
 
 > `features.enableLoginTracking: true` is an equivalent shorthand — either flag alone activates tracking.
 
-Save the file and **re-upload it to DOMCFG.NSF as a File Resource** (overwrite), then restart HTTP.
+3. Save the file and **re-upload it to DOMCFG.NSF as a File Resource** (overwrite the existing one), then restart HTTP.
 
 ---
 
-#### Option B — `CustomLoginForm-Domino.html` *(external files)*
+#### Option B — `CustomLoginForm-Domino.html` *(external files — config.js + login.js required)*
 
-Tracking is already `enable: true` in the updated `config.js`. Upload both updated files to DOMCFG.NSF as File Resources:
+> This modular form loads tracking logic from `js/login.js` (`initLoginTracking()`). Tracking is enabled via `loginTracking.enable: true` in `config.js`.
 
-| Local file | File Resource name |
-|------------|-------------------|
-| `config.js` | `config.js` |
-| `js/login.js` | `login.js` |
+Upload both files to DOMCFG.NSF as File Resources:
 
-The `login.js` `initLoginTracking()` function intercepts the form submit, collects browser fingerprint data, and POSTs `application/x-www-form-urlencoded` to the agent via `navigator.sendBeacon` (XHR fallback for older browsers). The POST fires before Domino authentication proceeds.
+| Local file | File Resource name | Action required |
+|------------|--------------------|----------------|
+| `config.js` | `config.js` | Set `loginTracking.enable: true` |
+| `js/login.js` | `login.js` | No changes needed |
+
+The `initLoginTracking()` function in `login.js` intercepts the form submit, collects browser fingerprint data, and POSTs `application/x-www-form-urlencoded` to the agent via `navigator.sendBeacon` (XHR fallback for older browsers). The POST fires before Domino authentication proceeds.
 
 ---
 
@@ -1512,13 +1519,14 @@ On the next page load the tracking banner will appear:
 - [ ] Server Programmability Restrictions: signing ID listed
 - [ ] Agent URL returns `OK`: `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent`
 
-**Login page — Option A (`EnterpriseLoginForm.html` / `DominoEmbeddedForm.html`):**
-- [ ] `loginTracking.enable: true` set in inline CONFIG
-- [ ] Updated HTML file re-uploaded to DOMCFG.NSF as File Resource
+**Login page — Option A (`DominoEmbeddedForm.html` or `EnterpriseLoginForm.html`):**
+- [ ] `loginTracking.enable: true` set in the **inline `CONFIG`** inside the HTML file
+- [ ] Updated HTML file re-uploaded to DOMCFG.NSF as File Resource (overwrite)
+- [ ] *No `config.js` or `login.js` upload needed — not used by self-contained forms*
 
-**Login page — Option B (`CustomLoginForm-Domino.html`):**
-- [ ] Updated `config.js` uploaded to DOMCFG.NSF (`loginTracking.enable: true`)
-- [ ] Updated `js/login.js` uploaded to DOMCFG.NSF (contains `initLoginTracking()`)
+**Login page — Option B (`CustomLoginForm-Domino.html`) only:**
+- [ ] `config.js` uploaded to DOMCFG.NSF with `loginTracking.enable: true`
+- [ ] `js/login.js` uploaded to DOMCFG.NSF (contains `initLoginTracking()`)
 
 **Verification:**
 - [ ] Login page reloaded — tracking-active banner visible

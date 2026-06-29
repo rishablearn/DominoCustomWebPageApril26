@@ -480,10 +480,11 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 ### Step 1 — Choose Your File
 
-| Use Case | File | Notes |
-|----------|------|-------|
-| Enterprise + all features | `login-forms/EnterpriseLoginForm.html` | Sidebar quick links, announcement banner |
-| Embedded / compact | `login-forms/DominoEmbeddedForm.html` | Smaller card, same feature set |
+| Use Case | File | External files? |
+|----------|------|----------------|
+| ⭐ **Most deployments** | `login-forms/DominoEmbeddedForm.html` | **No** — all CSS/JS inline, no `config.js`/`login.js` needed |
+| Enterprise extras (quick links, banner) | `login-forms/EnterpriseLoginForm.html` | **No** — all CSS/JS inline |
+| Modular (separate JS/CSS files) | `login-forms/CustomLoginForm-Domino.html` | **Yes** — requires `config.js`, `js/login.js`, `css/login.css` |
 
 ### Step 2 — Edit CONFIG (lines ~97-430)
 
@@ -844,9 +845,11 @@ The steps depend on which login page you deployed.
 
 ---
 
-#### Option A — `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` *(self-contained, recommended)*
+#### Option A — `DominoEmbeddedForm.html` or `EnterpriseLoginForm.html` *(self-contained — **no config.js / login.js needed**)*
 
-All JavaScript is embedded inline in these files. Locate the `loginTracking` block in the inline `CONFIG` object (search for `loginTracking:`) and flip `enable` to `true`:
+> **These files are fully self-contained.** All tracking JavaScript is already embedded inline inside the HTML. There is **no `config.js`** and **no `login.js`** file involved — do not upload or modify those files for this option.
+
+Open `login-forms/DominoEmbeddedForm.html` (or `EnterpriseLoginForm.html`) in a text editor. Search for `loginTracking:` and set `enable: true`:
 
 ```javascript
 loginTracking: {
@@ -863,16 +866,14 @@ Save the file and **re-upload it to DOMCFG.NSF as a File Resource** (overwrite t
 
 ---
 
-#### Option B — `CustomLoginForm-Domino.html` *(external files)*
+#### Option B — `CustomLoginForm-Domino.html` *(external files — config.js + login.js required)*
 
-This form loads `config.js` and `login.js` from DOMCFG.NSF. Both files have been updated — tracking is already `enable: true` in `config.js` and the `initLoginTracking()` function is in `login.js`.
+> This is the modular form. Tracking logic lives in `js/login.js` (`initLoginTracking()`) and is enabled via `config.js`. Upload both files to DOMCFG.NSF as File Resources.
 
-**Upload both updated files to DOMCFG.NSF as File Resources (overwrite existing):**
-
-| Local file | File Resource name in DOMCFG.NSF |
-|------------|----------------------------------|
-| `config.js` | `config.js` |
-| `js/login.js` | `login.js` |
+| Local file | File Resource name in DOMCFG.NSF | What to set |
+|------------|----------------------------------|-------------|
+| `config.js` | `config.js` | `loginTracking.enable: true` |
+| `js/login.js` | `login.js` | no changes needed |
 
 > **How it works:** `login.js` intercepts the form submit event (capture phase), collects browser fingerprint data (username, timestamp, browser, platform, timezone, screen, MFA flag, language), and POSTs it as `application/x-www-form-urlencoded` to the agent via `navigator.sendBeacon` with synchronous XHR as fallback. The POST fires before Domino authentication, so tracking records every attempt regardless of whether credentials are correct. The same payload is saved to `localStorage['lastLoginAttempt']` for the Verse Login Activity extension.
 
@@ -1147,7 +1148,7 @@ The math CAPTCHA fully supports visually impaired users via Web Speech API:
 | `mfa.totpWindow` | Number | `30` | Seconds per TOTP code (must match server) |
 | `mfa.autoSubmit` | Boolean | `true` | Submit automatically when 6 digits entered |
 | `mfa.backupLinkUrl` | String | `"mailto:..."` | Fallback support link |
-| `loginTracking.enable` | Boolean | `false` (HTML forms) / `true` (config.js) | Master tracking switch |
+| `loginTracking.enable` | Boolean | `false` | Master tracking switch. **For `DominoEmbeddedForm.html`/`EnterpriseLoginForm.html`: edit the inline `CONFIG` inside the HTML file directly — no `config.js` involved.** For `CustomLoginForm-Domino.html`: set in `config.js`. |
 | `loginTracking.agentUrl` | String | `"/domcfg.nsf/LogLoginAttempt?OpenAgent"` | Tracking agent URL |
 | `loginTracking.maxHistory` | Number | `5` | Attempts kept on Person document |
 | `loginTracking.trackValidationFailures` | Boolean | `false` | Also track CAPTCHA/validation failures |
@@ -1216,8 +1217,8 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - Check the Domino server console log for agent errors (`show log`).
 
 ### Last-login banner not appearing / no LoginHistory written
-- **EnterpriseLoginForm / DominoEmbeddedForm:** Set `loginTracking.enable: true` (or `features.enableLoginTracking: true`) in the inline CONFIG, then re-upload the HTML file to DOMCFG.NSF.
-- **CustomLoginForm-Domino.html:** Upload the updated `config.js` (already has `enable: true`) and `js/login.js` (contains `initLoginTracking()`) to DOMCFG.NSF as File Resources.
+- **DominoEmbeddedForm.html / EnterpriseLoginForm.html:** Open the HTML file in a text editor, set `loginTracking.enable: true` in the **inline `CONFIG`** (search for `loginTracking:`), then re-upload the file to DOMCFG.NSF as a File Resource. **Do not touch `config.js` or `login.js` — they are not used by these self-contained forms.**
+- **CustomLoginForm-Domino.html:** Upload `config.js` (set `loginTracking.enable: true`) and `js/login.js` (contains `initLoginTracking()`) to DOMCFG.NSF as File Resources.
 - Verify the agent trigger is **On Schedule → Never** — any "On Event" option causes HTTP 500.
 - Verify `domcfg.nsf` ACL has **Anonymous = Reader** (agent is called before authentication).
 - Open browser DevTools → Network tab → submit the login form → confirm a POST to `/domcfg.nsf/LogLoginAttempt?OpenAgent` appears with form-encoded body.

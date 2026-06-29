@@ -65,13 +65,13 @@ DominoCustomWebPageApril26/
 
 ## Which Login Form to Use
 
-| Need | File | MIME Setup |
-|------|------|-----------|
-| ⭐ Enterprise features (quick links, banner, tracking) | `login-forms/EnterpriseLoginForm.html` | ❌ None |
-| Simple clean login | `login-forms/DominoEmbeddedForm.html` | ❌ None |
-| Fully modular (separate JS/CSS) | `login-forms/CustomLoginForm-Domino.html` | ⚠️ Required |
+| Need | File | MIME Setup | External files? |
+|------|------|-----------|----------------|
+| ⭐ Clean, self-contained login | `login-forms/DominoEmbeddedForm.html` | ❌ None | **No** — all CSS/JS inline |
+| Enterprise features (quick links, banner) | `login-forms/EnterpriseLoginForm.html` | ❌ None | **No** — all CSS/JS inline |
+| Fully modular (separate JS/CSS) | `login-forms/CustomLoginForm-Domino.html` | ⚠️ Required | **Yes** — needs `config.js`, `js/login.js`, `css/login.css` |
 
-**Use `EnterpriseLoginForm.html` unless you have a specific reason to use the modular form.** All CSS and JavaScript are embedded inline — no external file resources or MIME configuration needed.
+**Use `DominoEmbeddedForm.html` for most deployments.** All CSS and JavaScript are embedded inline — no `config.js`, no `login.js`, no MIME configuration needed. Just edit the inline `CONFIG` block near the top of the file.
 
 ---
 
@@ -98,11 +98,20 @@ For full instructions see [`docs/02-Deployment-Guide.md`](02-Deployment-Guide.md
 
 ## Enabling Login Tracking
 
-Login tracking requires a LotusScript agent deployed in `DOMCFG.NSF`:
+> **Using `DominoEmbeddedForm.html`?** No `config.js` or `login.js` involved — tracking logic is already embedded inline in the HTML file. Steps 1–2 below apply to all forms; Step 3 is just editing the file itself.
 
-1. In Domino Designer, create agent `LogLoginAttempt` — paste `lotusscript/LoginTracker.lss`.
-2. Set trigger: **On Schedule → Never**. Sign with ID that has Author access to `names.nsf`.
-3. In the login form config, set `loginTracking.enable: true`.
+1. In Domino Designer, create agent `LogLoginAttempt` — paste `lotusscript/LoginTracker.lss`. Set trigger: **On Schedule → Never**. Sign with an ID that has Author/Editor access to `names.nsf`.
+2. Set DOMCFG.NSF ACL: **Anonymous = Reader**.
+3. Open `login-forms/DominoEmbeddedForm.html` in a text editor. Find the `loginTracking:` block (search `loginTracking:`) and set:
+   ```javascript
+   loginTracking: {
+       enable: true,
+       agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent"
+   }
+   ```
+4. Re-upload the updated HTML file to DOMCFG.NSF as a File Resource (overwrite), then `tell http restart`.
+
+> **Using `CustomLoginForm-Domino.html` instead?** Upload `config.js` (set `loginTracking.enable: true`) and `js/login.js` (contains `initLoginTracking()`) as File Resources in DOMCFG.NSF.
 
 For the full four-phase guide see the [Login Activity Tracker section in README.md](../README.md#login-activity-tracker).
 
