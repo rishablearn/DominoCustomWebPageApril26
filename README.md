@@ -755,15 +755,16 @@ This pushes the updated Person form design to the live `names.nsf`.
 
 #### Step 2.1 — Create Agent in DOMCFG.NSF
 
-| Setting | Value |
-|---------|-------|
+| Property | Value |
+|----------|-------|
 | Database | `domcfg.nsf` |
 | Agent Name | `LogLoginAttempt` *(exact — must match `agentUrl` in CONFIG)* |
 | Language | LotusScript |
-| When should this agent run | **Manually From Actions Menu** |
-| Which document(s) should it act on | None |
+| **When should this agent run** | **On Event** |
+| **Which document(s) should it act on** | **None** |
+| **Run as web user** | **Unchecked** — agent must run as signer's identity to write to `names.nsf` |
 
-> **Why "Manually From Actions Menu"?** This prevents the agent running on a schedule. Any enabled agent with this setting can also be invoked via an HTTP `?OpenAgent` URL — which is exactly how the login page calls it.
+> **Important — Run as web user must be unchecked.** The login form POSTs to this agent *before* authentication completes, so the web context is Anonymous. If "Run as web user" were checked, the agent would run as Anonymous and would have no write access to `names.nsf`. The agent signer's identity (which has Author/Editor on `names.nsf`) must be used instead.
 
 1. Open `domcfg.nsf` in **Domino Designer**.
 2. **Shared Code → Agents → New Agent** with settings above.

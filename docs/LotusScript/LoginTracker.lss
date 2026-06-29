@@ -68,10 +68,13 @@
 ' Step 1 — Create the Agent
 '   [ ] Open DOMCFG.NSF in Domino Designer
 '   [ ] Shared Code → Agents → New Agent
-'         Name    : LogLoginAttempt          (exact — matches agentUrl in config)
-'         Type    : LotusScript
-'         Trigger : Manually From Actions Menu  (enables ?OpenAgent URL invocation)
-'         Target  : None                     (no document context needed)
+'         Name                              : LogLoginAttempt
+'         Language                          : LotusScript
+'         When should this agent run        : On Event
+'         Which document(s) should it act on: None
+'         Run as web user                   : UNCHECKED
+'           (agent must run as signer; login POST arrives as Anonymous —
+'            if checked the agent would have no write access to names.nsf)
 '   [ ] Paste the entire contents of this file into the Script area
 '   [ ] Save the agent (do NOT sign yet)
 '

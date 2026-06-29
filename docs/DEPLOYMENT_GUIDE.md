@@ -1408,14 +1408,15 @@ The full agent source is at `docs/LotusScript/LoginTracker.lss`.
 
 #### Step 1 — Create Agent in DOMCFG.NSF
 
-| Setting | Value |
-|---------|-------|
+| Property | Value |
+|----------|-------|
 | Name | `LogLoginAttempt` |
-| Type | LotusScript |
-| When should this agent run | **Manually From Actions Menu** |
-| Which document(s) should it act on | None |
+| Language | LotusScript |
+| **When should this agent run** | **On Event** |
+| **Which document(s) should it act on** | **None** |
+| **Run as web user** | **Unchecked** — agent runs as signer's identity |
 
-> **"Manually From Actions Menu"** prevents the agent from running on a schedule. Any enabled agent with this setting can be invoked via an HTTP `?OpenAgent` URL.
+> **Run as web user must be unchecked.** The login form calls this agent before the user is authenticated, so the web context is Anonymous. The agent must run as the signer (who has write access to `names.nsf`).
 
 1. Open DOMCFG.NSF in Domino Designer.
 2. **Shared Code → Agents → New Agent** with settings above.

@@ -30,10 +30,13 @@
 ' -------------
 ' 1. Open DOMCFG.NSF in Domino Designer.
 ' 2. Create → Agent.
-'      Name     : GetLoginHistory
-'      When should this agent run : Manually From Actions Menu  (enables ?OpenAgent URL)
-'      Run as   : Current user in web context (authenticated)
-'      Context  : None
+'      Name                              : GetLoginHistory
+'      Language                          : LotusScript
+'      When should this agent run        : On Event
+'      Which document(s) should it act on: None
+'      Run as web user                   : CHECKED
+'        (agent runs as authenticated Verse user — ensures only their own
+'         LoginHistory is returned, not another user's data)
 ' 3. In the Script editor, paste this entire file.
 ' 4. Save and sign the agent with an ID that has Reader access to NAMES.NSF.
 ' 5. In DOMCFG.NSF ACL:

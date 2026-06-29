@@ -84,11 +84,12 @@ Open the URL in a browser where you are **already logged in** to Domino. You sho
    | Property | Value |
    |---|---|
    | **Name** | `GetLoginHistory` |
-   | **When should this agent run** | **Manually From Actions Menu** |
-   | **Which document(s) should it act on** | None |
    | **Language** | LotusScript |
+   | **When should this agent run** | **On Event** |
+   | **Which document(s) should it act on** | **None** |
+   | **Run as web user** | **Checked** — agent runs as the authenticated Verse user |
 
-   > **"Manually From Actions Menu"** is the correct Domino Designer setting for agents invoked via `?OpenAgent` URL. It prevents the agent from running on any automatic schedule.
+   > **Run as web user must be checked.** The Verse popup calls this agent while the user is already authenticated. Running as the web user ensures the agent returns only the calling user's own `LoginHistory` — not another user's data.
 
 3. In the Script area, paste the entire contents of `GetLoginHistory.lss`.
 4. Click **File → Compile** to verify there are no syntax errors.
