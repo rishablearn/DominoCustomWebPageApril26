@@ -911,7 +911,12 @@ loginTracking: {
 
 > `features.enableLoginTracking: true` is equivalent shorthand — either flag alone activates tracking.
 
-Save the file and **re-upload it to DOMCFG.NSF as a File Resource** (overwrite the existing version), then restart HTTP: `restart task http`.
+Save the file, then **re-paste it into the form in Domino Designer**:
+1. Open `domcfg.nsf` in Designer → open the `$$LoginUserForm` form.
+2. Select all existing content (Ctrl+A) and delete it.
+3. Paste the updated HTML (Ctrl+V).
+4. Select all (Ctrl+A) → **Text → Pass-Thru HTML** (text turns green).
+5. Save (Ctrl+S) → restart HTTP: `tell http restart`.
 
 ---
 
@@ -1283,14 +1288,33 @@ Browsing directly to `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent` in a 
 5. After login succeeds, open Domino Administrator → People → open the Person document → check for the `LoginHistory` field (or Document Properties → Fields tab).
 
 #### Checklist if still not working
-- **DominoEmbeddedForm.html / EnterpriseLoginForm.html:** Set `loginTracking.enable: true` in the **inline `CONFIG`** (search `loginTracking:` in the HTML file), then **re-upload** the file to DOMCFG.NSF as a File Resource and restart HTTP. **Do not touch `config.js` or `login.js` — they are not used by these self-contained forms.**
-- **CustomLoginForm-Domino.html:** Upload `config.js` (set `loginTracking.enable: true`) and `js/login.js` to DOMCFG.NSF.
-- Verify the agent trigger is **On Schedule → Never** — any "On Event" option causes HTTP 500.
-- Verify `domcfg.nsf` ACL has **Anonymous = Reader** (agent is invoked before authentication completes).
-- Agent returns `OK` when called directly? That confirms it's reachable. Empty fields from a direct GET call are **expected and normal**.
-- **First load after enabling:** a dashed-border placeholder *"Login Activity Tracking Active — No previous login recorded on this device"* appears immediately. If it does not, the `enable` flag is not set or the file was not re-uploaded.
-- **No entry in Person document after submitting?** Agent may not be signed correctly — right-click agent in Designer → Sign with the ID that has Author/Editor access to `names.nsf`.
-- Private/incognito mode blocks `localStorage` — the banner will not persist across sessions in private mode.
+
+**Step 0 — Open browser DevTools console (F12 → Console) before clicking Sign In.**  
+The form logs every tracking event. After submitting you should see:
+```
+[Tracking] localStorage saved — user: john.doe | ts: 2026-...
+[Tracking] sendBeacon → /domcfg.nsf/LogLoginAttempt?OpenAgent — queued: true
+```
+- `[Tracking] Skipped` → tracking is not enabled; set `loginTracking.enable: true`.
+- `[Tracking] sendBeacon not available` → XHR fallback was used (older browser).
+- Nothing logged at all → the submit handler is blocked before reaching tracking.
+
+**Step 1 — Confirm `loginTracking.enable: true` is in the deployed form.**  
+For `DominoEmbeddedForm.html` / `EnterpriseLoginForm.html`: the flag is **inside the HTML file** in the inline `CONFIG` block. Edit → re-paste the HTML into the `$$LoginUserForm` form in Designer → re-mark Pass-Thru HTML → save → `tell http restart`. **`config.js` and `login.js` are not involved.**  
+For `CustomLoginForm-Domino.html`: set `loginTracking.enable: true` in `config.js` and upload both `config.js` and `login.js` to DOMCFG.NSF.
+
+**Step 2 — Solve CAPTCHA before clicking Sign In.**  
+CAPTCHA (`enableCaptcha: true`) is on by default. The submit button stays disabled until the math answer is correct. Pressing Enter without solving CAPTCHA fires the submit event but the form handler blocks it — `trackLoginAttempt` is never called and `localStorage` is never set. Set `enableCaptcha: false` to disable for testing.
+
+**Step 3 — Agent checks.**  
+Verify the agent trigger is **On Schedule → Never** — any "On Event" option causes HTTP 500.  
+Verify `domcfg.nsf` ACL has **Anonymous = Reader** (agent runs before authentication).  
+Agent returns `OK` when called directly? That confirms it's reachable. Empty fields from a direct GET call are **expected and normal**.  
+**No entry in Person document?** Agent may not be signed — right-click in Designer → Sign with the ID that has Author/Editor access to `names.nsf`.
+
+**Step 4 — localStorage persistence.**  
+Private/incognito mode blocks `localStorage` — banner will not persist in private mode.  
+Banner data is **per browser, per device** — test on the same browser you submitted from.
 
 ### Logo not displaying
 - Domino does **NOT** support SVG — use PNG, JPG, or GIF only.
@@ -1310,6 +1334,17 @@ Browsing directly to `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent` in a 
 - ✅ `GetLoginHistory.lss` — new LotusScript agent returning `LoginHistory` from `names.nsf` as authenticated JSON
 - ✅ `applications.json` + `merge-snippet.json` — seamless integration with existing or new Verse deployments
 - ✅ `docs/03-Verse-Extension.md` — comprehensive step-by-step guide covering agents, ACL, notes.ini, and merge instructions
+
+### Version 2.4.3 (June 30, 2026)
+
+**Login Tracking — Critical Bug Fixes (`DominoEmbeddedForm.html`):**
+- ✅ **Fix: password minimum-length check removed from submit handler** — was blocking `trackLoginAttempt` and preventing form submission for users whose Domino password was shorter than 8 characters (client-side validation must not override server-side Domino password policy)
+- ✅ **Fix: password length removed from submit-button gate** in `validateFormRealtime` — button now enables as soon as username + password are non-empty (+ CAPTCHA if active); login forms must not block on password strength rules
+- ✅ **Fix: `buildAttemptPayload` now wrapped in try-catch** inside `trackLoginAttempt` — previously, any browser API exception caused the callback (`form.submit()`) to never be called, silently hanging the login
+- ✅ **Added full console logging** to `trackLoginAttempt`: `[Tracking] localStorage saved`, `[Tracking] sendBeacon → ...`, `[Tracking] Skipped`, etc. — allows diagnosing issues via F12 DevTools
+- ✅ **`sendBeacon` result now checked** — logs `queued: true/false` to console
+- ✅ **Comment header in HTML file corrected**: form name updated to `$$LoginUserForm`, Sign In Form Mapping steps completed
+- ✅ **README Phase 3 Option A**: corrected "re-upload as File Resource" to "re-paste into form in Designer"
 
 ### Version 2.4.2 (June 29, 2026)
 

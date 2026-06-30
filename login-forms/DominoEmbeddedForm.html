@@ -19,7 +19,7 @@ DEPLOYMENT STEPS:
    
 3. Set form name:
    - Design menu → Form Properties
-   - Name: "CustomLoginForm"
+   - Name: "$$LoginUserForm"  ← EXACT name, case-sensitive
    - Close Properties
 
 4. Add this HTML as Pass-Thru HTML:
@@ -32,8 +32,11 @@ DEPLOYMENT STEPS:
    - Save (Ctrl+S)
 
 5. Create Sign In Form Mapping:
-   - Open DOMCFG.NSF in Notes Client
-   - Create mapping pointing to CustomLoginForm
+   - Open DOMCFG.NSF in Notes Client (not Designer)
+   - Create → Sign In Form Mapping
+   - Login form database: domcfg.nsf
+   - Login form name:     $$LoginUserForm
+   - Save
 
 6. Restart HTTP:
    - Run: tell http restart
@@ -2431,12 +2434,9 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     showFieldError('Password', msg); errorMessages.push(msg);
                     if (!firstInvalidField) firstInvalidField = password; isValid = false;
                 }
-                const minPwdLen = c.passwordStrength?.minLength || 8;
-                if (password && password.value && password.value.length < minPwdLen) {
-                    const msg = c.errorMessages?.shortPassword || '📏 Password must be at least ' + minPwdLen + ' characters';
-                    showFieldError('Password', msg); errorMessages.push(msg);
-                    if (!firstInvalidField) firstInvalidField = password; isValid = false;
-                }
+                // NOTE: Password length is NOT validated here for a login form.
+                // Domino validates the password server-side. Short or legacy
+                // passwords that pre-date the current policy must still be allowed.
                 if (isCaptchaActive()) {
                     const captchaResult = validateCaptchaInput();
                     if (!captchaResult.valid) {
@@ -3091,32 +3091,16 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             if (!submitBtn) return;
             
             let allValid = true;
-            const minPwdLen = c.passwordStrength?.minLength || 8;
-            
+
             // Check username
             const usernameValid = usernameEl && usernameEl.value.trim().length > 0;
             if (!usernameValid) allValid = false;
             
-            // Check password - must not be empty and meet minimum length
+            // Password gate: non-empty only. Length is NOT enforced on a login
+            // form — Domino validates credentials server-side. Enforcing a client-
+            // side minimum prevents users with legacy short passwords from logging in.
             const passwordValue = passwordEl?.value || '';
-            const passwordValid = passwordValue.length >= minPwdLen;
-            
-            if (passwordEl) {
-                if (passwordValue.length > 0 && passwordValue.length < minPwdLen) {
-                    passwordEl.classList.add('input-error');
-                    if (passwordErrorEl) {
-                        passwordErrorEl.textContent = `📏 Password must be at least ${minPwdLen} characters`;
-                        passwordErrorEl.classList.add('visible');
-                    }
-                } else {
-                    passwordEl.classList.remove('input-error');
-                    if (passwordErrorEl) {
-                        passwordErrorEl.textContent = '';
-                        passwordErrorEl.classList.remove('visible');
-                    }
-                }
-            }
-            
+            const passwordValid = passwordValue.length > 0;
             if (!passwordValid) allValid = false;
             
             // Check CAPTCHA if enabled and not suppressed by MFA
@@ -3537,10 +3521,22 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         function trackLoginAttempt(extra, callback) {
             var cfg = DominoLoginConfig.loginTracking || {};
             if (!DominoLoginConfig.features?.enableLoginTracking && !cfg.enable) {
+                console.log('[Tracking] Skipped — tracking not enabled (set loginTracking.enable:true or features.enableLoginTracking:true)');
                 if (callback) callback(); return;
             }
-            var payload = buildAttemptPayload(extra);
-            try { localStorage.setItem('lastLoginAttempt', JSON.stringify(payload)); } catch (e) {}
+            var payload;
+            try {
+                payload = buildAttemptPayload(extra);
+            } catch (buildErr) {
+                console.warn('[Tracking] buildAttemptPayload failed:', buildErr);
+                if (callback) callback(); return;
+            }
+            try {
+                localStorage.setItem('lastLoginAttempt', JSON.stringify(payload));
+                console.log('[Tracking] localStorage saved — user:', payload.username, '| ts:', payload.ts);
+            } catch (lsErr) {
+                console.warn('[Tracking] localStorage.setItem failed:', lsErr);
+            }
             var agentUrl = cfg.agentUrl || '/domcfg.nsf/LogLoginAttempt?OpenAgent';
             var body = Object.keys(payload).map(function(k) {
                 return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
@@ -3548,14 +3544,18 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             try {
                 if (navigator.sendBeacon) {
                     var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
-                    navigator.sendBeacon(agentUrl, blob);
+                    var sent = navigator.sendBeacon(agentUrl, blob);
+                    console.log('[Tracking] sendBeacon →', agentUrl, '— queued:', sent);
                 } else {
+                    console.log('[Tracking] sendBeacon not available — using sync XHR fallback');
                     var xhr = new XMLHttpRequest();
                     xhr.open('POST', agentUrl, false);
                     xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    try { xhr.send(body); } catch(xhrErr) {}
+                    try { xhr.send(body); } catch(xhrErr) { console.warn('[Tracking] XHR fallback failed:', xhrErr); }
                 }
-            } catch(e) {}
+            } catch(beaconErr) {
+                console.warn('[Tracking] Beacon/XHR error:', beaconErr);
+            }
             if (callback) callback();
         }
         function showLastLoginBanner() {
