@@ -506,9 +506,10 @@ const CONFIG = {
 ### Step 3 — Deploy (see full guide below)
 
 1. Open DOMCFG.NSF in Domino Designer
-2. Create form `$$LoginUserForm`
-3. Paste HTML → select all → Text → Pass-Thru HTML → Save
-4. `tell http restart`
+2. Create form named exactly **`$$LoginUserForm`**
+3. Paste HTML → select all → **Text → Pass-Thru HTML** → Save
+4. Open DOMCFG.NSF in Notes client → **Create → Sign In Form Mapping** → set **Login form database** = `domcfg.nsf`, **Login form name** = `$$LoginUserForm` → Save
+5. `tell http restart`
 
 ---
 

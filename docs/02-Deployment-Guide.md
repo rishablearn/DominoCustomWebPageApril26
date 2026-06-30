@@ -89,20 +89,21 @@ A form is like a template. In our case, it's a template for the login page that 
 
 | If You Want... | Use This File | MIME Issues? |
 |----------------|---------------|--------------|
-| **Simplest deployment, no MIME issues** | `EnterpriseLoginForm.html` | ✅ **NONE** |
-| Self-contained, all-in-one | `DominoEmbeddedForm.html` | ✅ **NONE** |
+| ⭐ **Recommended — full features, zero MIME issues** | `DominoEmbeddedForm.html` | ✅ **NONE** |
+| Enterprise extras (quick links, banner) | `EnterpriseLoginForm.html` | ✅ **NONE** |
 | Modular with external files | `CustomLoginForm-Domino.html` | ⚠️ Requires MIME setup |
 
-### ✅ RECOMMENDED: EnterpriseLoginForm.html (Zero MIME Issues)
+### ⭐ RECOMMENDED: DominoEmbeddedForm.html (Full Features, Zero MIME Issues)
 
-**This is the best option for most users.** The `EnterpriseLoginForm.html` file:
-- Has ALL CSS and JavaScript embedded inline
-- Requires NO external file resources
+**This is the best option for most deployments.** The `DominoEmbeddedForm.html` file:
+- Has ALL CSS and JavaScript embedded inline — no external file resources
 - **Completely avoids MIME type errors**
-- Includes enterprise features (quick links, security notice, support info)
-- Inspired by corporate login pages like ONGC Verse and UIIC Mail
+- Full feature set: 18 languages, CAPTCHA, MFA, login tracking, dark mode, session management
+- Single inline `CONFIG` block for all customisation
 
-**Location:** `login-forms/EnterpriseLoginForm.html`
+**Location:** `login-forms/DominoEmbeddedForm.html`
+
+> **Need the enterprise sidebar with quick links and an announcement banner?** Use `login-forms/EnterpriseLoginForm.html` instead — same zero-MIME, self-contained approach, with those extras added.
 
 ### Why MIME Errors Happen
 
@@ -229,7 +230,7 @@ Now we'll create the login form and add the HTML content.
    **Basics Tab:**
    | Property | Value to Enter |
    |----------|----------------|
-   | Name | `CustomLoginForm` |
+   | Name | `$$LoginUserForm` |
    | Comment | `Custom branded login form v2.0` |
 
 3. Click the **X** to close the Properties box (it auto-saves)
@@ -238,7 +239,7 @@ Now we'll create the login form and add the HTML content.
 ┌─────────────────────────────────────┐
 │ Form Properties                     │
 ├─────────────────────────────────────┤
-│ Name:    [CustomLoginForm      ]    │
+│ Name:    [$$LoginUserForm      ]    │
 │ Comment: [Custom branded login ]    │
 │ Type:    ○ Document  ● No type      │
 │                                     │
@@ -258,15 +259,15 @@ There are THREE HTML files for Domino deployment:
 
 | File | Location | Best For | MIME Config |
 |------|----------|----------|-------------|
-| `EnterpriseLoginForm.html` | `login-forms/` | ⭐ **RECOMMENDED** - Enterprise features | ❌ None |
-| `DominoEmbeddedForm.html` | `login-forms/` | Simple clean login | ❌ None |
-| `CustomLoginForm-Domino.html` | `login-forms/` | Advanced (external files) | ⚠️ Required |
+| `DominoEmbeddedForm.html` | `login-forms/` | ⭐ **RECOMMENDED** — full features, self-contained | ❌ None |
+| `EnterpriseLoginForm.html` | `login-forms/` | Quick links sidebar + announcement banner | ❌ None |
+| `CustomLoginForm-Domino.html` | `login-forms/` | Modular (external JS/CSS files) | ⚠️ Required |
 
-**We recommend `EnterpriseLoginForm.html`** - it has all CSS/JS inline, so no MIME configuration needed!
+**Use `DominoEmbeddedForm.html`** — all CSS/JS inline, 18 languages, full CONFIG block, zero MIME configuration.
 
 **Step A: Copy the HTML content**
 
-1. Open your chosen HTML file (we recommend **`login-forms/EnterpriseLoginForm.html`**) in a text editor:
+1. Open your chosen HTML file (recommended: **`login-forms/DominoEmbeddedForm.html`**) in a text editor:
    - **Windows:** Right-click the file → **Open with** → **Notepad** (or Notepad++)
    - **Mac:** Right-click → **Open With** → **TextEdit** (or VS Code)
 
@@ -301,7 +302,7 @@ There are THREE HTML files for Domino deployment:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Form: CustomLoginForm (Untitled)                        │
+│ Form: $$LoginUserForm (Untitled)                        │
 ├─────────────────────────────────────────────────────────┤
 │ <!DOCTYPE html>                                         │
 │ <html lang="en">                                        │
@@ -352,7 +353,7 @@ Now we need to tell Domino to send this HTML directly to the browser without pro
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Form: CustomLoginForm                                   │
+│ Form: $$LoginUserForm                                   │
 ├─────────────────────────────────────────────────────────┤
 │ <!DOCTYPE html>                      ◄── GREEN text     │
 │ <html lang="en">                         means it's     │
@@ -379,13 +380,13 @@ If the text is NOT green:
 
 1. Press **Ctrl+S** to save
 2. Or click **File** menu → **Save**
-3. If prompted for a name, verify it says `CustomLoginForm`
+3. If prompted for a name, verify it says `$$LoginUserForm`
 4. Close the form design window (**Ctrl+W** or click the X)
 
 #### Step 1.3.4: Verify Form Was Created
 
 1. In the left panel, expand **Forms**
-2. You should see `CustomLoginForm` listed
+2. You should see `$$LoginUserForm` listed
 3. Double-click to open and verify content is there
 
 ### Step 1.4: Import Resource Files (CSS, JavaScript, Images)
@@ -402,7 +403,7 @@ Now we need to import the CSS, JavaScript, and image files that the form referen
 ┌─────────────────────────────────────────────────────────┐
 │ ▼ domcfg.nsf                                            │
 │   ├─ Forms                                              │
-│   │   └─ CustomLoginForm                                │
+│   │   └─ $$LoginUserForm                                │
 │   ├─ Views                                              │
 │   ▼ Resources                   ◄── Expand this         │
 │     ├─ Files                    ◄── Click here          │
@@ -564,7 +565,7 @@ This tells Domino to use your custom form for logins.
    |-------|-------|
    | Site Configuration | Select "All Web Sites / Entire Server" |
    | Target Database | `domcfg.nsf` |
-   | Target Form | `CustomLoginForm` |
+   | Target Form | `$$LoginUserForm` |
    | Comments | `Custom branded login - v2.0` |
 
 6. **Save and Close** the document (Ctrl+S, then Esc)
@@ -613,7 +614,7 @@ If you prefer a simpler setup without separate CSS/JS files, use the embedded ve
 
 1. Open `domcfg.nsf` in **Domino Designer**
 2. Right-click **Forms** → **New Form**
-3. Set **Name** to `CustomLoginForm` in Form Properties
+3. Set **Name** to `$$LoginUserForm` in Form Properties
 
 4. Click **Create** menu → **Pass-Thru HTML**
 
@@ -635,14 +636,9 @@ If you prefer a simpler setup without separate CSS/JS files, use the embedded ve
 tell http restart
 ```
 
-### Limitations of Embedded Method
-
-- Larger HTML file (harder to maintain)
-- Changes require editing the form directly
-- Limited customization options compared to separate config.js
-- Missing some advanced features (translations, etc.)
-
-**Recommendation:** Method 1 is the recommended approach for deployments.
+> **This is the recommended deployment method.** `DominoEmbeddedForm.html` is a full-featured form with 18 languages, CAPTCHA, MFA, login tracking, dark mode, and all enterprise features — all inline. Editing means downloading the HTML, updating the `CONFIG` block near the top, re-pasting, and re-marking Pass-Thru HTML.
+>
+> Method 1 (modular with external files) is for advanced users who require separate `config.js`/`login.js` versioning.
 
 ---
 
@@ -653,9 +649,11 @@ After deployment, you'll want to customize the login page for your organization.
 
 ### Where to Make Changes
 
-All customization is done in the `config.js` file.
+**Self-contained forms (`DominoEmbeddedForm.html` / `EnterpriseLoginForm.html`):**
+All configuration is in the **inline `CONFIG` block** near the top of the HTML file (search for `const DominoLoginConfig` or `const CONFIG`). Edit the file locally, re-paste the entire contents into the `$$LoginUserForm` form in Designer, re-mark as Pass-Thru HTML, save, and restart HTTP.
 
-**To edit config.js in Domino:**
+**Modular form (`CustomLoginForm-Domino.html`) only:**
+Customization is done in `config.js`. To edit:
 1. Open `domcfg.nsf` in Domino Designer
 2. Expand **Resources** → **Files**
 3. Double-click on `config.js`
@@ -1057,7 +1055,7 @@ If you need help with this specific login page project:
 
 | Purpose | Location |
 |---------|----------|
-| Login Form | DOMCFG.NSF → Forms → CustomLoginForm |
+| Login Form | DOMCFG.NSF → Forms → `$$LoginUserForm` |
 | Configuration | DOMCFG.NSF → Resources → Files → config.js |
 | Stylesheet | DOMCFG.NSF → Resources → Files → login.css |
 | JavaScript | DOMCFG.NSF → Resources → Files → login.js |

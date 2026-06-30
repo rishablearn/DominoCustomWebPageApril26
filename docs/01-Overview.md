@@ -30,8 +30,8 @@ DominoCustomWebPageApril26/
 ├── README.md                        ← Full documentation (start here)
 │
 ├── login-forms/                     ← Deployable HTML login pages
-│   ├── EnterpriseLoginForm.html     ← ⭐ RECOMMENDED: full features, self-contained
-│   ├── DominoEmbeddedForm.html      ← Simple self-contained form
+│   ├── DominoEmbeddedForm.html      ← ⭐ RECOMMENDED: full features, self-contained, zero MIME issues
+│   ├── EnterpriseLoginForm.html     ← Enterprise variant: quick links sidebar + announcement banner
 │   └── CustomLoginForm-Domino.html  ← Modular form (requires external files below)
 │
 ├── lotusscript/                     ← LotusScript agent source files
@@ -83,9 +83,9 @@ Domino Administrator → File → Application → New → select template **Domi
 Set ACL: `Anonymous = Reader`, `LocalDomainServers = Manager`.
 
 ### Step 2 — Deploy the Login Form
-Open `DOMCFG.NSF` in Domino Designer → Create a new form named `CustomLoginForm` → paste the entire contents of your chosen HTML file as Pass-Thru HTML → Save.
+Open `DOMCFG.NSF` in Domino Designer → Create a new form named **`$$LoginUserForm`** → paste the entire contents of your chosen HTML file as Pass-Thru HTML → **Text → Pass-Thru HTML** → Save.
 
-Create a **Sign In Form Mapping**: DOMCFG.NSF → open in Notes client → Sign In Form Mappings → Add Mapping → target `DOMCFG.NSF` / `CustomLoginForm`.
+Create a **Sign In Form Mapping**: open `DOMCFG.NSF` in the Notes client → **Create → Sign In Form Mapping** → set **Login form database** = `domcfg.nsf`, **Login form name** = `$$LoginUserForm` → Save.
 
 ### Step 3 — Restart HTTP
 ```
