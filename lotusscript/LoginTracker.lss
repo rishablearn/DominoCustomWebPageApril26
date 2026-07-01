@@ -2,7 +2,7 @@
 ' LoginTracker.lss
 ' LotusScript Agent — Log Login Attempts to Person Document in NAMES.NSF
 '
-' Version  : 1.2.0
+' Version  : 1.3.0
 ' Date     : 2026-07-01
 ' Requires : HCL Domino 12.0.1+
 '
@@ -186,14 +186,28 @@ Sub Initialize()
     contType   = GetField(web, "CONTENT_TYPE")
     contLength = GetField(web, "CONTENT_LENGTH")
 
-    '-- 2. DEBUG: HTTP request diagnostics first ----------------------------
+    '-- 2. DEBUG: HTTP request diagnostics + dump ALL CGI items -------------
     If DEBUG_MODE Then
-        dbg = dbg & "=== LogLoginAttempt DEBUG (v1.2.0) ===" & Chr(10)
+        dbg = dbg & "=== LogLoginAttempt DEBUG (v1.3.0) ===" & Chr(10)
         dbg = dbg & "Server time    : " & Now() & Chr(10)
         dbg = dbg & "REQUEST_METHOD : [" & reqMethod  & "]" & Chr(10)
         dbg = dbg & "CONTENT_TYPE   : [" & contType   & "]" & Chr(10)
         dbg = dbg & "CONTENT_LENGTH : [" & contLength & "]" & Chr(10)
         dbg = dbg & "REQUEST_CONTENT: [" & Left(rawBody, 500) & "]" & Chr(10)
+        dbg = dbg & "---" & Chr(10)
+        dbg = dbg & "ALL DocumentContext items (CGI variables Domino exposes):" & Chr(10)
+        Dim allItems As Variant
+        allItems = web.Items
+        Dim j As Integer
+        If IsArray(allItems) Then
+            For j = 0 To UBound(allItems)
+                Dim cgiItem As NotesItem
+                Set cgiItem = allItems(j)
+                dbg = dbg & "  " & cgiItem.Name & " = [" & Left(CStr(cgiItem.Text), 120) & "]" & Chr(10)
+            Next j
+        Else
+            dbg = dbg & "  (no items on DocumentContext)" & Chr(10)
+        End If
         dbg = dbg & "---" & Chr(10)
     End If
 
@@ -394,6 +408,21 @@ Sub Initialize()
     If DEBUG_MODE Then
         dbg = dbg & "History     : previous entries=" & (filled - 1) & Chr(10)
         dbg = dbg & "              new entry=[" & entry & "]" & Chr(10)
+    End If
+
+    '-- 10. PRE-WRITE CHECKPOINT — show full data before saving ------------
+    If DEBUG_MODE Then
+        dbg = dbg & "=== PRE-WRITE CHECKPOINT ==" & Chr(10)
+        dbg = dbg & "Target doc  : FullName=[" & CStr(personDoc.GetItemValue("FullName")(0)) & "]" & Chr(10)
+        dbg = dbg & "              UniversalID=[" & personDoc.UniversalID & "]" & Chr(10)
+        dbg = dbg & "Fields to write:" & Chr(10)
+        dbg = dbg & "  LoginHistoryUpdated = [" & CStr(Now()) & "]" & Chr(10)
+        dbg = dbg & "  LoginHistory entries = " & filled & ":" & Chr(10)
+        Dim wi As Integer
+        For wi = 0 To filled - 1
+            dbg = dbg & "    [" & wi & "] " & newHistory(wi) & Chr(10)
+        Next wi
+        dbg = dbg & "===========================" & Chr(10)
     End If
 
     '-- 10. Write fields back to Person document ----------------------------

@@ -200,7 +200,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             enableTranslations: true,            // Multi-language support
             enableCaptcha: true,                 // CAPTCHA verification
             enableMFA: false,                    // TOTP multi-factor authentication (Domino 12.0.1+)
-            enableLoginTracking: false           // Log login attempts to Person document
+            enableLoginTracking: true            // Log login attempts to Person document
         },
 
         // =====================================================================
@@ -273,7 +273,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         //      active. Submit once; on the next load it shows your last attempt.
         // =====================================================================
         loginTracking: {
-            enable: false,
+            enable: true,
             agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
             maxHistory: 5,
             trackValidationFailures: false
@@ -285,7 +285,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         //   which features are active. Set true while configuring, false in production.
         // =====================================================================
         debug: {
-            showStatusPanel: false
+            showStatusPanel: true
         },
 
         session: {
