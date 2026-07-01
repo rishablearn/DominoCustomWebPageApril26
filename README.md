@@ -1264,10 +1264,46 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - Check that the user is enrolled — not all users need MFA unless the policy applies.
 - Verify system clocks: TOTP is time-sensitive; server and authenticator device clocks must be in sync (±30s).
 
-### Login tracking agent returns error
+### Login tracking agent — "username field is empty — nothing to record"
+
+This message means the agent runs but receives no POST data. **Root cause:** Domino does not automatically parse `application/x-www-form-urlencoded` POST bodies into `DocumentContext` fields for `?OpenAgent` calls. The raw body must be read from `REQUEST_CONTENT` and parsed manually. **`LoginTracker.lss` v1.2.0 fixes this** — it reads `REQUEST_CONTENT` first and parses it; doc fields are only used as a fallback.
+
+**How to diagnose (with `DEBUG_MODE = True` in the agent):**
+
+1. **GET test** — browse to the URL directly. You will see the full debug trace:
+   ```
+   REQUEST_METHOD : [GET]
+   CONTENT_TYPE   : []
+   CONTENT_LENGTH : []
+   REQUEST_CONTENT: []
+   Source: DocumentContext fields (fallback — REQUEST_CONTENT empty)
+   username    : []
+   EXIT: username field is empty — nothing to record.
+   ```
+   Empty `REQUEST_CONTENT` on a GET is **normal** — GET requests have no body.
+
+2. **POST test via curl** — this is the only valid way to test the agent:
+   ```bash
+   curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username=john.doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+   ```
+   Expected output with `DEBUG_MODE = True`:
+   ```
+   REQUEST_METHOD : [POST]
+   CONTENT_TYPE   : [application/x-www-form-urlencoded]
+   REQUEST_CONTENT: [username=john.doe&ts=2026-07-01T10%3A00%3A00Z&...]
+   Source: REQUEST_CONTENT (parsed)
+   username    : [john.doe]
+   ...
+   Lookup results: ...
+   Save result : SUCCESS
+   OK
+   ```
+   If `username` is still empty after the POST — update the agent to v1.2.0 (paste updated `LoginTracker.lss`).
+
 - Check the agent is signed with an ID that has write access to `names.nsf`.
 - Verify Anonymous has at least Reader access to DOMCFG.NSF.
-- Test the agent URL directly in a browser: `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent`.
 - Check the Domino server console log for agent errors (`show log`).
 
 ### Last-login banner not appearing / no LoginHistory written
@@ -1278,7 +1314,7 @@ Login tracking writes to **two places**:
 2. **`LoginHistory` field on the Person document in `names.nsf`** — written by the `LogLoginAttempt` LotusScript agent on the server. Persists across devices.
 
 #### ⚠️ Important: how NOT to test
-Browsing directly to `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent` in a browser sends a **GET** request with no body — all fields will always show `[]` empty. This is not a valid test of login tracking.
+Browsing directly to `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent` in a browser sends a **GET** request with no body. With `DEBUG_MODE = True` you will see the full trace but `REQUEST_CONTENT` and all parsed fields will be empty — this is **normal for a GET** and does not indicate a problem. Use `curl -X POST` (see Troubleshooting above) to test POST body parsing.
 
 #### Correct verification method
 1. Open **browser DevTools → Network tab** (F12) before submitting the login form.

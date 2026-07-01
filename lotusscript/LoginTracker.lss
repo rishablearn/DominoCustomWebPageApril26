@@ -2,8 +2,8 @@
 ' LoginTracker.lss
 ' LotusScript Agent — Log Login Attempts to Person Document in NAMES.NSF
 '
-' Version  : 1.1.0
-' Date     : 2026-06-25
+' Version  : 1.2.0
+' Date     : 2026-07-01
 ' Requires : HCL Domino 12.0.1+
 '
 ' PURPOSE
@@ -110,11 +110,27 @@
 ' Step 6 — Verify the Agent
 '   [ ] Source: lotusscript/LoginTracker.lss
 '   [ ] Browse to: https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
-'         Expected response body: OK
-'         (username param is empty so agent exits early but returns OK)
+'         Expected response body: the full DEBUG trace.
+'         The REQUEST_CONTENT line will be empty (GET request has no body) —
+'         this is NORMAL and does NOT indicate a problem.
+'   [ ] Test POST via curl to confirm body parsing:
+'         curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+'              -H "Content-Type: application/x-www-form-urlencoded" \
+'              -d "username=john.doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+'         Expected: DEBUG output showing username=[john.doe] and lookup results
 '   [ ] Submit the login page once with a real username
 '   [ ] Check Person document in Domino Administrator — LoginHistory should
 '       have one new entry
+'
+' HOW POST BODY PARSING WORKS
+' ----------------------------
+' Domino does NOT automatically parse application/x-www-form-urlencoded POST
+' bodies into DocumentContext fields for ?OpenAgent calls.
+' The raw body is available only via REQUEST_CONTENT.
+' This agent reads REQUEST_CONTENT first, URL-decodes it, and parses each
+' key=value pair manually.  If REQUEST_CONTENT is empty (e.g. a GET request),
+' it falls back to reading document field items directly (which works when
+' Domino does parse the body, or for query string parameters on GET requests).
 '
 ' Step 7 — Enable in Login Page Config
 '   [ ] In EnterpriseLoginForm.html or DominoEmbeddedForm.html:
@@ -156,27 +172,77 @@ Sub Initialize()
 
     Set web = session.DocumentContext
 
-    '-- 1. Read POST parameters sent by the login page ----------------------
-    Dim ts        As String  : ts       = GetField(web, "ts")
-    Dim tz        As String  : tz       = GetField(web, "tz")
-    Dim lang      As String  : lang     = GetField(web, "lang")
-    Dim scr       As String  : scr      = GetField(web, "scr")
-    Dim browser   As String  : browser  = GetField(web, "browser")
-    Dim platform  As String  : platform = GetField(web, "platform")
-    Dim mfa       As String  : mfa      = GetField(web, "mfa")
-    Dim username  As String  : username = GetField(web, "username")
-    Dim status    As String  : status   = "ATTEMPT"
+    '-- 1. Read raw POST body via REQUEST_CONTENT ---------------------------
+    ' Domino does NOT automatically parse application/x-www-form-urlencoded
+    ' POST bodies into DocumentContext item values for ?OpenAgent calls.
+    ' The raw body is only available via the REQUEST_CONTENT CGI variable.
+    ' ParseUrlEncoded() splits it into key=value pairs and URL-decodes them.
+    Dim rawBody    As String
+    Dim reqMethod  As String
+    Dim contType   As String
+    Dim contLength As String
+    rawBody    = GetField(web, "REQUEST_CONTENT")
+    reqMethod  = GetField(web, "REQUEST_METHOD")
+    contType   = GetField(web, "CONTENT_TYPE")
+    contLength = GetField(web, "CONTENT_LENGTH")
 
-    '-- 2. Retrieve real IP -------------------------------------------------
+    '-- 2. DEBUG: HTTP request diagnostics first ----------------------------
+    If DEBUG_MODE Then
+        dbg = dbg & "=== LogLoginAttempt DEBUG (v1.2.0) ===" & Chr(10)
+        dbg = dbg & "Server time    : " & Now() & Chr(10)
+        dbg = dbg & "REQUEST_METHOD : [" & reqMethod  & "]" & Chr(10)
+        dbg = dbg & "CONTENT_TYPE   : [" & contType   & "]" & Chr(10)
+        dbg = dbg & "CONTENT_LENGTH : [" & contLength & "]" & Chr(10)
+        dbg = dbg & "REQUEST_CONTENT: [" & Left(rawBody, 500) & "]" & Chr(10)
+        dbg = dbg & "---" & Chr(10)
+    End If
+
+    '-- 3. Parse POST fields (primary: REQUEST_CONTENT) ---------------------
+    '       Fall back to DocumentContext item values if body is empty
+    '       (handles GET requests and cases where Domino parses the body).
+    Dim ts        As String
+    Dim tz        As String
+    Dim lang      As String
+    Dim scr       As String
+    Dim browser   As String
+    Dim platform  As String
+    Dim mfa       As String
+    Dim username  As String
+    Dim status    As String
+    status = "ATTEMPT"
+
+    If rawBody <> "" Then
+        username = GetPostParam(rawBody, "username")
+        ts       = GetPostParam(rawBody, "ts")
+        tz       = GetPostParam(rawBody, "tz")
+        lang     = GetPostParam(rawBody, "lang")
+        scr      = GetPostParam(rawBody, "scr")
+        browser  = GetPostParam(rawBody, "browser")
+        platform = GetPostParam(rawBody, "platform")
+        mfa      = GetPostParam(rawBody, "mfa")
+        If DEBUG_MODE Then dbg = dbg & "Source: REQUEST_CONTENT (parsed)" & Chr(10)
+    Else
+        ' Fall back: try DocumentContext items directly
+        username = GetField(web, "username")
+        ts       = GetField(web, "ts")
+        tz       = GetField(web, "tz")
+        lang     = GetField(web, "lang")
+        scr      = GetField(web, "scr")
+        browser  = GetField(web, "browser")
+        platform = GetField(web, "platform")
+        mfa      = GetField(web, "mfa")
+        If DEBUG_MODE Then dbg = dbg & "Source: DocumentContext fields (fallback — REQUEST_CONTENT empty)" & Chr(10)
+    End If
+
+    '-- 4. Retrieve real IP -------------------------------------------------
     Dim ipAddress As String
     ipAddress = GetField(web, "REMOTE_ADDR")
     If ipAddress = "" Then ipAddress = GetField(web, "HTTP_X_FORWARDED_FOR")
     If ipAddress = "" Then ipAddress = "unknown"
 
-    '-- DEBUG: dump everything received ------------------------------------
+    '-- DEBUG: parsed field values ------------------------------------------
     If DEBUG_MODE Then
-        dbg = dbg & "=== LogLoginAttempt DEBUG ===" & Chr(10)
-        dbg = dbg & "Server time : " & Now() & Chr(10)
+        dbg = dbg & "---" & Chr(10)
         dbg = dbg & "username    : [" & username   & "]" & Chr(10)
         dbg = dbg & "ts          : [" & ts         & "]" & Chr(10)
         dbg = dbg & "browser     : [" & browser    & "]" & Chr(10)
@@ -375,6 +441,61 @@ ErrorHandler:
     End If
     Resume Next
 End Sub
+
+'===========================================================================
+' UrlDecode  — decodes a single URL-encoded string segment
+'             Handles: %XX hex sequences and + → space
+'===========================================================================
+Function UrlDecode(s As String) As String
+    Dim result As String
+    Dim i      As Integer
+    Dim c      As String
+    result = ""
+    i = 1
+    Do While i <= Len(s)
+        c = Mid(s, i, 1)
+        If c = "+" Then
+            result = result & " "
+            i = i + 1
+        ElseIf c = "%" And i + 2 <= Len(s) Then
+            result = result & Chr(Val("&H" & Mid(s, i + 1, 2)))
+            i = i + 3
+        Else
+            result = result & c
+            i = i + 1
+        End If
+    Loop
+    UrlDecode = result
+End Function
+
+'===========================================================================
+' GetPostParam  — finds a named parameter in a URL-encoded body string
+'                Returns the decoded value or "" if not found
+'                Case-insensitive key matching
+'===========================================================================
+Function GetPostParam(body As String, paramName As String) As String
+    On Error Resume Next
+    Dim pairs()  As String
+    Dim pair()   As String
+    Dim i        As Integer
+    Dim eqPos    As Integer
+    Dim rawKey   As String
+    Dim rawVal   As String
+    pairs = Split(body, "&")
+    For i = 0 To UBound(pairs)
+        eqPos = InStr(pairs(i), "=")
+        If eqPos > 0 Then
+            rawKey = Left(pairs(i), eqPos - 1)
+            rawVal = Mid(pairs(i), eqPos + 1)
+            If LCase(UrlDecode(Trim(rawKey))) = LCase(Trim(paramName)) Then
+                GetPostParam = UrlDecode(rawVal)
+                Exit Function
+            End If
+        End If
+    Next i
+    GetPostParam = ""
+    On Error GoTo 0
+End Function
 
 '===========================================================================
 ' RespondOk  — minimal HTTP 200 response body (production)
