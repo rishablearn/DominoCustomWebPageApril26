@@ -878,12 +878,28 @@ https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
 ```
 Expected: `OK` (plain text, HTTP 200). If you see the DEBUG output with all empty `[]` fields — that is **normal for a GET request** and does not indicate a problem. The agent only records data from a POST with a body.
 
-**Step B — Confirm the agent reads POST data (curl):**
+**Step B — Confirm the agent reads POST data:**
+
+> **Important:** In Domino, users log in with **First Name Last Name** (e.g. `John Doe`), internet email address (e.g. `john.doe@company.com`), or short name. Use the same format in your test.
+
+**Linux / macOS (bash):**
 ```bash
-curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
-     -d "username=john.doe&ts=2026-06-25T07:30:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
+curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
 ```
-Expected DEBUG output shows the fields populated (not `[]` empty). If this works, the agent is correctly reading POST data and the login form's JavaScript is the only remaining piece.
+
+**Windows (PowerShell):**
+```powershell
+Invoke-WebRequest -UseBasicParsing \
+  -Uri "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+  -Method POST \
+  -ContentType "application/x-www-form-urlencoded" \
+  -Body "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en" |
+  Select-Object -ExpandProperty Content
+```
+
+Expected DEBUG output shows `username: [John Doe]`, `Source: REQUEST_CONTENT (parsed)`, and ultimately `Save result : SUCCESS`. If this works, the agent is correctly reading POST data and the login form's JavaScript is the only remaining piece.
 
 ---
 
@@ -1282,29 +1298,81 @@ This message means the agent runs but receives no POST data. **Root cause:** Dom
    ```
    Empty `REQUEST_CONTENT` on a GET is **normal** — GET requests have no body.
 
-2. **POST test via curl** — this is the only valid way to test the agent:
+2. **POST test** — the only valid way to test body parsing and Person doc lookup:
+
+   > Use a **real Domino username** — exactly as stored in names.nsf. Domino accepts: `First Last` (e.g. `John Doe`), internet email (`john.doe@company.com`), or short name (`jdoe`). The agent now checks all three formats across all FullName values using `NotesName`.
+
+   **Linux/macOS (bash):**
    ```bash
-   curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+   curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
         -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "username=john.doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+        -d "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+   ```
+   **Windows (PowerShell):**
+   ```powershell
+   Invoke-WebRequest -UseBasicParsing \
+     -Uri "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+     -Method POST \
+     -ContentType "application/x-www-form-urlencoded" \
+     -Body "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en" |
+     Select-Object -ExpandProperty Content
    ```
    Expected output with `DEBUG_MODE = True`:
    ```
    REQUEST_METHOD : [POST]
    CONTENT_TYPE   : [application/x-www-form-urlencoded]
-   REQUEST_CONTENT: [username=john.doe&ts=2026-07-01T10%3A00%3A00Z&...]
+   REQUEST_CONTENT: [username=John+Doe&ts=...]
    Source: REQUEST_CONTENT (parsed)
-   username    : [john.doe]
+   username    : [John Doe]
    ...
-   Lookup results: ...
+   Lookup results:
+     Strategy C scan — looking for: [John Doe]
+     MATCHED FullName.common=[John Doe]
+   ---
+   === PRE-WRITE CHECKPOINT ==
+   Target doc  : FullName=[CN=John Doe/O=DemoCollab]
+     [0] 2026-07-01T...|10.x.x.x|ATTEMPT|Chrome|Win32|Asia/Kolkata|1920x1080|0
+   ===========================
    Save result : SUCCESS
    OK
    ```
-   If `username` is still empty after the POST — update the agent to v1.2.0 (paste updated `LoginTracker.lss`).
+   If `Save result : FAILED` → check the agent signer's ACL on `names.nsf`.
+   If `username: [John Doe]` but `NO MATCH` → the typed name doesn't match any field in names.nsf; check the actual field values (see **How to verify stored data** below).
 
 - Check the agent is signed with an ID that has write access to `names.nsf`.
 - Verify Anonymous has at least Reader access to DOMCFG.NSF.
 - Check the Domino server console log for agent errors (`show log`).
+
+### Person document not found — username format mismatch
+
+The agent (v1.4.0) tries these formats in order for every Person document in `names.nsf`:
+
+| Priority | Field | Example value |
+|----------|-------|---------------|
+| 1 | `ShortName` | `jdoe` |
+| 2 | `InternetAddress` | `john.doe@company.com` |
+| 3 | `FullName` raw | `CN=John Doe/O=DemoCollab` |
+| 4 | `FullName` abbreviated | `John Doe/DemoCollab` |
+| 5 | `FullName` common (CN only) | `John Doe` |
+
+If the debug output shows `NO MATCH`, the typed username does not exactly match any of these in `names.nsf`.
+
+**How to find what to type:** Open Domino Administrator → **People & Groups** → open the Person document → press **Ctrl+Shift+F9** (Document Properties) → **Fields** tab → check the exact values of `FullName`, `ShortName`, `InternetAddress`. Use one of those exact values in the login form.
+
+### How to verify data was stored in Domino Administrator
+
+1. Open **Domino Administrator** → connect to your server
+2. Go to **People & Groups** tab → **People** view
+3. Find and **double-click** the user's Person document
+4. Press **Ctrl+Shift+F9** or click **File → Document Properties** → go to the **Fields** tab
+5. Look for these two fields:
+   - `LoginHistory` — multi-value text field, newest entry first. Each entry: `TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TZ|SCREEN|MFA`
+   - `LoginHistoryUpdated` — Date/Time of the most recent update
+6. If the fields do not appear → data was not written. Check `Save result` in the agent debug output.
+
+**Alternative — Domino Designer:**
+1. Open `names.nsf` in Domino Designer → **Views** → open `($Users)` view
+2. Locate the user's document → press Ctrl+Shift+F9 → **Fields** tab → look for `LoginHistory`
 
 ### Last-login banner not appearing / no LoginHistory written
 

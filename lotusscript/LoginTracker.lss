@@ -2,7 +2,7 @@
 ' LoginTracker.lss
 ' LotusScript Agent — Log Login Attempts to Person Document in NAMES.NSF
 '
-' Version  : 1.3.0
+' Version  : 1.4.0
 ' Date     : 2026-07-01
 ' Requires : HCL Domino 12.0.1+
 '
@@ -188,7 +188,7 @@ Sub Initialize()
 
     '-- 2. DEBUG: HTTP request diagnostics + dump ALL CGI items -------------
     If DEBUG_MODE Then
-        dbg = dbg & "=== LogLoginAttempt DEBUG (v1.3.0) ===" & Chr(10)
+        dbg = dbg & "=== LogLoginAttempt DEBUG (v1.4.0) ===" & Chr(10)
         dbg = dbg & "Server time    : " & Now() & Chr(10)
         dbg = dbg & "REQUEST_METHOD : [" & reqMethod  & "]" & Chr(10)
         dbg = dbg & "CONTENT_TYPE   : [" & contType   & "]" & Chr(10)
@@ -335,30 +335,75 @@ Sub Initialize()
         End If
     End If
 
-    ' Strategy C: Scan all Person documents comparing ShortName and
-    '   InternetAddress (case-insensitive).  Slower but works when view
-    '   sort keys don't match the typed username format.
+    ' Strategy C: Scan all Person documents.
+    '   Checks ALL ShortName, InternetAddress, and FullName values (multi-value).
+    '   For FullName, also compares abbreviated and common (CN-only) forms via
+    '   NotesName — so "John Doe" matches "CN=John Doe/O=Company" correctly.
+    '   This handles every Domino login format: short name, "First Last",
+    '   "First Last/Org", canonical, and internet address.
     If personDoc Is Nothing Then
-        lookupLog = lookupLog & Chr(10) & "  Scanning Person docs by ShortName / InternetAddress..."
+        lookupLog = lookupLog & Chr(10) & "  Strategy C scan — looking for: [" & username & "]"
         Dim scanCollection As NotesDocumentCollection
         Set scanCollection = namesDb.Search({Form = "Person"}, Nothing, 0)
-        lookupLog = lookupLog & " count=" & scanCollection.Count
-        Dim scanDoc As NotesDocument
-        Set scanDoc = scanCollection.GetFirstDocument()
+        lookupLog = lookupLog & " (" & scanCollection.Count & " Person docs)"
         Dim lowerUser As String
         lowerUser = LCase(Trim(username))
-        Do While Not (scanDoc Is Nothing)
-            Dim sn As String : sn = LCase(Trim(CStr(scanDoc.GetItemValue("ShortName")(0))))
-            Dim ia As String : ia = LCase(Trim(CStr(scanDoc.GetItemValue("InternetAddress")(0))))
-            Dim fn As String : fn = LCase(Trim(CStr(scanDoc.GetItemValue("FullName")(0))))
-            If sn = lowerUser Or ia = lowerUser Or fn = lowerUser Then
-                Set personDoc = scanDoc
-                lookupLog = lookupLog & " MATCHED(ShortName=[" & sn & "] inet=[" & ia & "])"
-                Exit Do
+        Dim cFound As Boolean
+        cFound = False
+        Dim scanDoc  As NotesDocument
+        Dim cVals    As Variant
+        Dim ck       As Integer
+        Dim cFnRaw   As String
+        Dim cnn      As NotesName
+        Set scanDoc = scanCollection.GetFirstDocument()
+        Do While Not (scanDoc Is Nothing) And Not cFound
+            ' Check all ShortName values
+            cVals = scanDoc.GetItemValue("ShortName")
+            For ck = 0 To UBound(cVals)
+                If LCase(Trim(CStr(cVals(ck)))) = lowerUser Then
+                    Set personDoc = scanDoc : cFound = True
+                    lookupLog = lookupLog & Chr(10) & "  MATCHED ShortName=[" & cVals(ck) & "]"
+                End If
+            Next ck
+            ' Check all InternetAddress values
+            If Not cFound Then
+                cVals = scanDoc.GetItemValue("InternetAddress")
+                For ck = 0 To UBound(cVals)
+                    If LCase(Trim(CStr(cVals(ck)))) = lowerUser Then
+                        Set personDoc = scanDoc : cFound = True
+                        lookupLog = lookupLog & Chr(10) & "  MATCHED InternetAddress=[" & cVals(ck) & "]"
+                    End If
+                Next ck
             End If
-            Set scanDoc = scanCollection.GetNextDocument(scanDoc)
+            ' Check all FullName values — raw string, then abbreviated and
+            ' common (CN-only) forms via NotesName.
+            If Not cFound Then
+                cVals = scanDoc.GetItemValue("FullName")
+                For ck = 0 To UBound(cVals)
+                    cFnRaw = Trim(CStr(cVals(ck)))
+                    If LCase(cFnRaw) = lowerUser Then
+                        Set personDoc = scanDoc : cFound = True
+                        lookupLog = lookupLog & Chr(10) & "  MATCHED FullName.raw=[" & cFnRaw & "]"
+                    End If
+                    If Not cFound And cFnRaw <> "" Then
+                        On Error Resume Next
+                        Set cnn = New NotesName(cFnRaw)
+                        If Err = 0 Then
+                            If LCase(cnn.Abbreviated) = lowerUser Then
+                                Set personDoc = scanDoc : cFound = True
+                                lookupLog = lookupLog & Chr(10) & "  MATCHED FullName.abbreviated=[" & cnn.Abbreviated & "]"
+                            ElseIf LCase(cnn.Common) = lowerUser Then
+                                Set personDoc = scanDoc : cFound = True
+                                lookupLog = lookupLog & Chr(10) & "  MATCHED FullName.common=[" & cnn.Common & "]"
+                            End If
+                        End If
+                        On Error GoTo ErrorHandler
+                    End If
+                Next ck
+            End If
+            If Not cFound Then Set scanDoc = scanCollection.GetNextDocument(scanDoc)
         Loop
-        If personDoc Is Nothing Then lookupLog = lookupLog & " NO MATCH"
+        If Not cFound Then lookupLog = lookupLog & Chr(10) & "  NO MATCH — no Person doc found for [" & username & "]"
     End If
 
     If DEBUG_MODE Then
@@ -368,8 +413,14 @@ Sub Initialize()
     If personDoc Is Nothing Then
         If DEBUG_MODE Then
             dbg = dbg & "EXIT: Person document not found for username=[" & username & "]." & Chr(10)
-            dbg = dbg & "      Check that the user exists in names.nsf and that the" & Chr(10)
-            dbg = dbg & "      typed username matches ShortName or InternetAddress." & Chr(10)
+            dbg = dbg & "      Tried: ShortName, InternetAddress, FullName.raw," & Chr(10)
+            dbg = dbg & "             FullName.abbreviated (e.g. John Doe/DemoCollab)," & Chr(10)
+            dbg = dbg & "             FullName.common/CN (e.g. John Doe)." & Chr(10)
+            dbg = dbg & "      Check: the typed username must exactly match one of" & Chr(10)
+            dbg = dbg & "             these values in the Person doc in names.nsf." & Chr(10)
+            dbg = dbg & "      Open names.nsf in Domino Admin > People, find the" & Chr(10)
+            dbg = dbg & "      user, check Document Properties > Fields to see exact" & Chr(10)
+            dbg = dbg & "      values of FullName, ShortName, InternetAddress." & Chr(10)
             Call RespondDebug(dbg)
         Else
             Call RespondOk()   ' Do not leak user existence in production
