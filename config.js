@@ -7,7 +7,7 @@
  * 
  * All features can be toggled ON/OFF using simple boolean switches.
  * 
- * @version 2.5.0
+ * @version 2.5.1
  * @date April 2026
  */
 

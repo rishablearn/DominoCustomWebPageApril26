@@ -1404,7 +1404,9 @@ See `docs/03-Verse-Extension.md` for full setup steps.
 
 ### Deploying the LotusScript Agent (`LogLoginAttempt`)
 
-The full agent source is at `lotusscript/LoginTracker.lss`.
+The full agent source is at `lotusscript/LoginTracker.lss` **(current version: v1.2.0)**.
+
+> **v1.2.0 important fix:** Domino does NOT automatically parse `application/x-www-form-urlencoded` POST bodies into `DocumentContext` fields for `?OpenAgent` agents. v1.2.0 reads the raw `REQUEST_CONTENT` CGI variable and parses it manually. If you are running v1.1.0 or earlier, login data will never be recorded — replace the agent code with the current `LoginTracker.lss`.
 
 #### Step 1 — Create Agent in DOMCFG.NSF
 
@@ -1453,8 +1455,44 @@ The full agent source is at `lotusscript/LoginTracker.lss`.
 
 #### Step 5 — Verify
 
-Browse to: `https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent`
-Expected response: plain text `OK` (HTTP 200).
+> **Important:** Browsing to the agent URL in a browser sends a **GET** request with no body. `REQUEST_CONTENT` will be empty and all fields will show `[]` — this is **normal** and does not indicate a problem. Use `curl -X POST` below as the real test.
+
+**Step 5a — GET smoke test** (confirms the agent is reachable and `DEBUG_MODE = True` is working):  
+Browse to `https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent` — you should see a plain-text debug trace beginning with:
+```
+=== LogLoginAttempt DEBUG (v1.2.0) ===
+Server time    : ...
+REQUEST_METHOD : [GET]
+REQUEST_CONTENT: []
+...
+EXIT: username field is empty — nothing to record.
+```
+If you see this, the agent is reachable and running. Proceed to Step 5b.
+
+**Step 5b — POST test** (the only valid end-to-end test — tests body parsing and Person doc lookup):  
+Run this `curl` command, replacing `yourserver` and `john.doe` with your real server hostname and a valid Domino username:
+```bash
+curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "username=john.doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+```
+Expected output with `DEBUG_MODE = True`:
+```
+=== LogLoginAttempt DEBUG (v1.2.0) ===
+REQUEST_METHOD : [POST]
+CONTENT_TYPE   : [application/x-www-form-urlencoded]
+REQUEST_CONTENT: [username=john.doe&ts=2026-07-01T...]
+Source: REQUEST_CONTENT (parsed)
+---
+username    : [john.doe]
+...
+Lookup results: ...
+Save result : SUCCESS
+OK
+```
+If `Save result : FAILED` — check the agent signer's ACL on `names.nsf` (Step 3).  
+If `username: []` after a POST — the agent code is outdated; replace with `LoginTracker.lss` v1.2.0.  
+Once verified, set `Const DEBUG_MODE = False` in the agent and re-sign before going to production.
 
 ---
 
@@ -1482,7 +1520,14 @@ loginTracking: {
 
 > `features.enableLoginTracking: true` is an equivalent shorthand — either flag alone activates tracking.
 
-3. Save the file and **re-upload it to DOMCFG.NSF as a File Resource** (overwrite the existing one), then restart HTTP.
+3. Save the file, then **re-paste the updated HTML into the `$$LoginUserForm` form in Domino Designer**:
+   - Open `DOMCFG.NSF` in Domino Designer → open form `$$LoginUserForm`
+   - Select all (Ctrl+A) → Delete
+   - Paste the full updated HTML (Ctrl+V)
+   - Select all (Ctrl+A) → **Text → Pass-Thru HTML** (text turns green)
+   - Save → run `tell http restart` on the Domino console
+
+   > **Do NOT upload `DominoEmbeddedForm.html` as a File Resource.** Self-contained forms are deployed by pasting directly into the Designer form, not as File Resources.
 
 ---
 
@@ -1515,11 +1560,13 @@ On the next page load the tracking banner will appear:
 - [ ] DOMCFG.NSF ACL: Anonymous = Reader
 - [ ] `names.nsf` ACL: signing ID = Author or Editor
 - [ ] Server Programmability Restrictions: signing ID listed
-- [ ] Agent URL returns `OK`: `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent`
+- [ ] Agent GET test shows debug trace (v1.2.0): `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent`
+- [ ] Agent POST test via `curl -X POST` shows `Save result : SUCCESS` (see Step 5b above)
+- [ ] `DEBUG_MODE = False` set in agent before production use
 
 **Login page — Option A (`DominoEmbeddedForm.html` or `EnterpriseLoginForm.html`):**
 - [ ] `loginTracking.enable: true` set in the **inline `CONFIG`** inside the HTML file
-- [ ] Updated HTML file re-uploaded to DOMCFG.NSF as File Resource (overwrite)
+- [ ] Updated HTML re-pasted into `$$LoginUserForm` form in Designer → Pass-Thru HTML → Save → `tell http restart`
 - [ ] *No `config.js` or `login.js` upload needed — not used by self-contained forms*
 
 **Login page — Option B (`CustomLoginForm-Domino.html`) only:**

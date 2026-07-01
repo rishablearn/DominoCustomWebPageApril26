@@ -2,7 +2,7 @@
 
 > **Extend Your HCL Domino Login Experience** — A modern, secure, fully accessible login page with TOTP MFA, login attempt tracking, CAPTCHA, 18 languages, dark mode, and a native HCL Verse extension that surfaces login activity directly inside the email client.
 
-![Version](https://img.shields.io/badge/version-2.5.0-blue)
+![Version](https://img.shields.io/badge/version-2.5.1-blue)
 ![Domino](https://img.shields.io/badge/HCL%20Domino-12.x%20%7C%2014.x-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-18-orange)
@@ -1361,6 +1361,17 @@ Banner data is **per browser, per device** — test on the same browser you subm
 
 <a id="changelog"></a>
 ## 📋 Changelog
+
+### Version 2.5.1 (July 2026)
+
+**Login Tracking — Agent POST Body Parsing Fix (`LoginTracker.lss` v1.2.0):**
+- ✅ **Root cause fixed:** Domino does NOT automatically parse `application/x-www-form-urlencoded` POST bodies into `DocumentContext` fields for `?OpenAgent` agents. The old agent called `doc.GetItemValue("username")` on raw doc items — these are always empty for a `sendBeacon` POST, causing the `"username field is empty — nothing to record"` early exit
+- ✅ **`UrlDecode()` function added:** handles `%XX` hex sequences and `+` → space, allowing correct decoding of URL-encoded field values
+- ✅ **`GetPostParam()` function added:** splits raw `REQUEST_CONTENT` body on `&`, finds key by case-insensitive match, returns URL-decoded value
+- ✅ **`Initialize()` updated:** reads `REQUEST_CONTENT` first via `GetPostParam()` (primary path); falls back to `GetField()` doc items only if body is empty (handles GET requests)
+- ✅ **Enhanced DEBUG output:** `REQUEST_METHOD`, `CONTENT_TYPE`, `CONTENT_LENGTH`, `REQUEST_CONTENT` (first 500 chars) now shown before parsed fields — makes it immediately clear whether the POST body reached the agent
+- ✅ **Deployment guide updated:** Step 5 Verify now includes `curl -X POST` test command — the only valid way to test the agent since a GET from a browser has no body
+- ✅ **Version system:** `VERSION` file + `scripts/bump-version.sh` — one command updates all files (HTML, JS, docs, README badge)
 
 ### Version 2.5.0 (June 2026)
 
