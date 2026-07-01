@@ -1413,6 +1413,6 @@ Banner data is **per browser, per device** — test on the same browser you subm
 
 **Repository:** [github.com/rishablearn/DominoCustomWebPageApril26](https://github.com/rishablearn/DominoCustomWebPageApril26)  
 **Compatible with:** HCL Domino 12.x, 14.x  
-**Version:** 2.5.0 (HTML files: 2.4.2)  
-**Last Updated:** June 29, 2026
+**Version:** 2.5.0  
+**Last Updated:** 2026-07-01
 

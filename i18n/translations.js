@@ -5,7 +5,7 @@
  * Multi-language support for the login page.
  * Add new languages by creating a new language object.
  * 
- * @version 2.0.0
+ * @version 2.5.0
  * @date April 2026
  */
 
