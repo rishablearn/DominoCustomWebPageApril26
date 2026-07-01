@@ -1455,43 +1455,77 @@ The full agent source is at `lotusscript/LoginTracker.lss` **(current version: v
 
 #### Step 5 — Verify
 
-> **Important:** Browsing to the agent URL in a browser sends a **GET** request with no body. `REQUEST_CONTENT` will be empty and all fields will show `[]` — this is **normal** and does not indicate a problem. Use `curl -X POST` below as the real test.
+> **Important:** Browsing to the agent URL in a browser sends a **GET** request with no body. `REQUEST_CONTENT` will be empty and all fields will show `[]` — this is **normal** and does not indicate a problem.
+>
+> **Windows users:** PowerShell's `curl` is an alias for `Invoke-WebRequest` and does NOT support `-v`, `-k`, `-H`, or `-d`. Use **`curl.exe`** (built into Windows 10/11) or the PowerShell splatting syntax shown below.
 
-**Step 5a — GET smoke test** (confirms the agent is reachable and `DEBUG_MODE = True` is working):  
-Browse to `https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent` — you should see a plain-text debug trace beginning with:
-```
-=== LogLoginAttempt DEBUG (v1.2.0) ===
-Server time    : ...
-REQUEST_METHOD : [GET]
-REQUEST_CONTENT: []
-...
-EXIT: username field is empty — nothing to record.
-```
-If you see this, the agent is reachable and running. Proceed to Step 5b.
+**Step 5a — GET smoke test** (confirms the agent is reachable and running):  
 
-**Step 5b — POST test** (the only valid end-to-end test — tests body parsing and Person doc lookup):  
-Run this `curl` command, replacing `yourserver` and `john.doe` with your real server hostname and a valid Domino username:
+*If you get login form HTML instead of the debug trace, the `domcfg.nsf` ACL has `Anonymous = No Access`. Fix: Domino Admin → Files → `domcfg.nsf` → right-click → Access Control → set Anonymous = **Reader** → `tell http restart`.*
+
+Browse to `https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent` — you should see a plain-text debug trace. Or use:
+
+**Windows (curl.exe):**
+```
+curl.exe -v -k "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+```
+**Linux / macOS:**
 ```bash
-curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+curl -v -k "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+```
+Expected: response body starts with `=== LogLoginAttempt DEBUG (v1.4.0) ===`. If you see this, the agent is reachable. Proceed to Step 5b.
+
+**Step 5b — POST test** (end-to-end test — verifies body parsing, Person doc lookup, and save):  
+Replace `yourserver` and `John+Doe` with your real hostname and a real Domino username (`First+Last`, email, or short name):
+
+**Windows (curl.exe in PowerShell or cmd):**
+```
+curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T10%%3A00%%3A00Z&browser=Chrome&platform=Win32&tz=Asia%%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+```
+
+**Windows (PowerShell splatting — alternative to curl.exe):**
+```powershell
+$params = @{
+    UseBasicParsing = $true
+    Uri             = "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+    Method          = "POST"
+    ContentType     = "application/x-www-form-urlencoded"
+    Body            = "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+}
+(Invoke-WebRequest @params).Content
+```
+
+**Linux / macOS:**
+```bash
+curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
      -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "username=john.doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+     -d "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
 ```
 Expected output with `DEBUG_MODE = True`:
 ```
-=== LogLoginAttempt DEBUG (v1.2.0) ===
+=== LogLoginAttempt DEBUG (v1.4.0) ===
 REQUEST_METHOD : [POST]
 CONTENT_TYPE   : [application/x-www-form-urlencoded]
-REQUEST_CONTENT: [username=john.doe&ts=2026-07-01T...]
+REQUEST_CONTENT: [username=John+Doe&ts=2026-07-01T...]
 Source: REQUEST_CONTENT (parsed)
----
-username    : [john.doe]
+username    : [John Doe]
 ...
-Lookup results: ...
+Lookup results:
+  Strategy C scan — looking for: [John Doe]
+  MATCHED FullName.common=[John Doe]
+---
+=== PRE-WRITE CHECKPOINT ==
+Target doc  : FullName=[CN=John Doe/O=DemoCollab]
+  [0] 2026-07-01T...|10.x.x.x|ATTEMPT|Chrome|Win32|Asia/Kolkata|1920x1080|0
+===========================
 Save result : SUCCESS
 OK
 ```
-If `Save result : FAILED` — check the agent signer's ACL on `names.nsf` (Step 3).  
-If `username: []` after a POST — the agent code is outdated; replace with `LoginTracker.lss` v1.2.0.  
+
+**If you get login form HTML instead of the above** — `domcfg.nsf` ACL has Anonymous = No Access. Fix: Domino Admin → Files → `domcfg.nsf` → Access Control → Anonymous = **Reader** → `tell http restart`.  
+**If `Save result : FAILED`** — check the agent signer's ACL on `names.nsf` (Step 3).  
+**If `NO MATCH`** — the username typed doesn't match any field in names.nsf; check FullName/ShortName/InternetAddress values on the Person document (Ctrl+Shift+F9 → Fields tab in Domino Admin).  
+**If `username: []`** — the agent code is outdated; replace with `LoginTracker.lss` v1.4.0.  
 Once verified, set `Const DEBUG_MODE = False` in the agent and re-sign before going to production.
 
 ---

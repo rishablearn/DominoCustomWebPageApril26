@@ -882,14 +882,14 @@ Expected: `OK` (plain text, HTTP 200). If you see the DEBUG output with all empt
 
 > **Important:** In Domino, users log in with **First Name Last Name** (e.g. `John Doe`), internet email address (e.g. `john.doe@company.com`), or short name. Use the same format in your test.
 
-**Linux / macOS (bash):**
-```bash
-curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+> **Windows note:** `curl` in PowerShell is an alias for `Invoke-WebRequest`. Use **`curl.exe`** (built into Windows 10/11) for real curl syntax.
+
+**Windows (curl.exe — works in PowerShell or cmd):**
+```
+curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T07%%3A00%%3A00Z&browser=Chrome&platform=Win32&tz=Asia%%2FKolkata&scr=1920x1080&mfa=0&lang=en"
 ```
 
-**Windows (PowerShell — splatting):**
+**Windows (PowerShell splatting — alternative to curl.exe):**
 ```powershell
 $params = @{
     UseBasicParsing = $true
@@ -901,7 +901,14 @@ $params = @{
 (Invoke-WebRequest @params).Content
 ```
 
-Expected DEBUG output shows `username: [John Doe]`, `Source: REQUEST_CONTENT (parsed)`, and ultimately `Save result : SUCCESS`. If this works, the agent is correctly reading POST data and the login form's JavaScript is the only remaining piece.
+**Linux / macOS (bash):**
+```bash
+curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+```
+
+Expected: response contains `=== LogLoginAttempt DEBUG`, `username: [John Doe]`, and `Save result : SUCCESS`. If you get login form HTML instead → the Anonymous ACL on domcfg.nsf is still blocking (Fix 1 above).
 
 ---
 
@@ -1353,12 +1360,21 @@ Or check the server document's Security tab directly.
 
 #### How to confirm the fix worked
 
-**Step 1 — Diagnostic curl with verbose output:**
+> **Windows note:** PowerShell's `curl` is an alias for `Invoke-WebRequest` and does NOT support `-v`, `-k`, `-H`, or `-d`. Use **`curl.exe`** (the real curl binary, built into Windows 10/11) instead.
+
+**Step 1 — Diagnostic GET test (shows HTTP status + whether agent runs at all):**
+
+**Windows (PowerShell or cmd):**
+```
+curl.exe -v -k "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+```
+**Linux / macOS:**
 ```bash
 curl -v -k "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
 ```
-- `HTTP/1.1 200` with `=== LogLoginAttempt DEBUG` text → agent is running ✅
-- `HTTP/1.1 302` or HTML login form → ACL still blocking ❌
+- Response contains `=== LogLoginAttempt DEBUG` → agent is running ✅
+- Response is login form HTML → Anonymous ACL not set (Fix 1) ❌
+- `* Connected` but response is empty → agent trigger type wrong (must be On Schedule — Never) ❌
 
 **Step 2 — Authenticated browser test (to isolate ACL vs agent issue):**
 Log in to Domino as admin first, then open in a browser:
@@ -1402,13 +1418,11 @@ This message means the agent runs but receives no POST data. **Root cause:** Dom
 
    > Use a **real Domino username** — exactly as stored in names.nsf. Domino accepts: `First Last` (e.g. `John Doe`), internet email (`john.doe@company.com`), or short name (`jdoe`). The agent now checks all three formats across all FullName values using `NotesName`.
 
-   **Linux/macOS (bash):**
-   ```bash
-   curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+   **Windows (curl.exe — works in PowerShell or cmd, NOT `curl`):**
    ```
-   **Windows (PowerShell — splatting):**
+   curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T10%%3A00%%3A00Z&browser=Chrome&platform=Win32&tz=Asia%%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+   ```
+   **Windows (PowerShell splatting — alternative):**
    ```powershell
    $params = @{
        UseBasicParsing = $true
@@ -1418,6 +1432,12 @@ This message means the agent runs but receives no POST data. **Root cause:** Dom
        Body            = "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
    }
    (Invoke-WebRequest @params).Content
+   ```
+   **Linux / macOS (bash):**
+   ```bash
+   curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
    ```
    Expected output with `DEBUG_MODE = True`:
    ```
@@ -1484,7 +1504,7 @@ Login tracking writes to **two places**:
 2. **`LoginHistory` field on the Person document in `names.nsf`** — written by the `LogLoginAttempt` LotusScript agent on the server. Persists across devices.
 
 #### ⚠️ Important: how NOT to test
-Browsing directly to `https://server/domcfg.nsf/LogLoginAttempt?OpenAgent` in a browser sends a **GET** request with no body. With `DEBUG_MODE = True` you will see the full trace but `REQUEST_CONTENT` and all parsed fields will be empty — this is **normal for a GET** and does not indicate a problem. Use `curl -X POST` (see Troubleshooting above) to test POST body parsing.
+Browsing directly to the agent URL sends a **GET** with no body — `REQUEST_CONTENT` will be empty and is normal. Use `curl.exe -X POST` (Windows) or `curl -X POST` (Linux/macOS) to test POST body parsing. **Do not use `curl` in PowerShell** — it is an alias for `Invoke-WebRequest` which uses completely different flags.
 
 #### Correct verification method
 1. Open **browser DevTools → Network tab** (F12) before submitting the login form.
