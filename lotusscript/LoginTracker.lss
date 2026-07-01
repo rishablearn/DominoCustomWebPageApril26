@@ -92,10 +92,17 @@
 '           - Reader access on DOMCFG.NSF           (to run as web user)
 '   [ ] Confirm the signer appears in the agent properties
 '
-' Step 4 — Set Database ACL
+' Step 4 — Set Database ACL  *** MOST COMMON REASON AGENT NEVER RUNS ***
 '   [ ] DOMCFG.NSF ACL:
-'         Anonymous    : Reader      (minimum — required for web POST)
+'         Anonymous    : Reader      (REQUIRED — sendBeacon is always anonymous;
+'                                    if Anonymous = No Access, Domino redirects
+'                                    every call to $$LoginUserForm and the agent
+'                                    never executes — this explains curl returning
+'                                    the login form HTML instead of debug output)
 '         LocalDomainServers : Manager
+'   Verify from Domino console: show database domcfg.nsf acl
+'   Fix in Domino Admin: Files > domcfg.nsf > right-click > Access Control
+'                        Select Anonymous > set Level = Reader > OK
 '   [ ] NAMES.NSF ACL:
 '         The signing ID must have Author or Editor access
 '         (standard Domino Directory ACL usually grants this to server IDs)
@@ -108,19 +115,26 @@
 '         (this agent uses only basic Notes classes; restricted is sufficient)
 '
 ' Step 6 — Verify the Agent
-'   [ ] Source: lotusscript/LoginTracker.lss
-'   [ ] Browse to: https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
-'         Expected response body: the full DEBUG trace.
-'         The REQUEST_CONTENT line will be empty (GET request has no body) —
-'         this is NORMAL and does NOT indicate a problem.
-'   [ ] Test POST via curl to confirm body parsing:
-'         curl -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
+'   [ ] FIRST — diagnostic GET test (check agent is reachable at all):
+'         curl -v -k "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+'         200 + debug text -> agent is running correctly
+'         302 / HTML login form -> Anonymous ACL is wrong (fix Step 4)
+'         500 -> agent trigger type is wrong (must be On Schedule - Never)
+'   [ ] SECOND — authenticated browser test (compare to anonymous curl):
+'         Log in as admin, open in browser:
+'         https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
+'         If debug appears in browser but NOT in curl -> purely an ACL issue
+'   [ ] THIRD — POST test (bash):
+'         curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
 '              -H "Content-Type: application/x-www-form-urlencoded" \
-'              -d "username=john.doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
-'         Expected: DEBUG output showing username=[john.doe] and lookup results
-'   [ ] Submit the login page once with a real username
-'   [ ] Check Person document in Domino Administrator — LoginHistory should
-'       have one new entry
+'              -d "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+'         Use "First+Last" format — this is how Domino names work
+'         Expected: username=[John Doe], MATCHED FullName.common, Save result: SUCCESS
+'   [ ] THIRD (Windows PowerShell splatting):
+'         $p = @{ UseBasicParsing=$true; Uri="https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"; Method="POST"; ContentType="application/x-www-form-urlencoded"; Body="username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en" }
+'         (Invoke-WebRequest @p).Content
+'   [ ] Check Person document: Domino Admin > People & Groups > open Person doc
+'         > Ctrl+Shift+F9 > Fields tab > look for LoginHistory and LoginHistoryUpdated
 '
 ' HOW POST BODY PARSING WORKS
 ' ----------------------------

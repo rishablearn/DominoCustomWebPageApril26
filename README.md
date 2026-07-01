@@ -1282,6 +1282,104 @@ nl: { name: "Nederlands", dir: "ltr", strings: {
 - Check that the user is enrolled — not all users need MFA unless the policy applies.
 - Verify system clocks: TOTP is time-sensitive; server and authenticator device clocks must be in sync (±30s).
 
+### ❌ curl / sendBeacon returns the login form HTML — agent never runs
+
+**Symptom:** curl output shows the contents of `DominoEmbeddedForm.html` (or any other HTML page) instead of the agent debug text. No data is written. `LoginHistory` and `LoginHistoryUpdated` fields are absent from the Person document.
+
+**What is actually happening:**
+
+```
+curl POST → /domcfg.nsf/LogLoginAttempt?OpenAgent
+               ↓
+          Domino checks ACL: Anonymous user
+               ↓  Anonymous = No Access (or < Reader)
+          Domino redirects to $$LoginUserForm  ← login form HTML returned
+               ↓
+          Agent NEVER executes. No debug. No data.
+```
+
+The `sendBeacon` fires from the login form **before the user authenticates** — it is always anonymous. All three Domino admin items below must be correct.
+
+---
+
+#### Fix 1 — Set `domcfg.nsf` ACL: Anonymous = Reader
+
+This is the **most common cause**. If Anonymous has No Access, every unauthenticated request (including the beacon) gets the login form instead of the agent.
+
+**Domino Administrator steps:**
+1. Open **Domino Administrator** → connect to your server
+2. **Files** tab → find `domcfg.nsf` → right-click → **Access Control**
+3. In the ACL list, select `Anonymous` → change Level to **Reader**
+4. Click **OK**
+
+**Verify from Domino console:**
+```
+show database domcfg.nsf acl
+```
+Look for: `Anonymous : Reader` (or higher)
+
+Then: `tell http restart`
+
+---
+
+#### Fix 2 — Add signer to "Run restricted LotusScript agents" on the server
+
+Even with correct ACL, the agent will not run if the signer is not allowed to execute LotusScript web agents.
+
+**Domino Administrator steps:**
+1. **Configuration** tab → **Servers** → open your server document
+2. **Security** tab → scroll to **"Programmability Restrictions"**
+3. Field: **"Run restricted LotusScript/Java agents"** → add the agent signer's Notes ID name (e.g. `Admin/DemoCollab`)
+4. Save the server document
+5. Domino console: `tell http restart`
+
+**Verify from console:**
+```
+show server
+```
+Or check the server document's Security tab directly.
+
+---
+
+#### Fix 3 — Verify agent is signed and "Run as web user" is unchecked
+
+1. Open `domcfg.nsf` in **Domino Designer** → **Shared Code → Agents → LogLoginAttempt**
+2. Open agent properties (**Agent → Agent Properties**)
+3. Confirm **"Run as web user" is NOT checked** — if checked, the anonymous web user runs the agent and cannot write to `names.nsf`
+4. **File → Sign** the agent with the same admin ID you added in Fix 2 above
+5. Save the agent
+
+---
+
+#### How to confirm the fix worked
+
+**Step 1 — Diagnostic curl with verbose output:**
+```bash
+curl -v -k "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+```
+- `HTTP/1.1 200` with `=== LogLoginAttempt DEBUG` text → agent is running ✅
+- `HTTP/1.1 302` or HTML login form → ACL still blocking ❌
+
+**Step 2 — Authenticated browser test (to isolate ACL vs agent issue):**
+Log in to Domino as admin first, then open in a browser:
+```
+https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent
+```
+- If you see the debug trace when logged in but NOT when anonymous → it is exactly Fix 1 (Anonymous ACL)
+- If you see the login form even when logged in → agent name is wrong or agent not saved correctly
+
+**Step 3 — Domino server console agent log:**
+```
+tell http restart
+```
+Then call the agent and check:
+```
+show log
+```
+Any `RunAgent` errors confirm the signer is not in the restricted agents list (Fix 2).
+
+---
+
 ### Login tracking agent — "username field is empty — nothing to record"
 
 This message means the agent runs but receives no POST data. **Root cause:** Domino does not automatically parse `application/x-www-form-urlencoded` POST bodies into `DocumentContext` fields for `?OpenAgent` calls. The raw body must be read from `REQUEST_CONTENT` and parsed manually. **`LoginTracker.lss` v1.2.0 fixes this** — it reads `REQUEST_CONTENT` first and parses it; doc fields are only used as a fallback.
