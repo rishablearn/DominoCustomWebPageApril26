@@ -889,14 +889,16 @@ curl -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
      -d "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
 ```
 
-**Windows (PowerShell):**
+**Windows (PowerShell — splatting):**
 ```powershell
-Invoke-WebRequest -UseBasicParsing \
-  -Uri "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
-  -Method POST \
-  -ContentType "application/x-www-form-urlencoded" \
-  -Body "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en" |
-  Select-Object -ExpandProperty Content
+$params = @{
+    UseBasicParsing = $true
+    Uri             = "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+    Method          = "POST"
+    ContentType     = "application/x-www-form-urlencoded"
+    Body            = "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+}
+(Invoke-WebRequest @params).Content
 ```
 
 Expected DEBUG output shows `username: [John Doe]`, `Source: REQUEST_CONTENT (parsed)`, and ultimately `Save result : SUCCESS`. If this works, the agent is correctly reading POST data and the login form's JavaScript is the only remaining piece.
@@ -1308,14 +1310,16 @@ This message means the agent runs but receives no POST data. **Root cause:** Dom
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
    ```
-   **Windows (PowerShell):**
+   **Windows (PowerShell — splatting):**
    ```powershell
-   Invoke-WebRequest -UseBasicParsing \
-     -Uri "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" \
-     -Method POST \
-     -ContentType "application/x-www-form-urlencoded" \
-     -Body "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en" |
-     Select-Object -ExpandProperty Content
+   $params = @{
+       UseBasicParsing = $true
+       Uri             = "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
+       Method          = "POST"
+       ContentType     = "application/x-www-form-urlencoded"
+       Body            = "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+   }
+   (Invoke-WebRequest @params).Content
    ```
    Expected output with `DEBUG_MODE = True`:
    ```
