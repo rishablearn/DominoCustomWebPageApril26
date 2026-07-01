@@ -1480,7 +1480,7 @@ Replace `yourserver` and `John+Doe` with your real hostname and a real Domino us
 
 **Windows (curl.exe in PowerShell or cmd):**
 ```
-curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T10%%3A00%%3A00Z&browser=Chrome&platform=Win32&tz=Asia%%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T10:00:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
 ```
 
 **Windows (PowerShell splatting — alternative to curl.exe):**
@@ -1490,7 +1490,7 @@ $params = @{
     Uri             = "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
     Method          = "POST"
     ContentType     = "application/x-www-form-urlencoded"
-    Body            = "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+    Body            = "username=John+Doe&ts=2026-07-01T10:00:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
 }
 (Invoke-WebRequest @params).Content
 ```

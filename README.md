@@ -886,7 +886,7 @@ Expected: `OK` (plain text, HTTP 200). If you see the DEBUG output with all empt
 
 **Windows (curl.exe — works in PowerShell or cmd):**
 ```
-curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T07%%3A00%%3A00Z&browser=Chrome&platform=Win32&tz=Asia%%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T10:00:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
 ```
 
 **Windows (PowerShell splatting — alternative to curl.exe):**
@@ -896,7 +896,7 @@ $params = @{
     Uri             = "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
     Method          = "POST"
     ContentType     = "application/x-www-form-urlencoded"
-    Body            = "username=John+Doe&ts=2026-07-01T07%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+    Body            = "username=John+Doe&ts=2026-07-01T10:00:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
 }
 (Invoke-WebRequest @params).Content
 ```
@@ -1420,7 +1420,7 @@ This message means the agent runs but receives no POST data. **Root cause:** Dom
 
    **Windows (curl.exe — works in PowerShell or cmd, NOT `curl`):**
    ```
-   curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T10%%3A00%%3A00Z&browser=Chrome&platform=Win32&tz=Asia%%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+   curl.exe -k -X POST "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent" -H "Content-Type: application/x-www-form-urlencoded" -d "username=John+Doe&ts=2026-07-01T10:00:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
    ```
    **Windows (PowerShell splatting — alternative):**
    ```powershell
@@ -1429,7 +1429,7 @@ This message means the agent runs but receives no POST data. **Root cause:** Dom
        Uri             = "https://yourserver/domcfg.nsf/LogLoginAttempt?OpenAgent"
        Method          = "POST"
        ContentType     = "application/x-www-form-urlencoded"
-       Body            = "username=John+Doe&ts=2026-07-01T10%3A00%3A00Z&browser=Chrome&platform=Win32&tz=Asia%2FKolkata&scr=1920x1080&mfa=0&lang=en"
+       Body            = "username=John+Doe&ts=2026-07-01T10:00:00Z&browser=Chrome&platform=Win32&tz=Asia/Kolkata&scr=1920x1080&mfa=0&lang=en"
    }
    (Invoke-WebRequest @params).Content
    ```
