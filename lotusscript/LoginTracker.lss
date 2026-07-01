@@ -255,7 +255,7 @@ Sub Initialize()
         dbg = dbg & "---" & Chr(10)
     End If
 
-    '-- 3. Validate we have a username --------------------------------------
+    '-- 5. Validate we have a username --------------------------------------
     If username = "" Then
         If DEBUG_MODE Then
             dbg = dbg & "EXIT: username field is empty — nothing to record." & Chr(10)
@@ -266,14 +266,14 @@ Sub Initialize()
         Exit Sub
     End If
 
-    '-- 4. Build the history entry string -----------------------------------
+    '-- 6. Build the history entry string -----------------------------------
     Dim entry As String
     entry = ts & "|" & ipAddress & "|" & status & "|" & _
             browser & "|" & platform & "|" & tz & "|" & scr & "|" & mfa
 
     If DEBUG_MODE Then dbg = dbg & "Entry       : " & entry & Chr(10) & "---" & Chr(10)
 
-    '-- 5. Open NAMES.NSF --------------------------------------------------
+    '-- 7. Open NAMES.NSF --------------------------------------------------
     Dim namesDb As NotesDatabase
     Set namesDb = New NotesDatabase(NAMES_SERVER, NAMES_DB_PATH)
     If Not namesDb.IsOpen Then Call namesDb.Open(NAMES_SERVER, NAMES_DB_PATH)
@@ -285,7 +285,7 @@ Sub Initialize()
 
     If DEBUG_MODE Then dbg = dbg & "names.nsf   : opened OK (server=[" & NAMES_SERVER & "])" & Chr(10)
 
-    '-- 6. Find Person document — try multiple strategies ------------------
+    '-- 8. Find Person document — try multiple strategies ------------------
     Dim personDoc As NotesDocument
     Dim lookupLog As String
 
@@ -369,7 +369,7 @@ Sub Initialize()
         dbg = dbg & "              ShortName=[" & CStr(personDoc.GetItemValue("ShortName")(0)) & "]" & Chr(10)
     End If
 
-    '-- 7. Rotate history — prepend new entry, trim to MAX_HISTORY ----------
+    '-- 9. Rotate history — prepend new entry, trim to MAX_HISTORY ----------
     Dim existingItems As Variant
     existingItems = personDoc.GetItemValue("LoginHistory")
 
@@ -396,7 +396,7 @@ Sub Initialize()
         dbg = dbg & "              new entry=[" & entry & "]" & Chr(10)
     End If
 
-    '-- 8. Write fields back to Person document ----------------------------
+    '-- 10. Write fields back to Person document ----------------------------
     Call personDoc.ReplaceItemValue("LoginHistory", newHistory)
     Call personDoc.ReplaceItemValue("LoginHistoryUpdated", Now())
 
@@ -414,12 +414,12 @@ Sub Initialize()
         dbg = dbg & "---" & Chr(10)
     End If
 
-    '-- 9. Optional: send email notification --------------------------------
+    '-- 11. Optional: send email notification --------------------------------
     If SEND_EMAIL_ON_NEW_ATTEMPT Then
         Call SendNotificationEmail(session, namesDb, personDoc, entry, ipAddress)
     End If
 
-    '-- 10. Clean up — Domino runtime releases back-end objects on sub exit --
+    '-- 12. Clean up — Domino runtime releases back-end objects on sub exit --
     If DEBUG_MODE Then
         dbg = dbg & "OK" & Chr(10)
         Call RespondDebug(dbg)
@@ -475,8 +475,8 @@ End Function
 '===========================================================================
 Function GetPostParam(body As String, paramName As String) As String
     On Error Resume Next
-    Dim pairs()  As String
-    Dim pair()   As String
+    Dim pairs    As Variant
+    Dim pair     As Variant
     Dim i        As Integer
     Dim eqPos    As Integer
     Dim rawKey   As String
