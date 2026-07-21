@@ -1,6 +1,6 @@
 # HCL Domino Custom Login Page — Project Overview
 
-> **Version:** 2.5.0 | **Compatible:** HCL Domino 12.x / 14.x | **Last Updated:** June 2026
+> **Version:** 2.6.0 | **Compatible:** HCL Domino 12.x / 14.x | **Last Updated:** July 2026
 
 ---
 
@@ -12,7 +12,7 @@ A modern, fully accessible, enterprise-grade login page for HCL Domino Server. R
 - Custom branding (logo, colours, text) via a single config object
 - 18 built-in languages with RTL support
 - TOTP Multi-Factor Authentication (Domino 12.0.1+)
-- Math CAPTCHA with audio fallback (WCAG 2.1 AA)
+- Configurable CAPTCHA: math arithmetic **or** 5-character alphanumeric canvas image, both with TTS audio (WCAG 2.1 AA)
 - Login attempt tracking — writes to Person document in `names.nsf`
 - Last-login banner on every page load
 - HCL Verse "Login Activity" popup extension
@@ -30,9 +30,10 @@ DominoCustomWebPageApril26/
 ├── README.md                        ← Full documentation (start here)
 │
 ├── login-forms/                     ← Deployable HTML login pages
-│   ├── DominoEmbeddedForm.html      ← ⭐ RECOMMENDED: full features, self-contained, zero MIME issues
-│   ├── EnterpriseLoginForm.html     ← Enterprise variant: quick links sidebar + announcement banner
-│   └── CustomLoginForm-Domino.html  ← Modular form (requires external files below)
+│   ├── DominoEmbeddedForm.html                ← ⭐ RECOMMENDED: full features, configurable CAPTCHA type & layout
+│   ├── DominoEmbeddedForm-AlphaCaptcha.html   ← Pre-configured variant: alpha CAPTCHA + split layout
+│   ├── EnterpriseLoginForm.html               ← Enterprise variant: quick links sidebar + announcement banner
+│   └── CustomLoginForm-Domino.html            ← Modular form (requires external files below)
 │
 ├── lotusscript/                     ← LotusScript agent source files
 │   ├── LoginTracker.lss             ← LogLoginAttempt agent (login tracking)
@@ -67,11 +68,14 @@ DominoCustomWebPageApril26/
 
 | Need | File | MIME Setup | External files? |
 |------|------|-----------|----------------|
-| ⭐ Clean, self-contained login | `login-forms/DominoEmbeddedForm.html` | ❌ None | **No** — all CSS/JS inline |
+| ⭐ Clean, self-contained login | `login-forms/DominoEmbeddedForm.html` | ❌ None | **No** — configure `captcha.type` and `layout.style` in the inline config block |
+| Alpha CAPTCHA + split layout ready | `login-forms/DominoEmbeddedForm-AlphaCaptcha.html` | ❌ None | **No** — standalone pre-configured variant |
 | Enterprise features (quick links, banner) | `login-forms/EnterpriseLoginForm.html` | ❌ None | **No** — all CSS/JS inline |
 | Fully modular (separate JS/CSS) | `login-forms/CustomLoginForm-Domino.html` | ⚠️ Required | **Yes** — needs `config.js`, `js/login.js`, `css/login.css` |
 
-**Use `DominoEmbeddedForm.html` for most deployments.** All CSS and JavaScript are embedded inline — no `config.js`, no `login.js`, no MIME configuration needed. Just edit the inline `CONFIG` block near the top of the file.
+**Use `DominoEmbeddedForm.html` for most deployments.** All CSS and JavaScript are embedded inline — no `config.js`, no `login.js`, no MIME configuration needed. Just edit the inline `DominoLoginConfig` block near the top of the file.
+
+To switch to the alphanumeric CAPTCHA set `captcha.type: "alpha"`. To activate the two-column split layout set `layout.style: "split"`. Or simply deploy `DominoEmbeddedForm-AlphaCaptcha.html` which has both pre-configured.
 
 ---
 

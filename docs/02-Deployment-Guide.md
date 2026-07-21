@@ -839,6 +839,40 @@ branding: {
 },
 ```
 
+#### Example 6: Switch to Alphanumeric Canvas CAPTCHA (v2.6.0+)
+
+```javascript
+captcha: {
+    type: "alpha",       // "math" (default) | "alpha" (canvas image)
+    length: 5,           // Number of characters shown
+    charset: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", // No ambiguous chars
+    enableAudio: true,   // Spells each character aloud
+    maxAttempts: 3,
+},
+```
+
+- **`type: "math"`** — arithmetic challenge (e.g. *7 + 3 = ?*); submit button gated on correct answer in real-time.
+- **`type: "alpha"`** — 5-character canvas image with coloured characters, noise lines, and dot distortion. Submit button enabled by username + password; captcha is validated on submit only.
+- **Audio (alpha mode):** Reads *"Security code: A, B, 3, X, Y"* at a slower rate so each character is clearly heard.
+- **Refresh / New Code** button generates a fresh code without reloading the page.
+
+#### Example 7: Enable Two-Column Split Layout (v2.6.0+)
+
+```javascript
+layout: {
+    style: "split",      // "centered" (default) | "split"
+},
+```
+
+- **`style: "centered"`** — default single-card centred layout (no change to existing deployments).
+- **`style: "split"`** — left panel shows animated gradient background + company branding (name, tagline, logo from `branding` config); right panel contains the scrollable login form.
+- Responsive: stacks vertically on screens ≤ 900 px wide.
+- No additional HTML or external files needed — activated entirely via CSS on `body[data-layout="split"]`.
+
+#### Example 8: Deploy the Pre-Configured Variant
+
+If you want alpha CAPTCHA + split layout without editing config, deploy **`DominoEmbeddedForm-AlphaCaptcha.html`** directly — it ships with both options pre-configured and has the same deployment process as `DominoEmbeddedForm.html`.
+
 ---
 
 <a id="testing"></a>

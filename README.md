@@ -2,7 +2,7 @@
 
 > **Extend Your HCL Domino Login Experience** — A modern, secure, fully accessible login page with TOTP MFA, login attempt tracking, CAPTCHA, 18 languages, dark mode, and a native HCL Verse extension that surfaces login activity directly inside the email client.
 
-![Version](https://img.shields.io/badge/version-2.5.1-blue)
+![Version](https://img.shields.io/badge/version-2.6.0-blue)
 ![Domino](https://img.shields.io/badge/HCL%20Domino-12.x%20%7C%2014.x-green)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Languages](https://img.shields.io/badge/languages-18-orange)
@@ -21,7 +21,7 @@
 5. [Logo Configuration](#logo-configuration)
 6. [Architecture & Technical Details](#architecture)
 7. [FAQ](#faq)
-8. [What's New in v2.5.0](#whats-new)
+8. [What's New in v2.6.0](#whats-new)
 9. [Quick Start Guide (5 minutes)](#quick-start)
 10. [Deployment Guide — Step by Step](#deployment-guide)
 11. [TOTP Multi-Factor Authentication](#mfa)
@@ -102,7 +102,7 @@ Just paste the HTML, mark it as Pass-Thru HTML, and you're done.
 | **Responsive Design** | Perfect on desktop, tablet, and mobile |
 | **Dark/Light Mode** | Automatic or manual theme switching with smooth transitions |
 | **18 Languages** | Including Hindi, Arabic (RTL), French, German, Spanish, and more |
-| **CAPTCHA Protection** | Math-based CAPTCHA with audio support for accessibility |
+| **CAPTCHA Protection** | Configurable: Math arithmetic challenge **or** 5-character alphanumeric canvas CAPTCHA — both with TTS audio (`captcha.type: "math" \| "alpha"`) |
 | **Session Management** | Timeout warnings with stay-logged-in functionality |
 | **Keyboard Shortcuts** | Alt+U (username), Alt+P (password), Alt+T (theme), Ctrl+Enter (submit) |
 | **Offline Detection** | Visual indicator when network is unavailable |
@@ -353,9 +353,10 @@ This hides the logo and shows only the company name.
 DominoCustomWebPageApril26/
 │
 ├── login-forms/
-│   ├── EnterpriseLoginForm.html   # ⭐ Full-featured, self-contained (RECOMMENDED)
-│   ├── DominoEmbeddedForm.html    # ⭐ Simple, self-contained
-│   └── CustomLoginForm-Domino.html # Modular version (requires external files)
+│   ├── EnterpriseLoginForm.html           # ⭐ Full-featured, self-contained (RECOMMENDED)
+│   ├── DominoEmbeddedForm.html            # ⭐ Configurable: math/alpha CAPTCHA, centered/split layout
+│   ├── DominoEmbeddedForm-AlphaCaptcha.html # Alpha CAPTCHA + split layout pre-configured variant
+│   └── CustomLoginForm-Domino.html        # Modular version (requires external files)
 │
 ├── lotusscript/
 │   ├── LoginTracker.lss           # LogLoginAttempt agent source
@@ -482,7 +483,8 @@ Both `EnterpriseLoginForm.html` and `DominoEmbeddedForm.html` are fully self-con
 
 | Use Case | File | External files? |
 |----------|------|----------------|
-| ⭐ **Most deployments** | `login-forms/DominoEmbeddedForm.html` | **No** — all CSS/JS inline, no `config.js`/`login.js` needed |
+| ⭐ **Most deployments** | `login-forms/DominoEmbeddedForm.html` | **No** — all CSS/JS inline; configure math or alpha CAPTCHA, centered or split layout via config |
+| Pre-built alpha CAPTCHA + split layout | `login-forms/DominoEmbeddedForm-AlphaCaptcha.html` | **No** — standalone variant, ready to deploy |
 | Enterprise extras (quick links, banner) | `login-forms/EnterpriseLoginForm.html` | **No** — all CSS/JS inline |
 | Modular (separate JS/CSS files) | `login-forms/CustomLoginForm-Domino.html` | **Yes** — requires `config.js`, `js/login.js`, `css/login.css` |
 
@@ -1231,9 +1233,13 @@ The math CAPTCHA fully supports visually impaired users via Web Speech API:
 | `loginTracking.agentUrl` | String | `"/domcfg.nsf/LogLoginAttempt?OpenAgent"` | Tracking agent URL |
 | `loginTracking.maxHistory` | Number | `5` | Attempts kept on Person document |
 | `loginTracking.trackValidationFailures` | Boolean | `false` | Also track CAPTCHA/validation failures |
-| `captcha.difficulty` | String | `"easy"` | `"easy"`, `"medium"`, `"hard"` |
-| `captcha.enableAudio` | Boolean | `true` | TTS audio for CAPTCHA |
-| `captcha.maxAttempts` | Number | `3` | Lock after N failures |
+| `captcha.type` | String | `"math"` | `"math"` — arithmetic challenge; `"alpha"` — 5-char canvas CAPTCHA |
+| `captcha.difficulty` | String | `"easy"` | Math mode only: `"easy"`, `"medium"`, `"hard"` |
+| `captcha.length` | Number | `5` | Alpha mode only: number of characters |
+| `captcha.charset` | String | `"ABCDE..."` | Alpha mode only: pool of characters (ambiguous chars excluded by default) |
+| `captcha.enableAudio` | Boolean | `true` | TTS audio — math reads the equation; alpha spells each character |
+| `captcha.maxAttempts` | Number | `3` | Refresh CAPTCHA after N consecutive failures |
+| `layout.style` | String | `"centered"` | `"centered"` — single card (default); `"split"` — left gradient panel + right form |
 | `session.warningMinutes` | Number | `25` | Show timeout warning at this minute |
 | `session.timeoutMinutes` | Number | `30` | Full session timeout |
 
@@ -1552,6 +1558,22 @@ Banner data is **per browser, per device** — test on the same browser you subm
 <a id="changelog"></a>
 ## 📋 Changelog
 
+### Version 2.6.0 (July 2026)
+
+**New Features — Configurable CAPTCHA Types & Horizontal Split Layout:**
+- ✅ **`captcha.type: "alpha"`** — 5-character alphanumeric canvas CAPTCHA with noise/distortion lines; charset excludes ambiguous characters (I, O, 0, 1, l) for clarity
+- ✅ **`captcha.type: "math"`** — original arithmetic CAPTCHA unchanged; default for all existing deployments
+- ✅ **`captcha.length` / `captcha.charset`** — new config fields for alpha mode (length defaults to 5)
+- ✅ **TTS audio updated** — alpha mode spells each character individually (e.g. *"Security code: A, B, 3, X, Y"*); math mode unchanged
+- ✅ **`layout.style: "split"`** — two-column split layout: left gradient panel shows company branding, right panel contains the scrollable form; responsive (stacks on ≤900 px)
+- ✅ **`layout.style: "centered"`** — default; existing single-card centred layout completely unchanged
+- ✅ **`DominoEmbeddedForm-AlphaCaptcha.html`** — standalone pre-configured variant with alpha CAPTCHA + split layout (no config change needed, just deploy)
+- ✅ **Real-time validation behaviour** — alpha mode: submit button enabled by username+password only (captcha validated on submit); math mode: existing real-time gating preserved
+- ✅ All 12 supported languages updated with alpha-CAPTCHA-appropriate instruction strings
+- ✅ Zero breaking changes — `type: "math"` and `style: "centered"` remain the defaults; existing deployments unaffected
+
+---
+
 ### Version 2.5.1 (July 2026)
 
 **Login Tracking — Agent POST Body Parsing Fix (`LoginTracker.lss` v1.2.0):**
@@ -1650,6 +1672,6 @@ Banner data is **per browser, per device** — test on the same browser you subm
 
 **Repository:** [github.com/rishablearn/DominoCustomWebPageApril26](https://github.com/rishablearn/DominoCustomWebPageApril26)  
 **Compatible with:** HCL Domino 12.x, 14.x  
-**Version:** 2.5.0  
-**Last Updated:** 2026-07-01
+**Version:** 2.6.0  
+**Last Updated:** 2026-07-21
 

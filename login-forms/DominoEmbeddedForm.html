@@ -83,8 +83,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
      */
     const DominoLoginConfig = {
         // Version info - displayed at bottom of page
-        version: "2.5.1",
-        versionDate: "2026-07-01",
+        version: "2.6.0",
+        versionDate: "2026-07-21",
         
         branding: {
             companyName: "Your Company Name",
@@ -305,10 +305,14 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         
         // =====================================================================
         // CAPTCHA SETTINGS
+        // type: "math"  — arithmetic problem (default)
+        // type: "alpha" — 5-character alphanumeric canvas CAPTCHA with audio
         // =====================================================================
         captcha: {
-            type: "math",
-            difficulty: "easy",
+            type: "math",            // "math" | "alpha"
+            difficulty: "easy",      // math only: "easy" | "medium" | "hard"
+            length: 5,               // alpha only: number of characters
+            charset: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", // alpha only: no I,O,0,1,l
             enableAudio: true,
             maxAttempts: 3,
             labels: {
@@ -319,6 +323,15 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 refreshButton: "Get new question",
                 errorMessage: "Incorrect answer, please try again"
             }
+        },
+
+        // =====================================================================
+        // LAYOUT SETTINGS
+        // style: "centered" — single-column centred card (default)
+        // style: "split"    — left decorative panel + right scrollable form
+        // =====================================================================
+        layout: {
+            style: "centered"        // "centered" | "split"
         },
         
         // =====================================================================
@@ -1784,6 +1797,125 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
     [dir="rtl"] .quick-link { flex-direction: row-reverse; }
     [dir="rtl"] .top-bar { left: 0; right: auto; }
     [dir="rtl"] .lang-dropdown { left: 0; right: auto; }
+
+    /* =====================================================================
+       ALPHA CAPTCHA — canvas styles (active when captcha.type = "alpha")
+       ===================================================================== */
+    #captchaCanvas {
+        display: block;
+        border-radius: 8px;
+        border: 1.5px solid var(--input-border);
+        background: #f8faff;
+        margin-bottom: 10px;
+        max-width: 100%;
+        cursor: default;
+        user-select: none;
+    }
+    [data-theme="dark"] #captchaCanvas {
+        border-color: rgba(255,255,255,0.15);
+        background: #1e2030;
+    }
+    .captcha-input[data-captcha-type="alpha"] {
+        font-family: 'Courier New', Courier, monospace;
+        letter-spacing: 0.22em;
+        text-align: center;
+        text-transform: uppercase;
+    }
+
+    /* =====================================================================
+       SPLIT LAYOUT — activated by body[data-layout="split"]
+       Reuses existing .background-layer as left panel and
+       .login-container as right scrollable panel — no HTML changes needed.
+       ===================================================================== */
+    body[data-layout="split"] {
+        padding: 0;
+        align-items: stretch;
+        overflow: hidden;
+    }
+    body[data-layout="split"] .background-layer {
+        position: relative;
+        width: 42%;
+        min-width: 280px;
+        max-width: 500px;
+        height: 100vh;
+        flex-shrink: 0;
+        z-index: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 36px;
+        overflow: hidden;
+    }
+    body[data-layout="split"] .login-container {
+        flex: 1;
+        overflow-y: auto;
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 28px 24px;
+        max-width: none;
+    }
+    body[data-layout="split"] .login-card {
+        width: 100%;
+        max-width: 430px;
+    }
+    /* Branding block inside background-layer (split mode only) */
+    .split-panel-brand {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        color: #fff;
+        z-index: 1;
+        gap: 14px;
+    }
+    body[data-layout="split"] .split-panel-brand { display: flex; }
+    .split-panel-brand .sp-logo { max-width: 90px; border-radius: 12px; margin-bottom: 4px; }
+    .split-panel-brand .sp-logo-wrap { display: none; }
+    .split-panel-brand .sp-name {
+        font-size: clamp(1.3rem, 3vw, 1.9rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        text-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .split-panel-brand .sp-tagline {
+        font-size: clamp(0.82rem, 1.4vw, 1rem);
+        opacity: 0.88;
+        max-width: 280px;
+        line-height: 1.5;
+        text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .split-panel-brand .sp-divider {
+        width: 48px; height: 3px;
+        background: rgba(255,255,255,0.4);
+        border-radius: 2px;
+    }
+    /* Top-bar sits above both panels in split mode */
+    body[data-layout="split"] .top-bar {
+        z-index: 10;
+    }
+    /* Responsive: stack vertically below 900 px */
+    @media (max-width: 900px) {
+        body[data-layout="split"] {
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        body[data-layout="split"] .background-layer {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            min-height: 170px;
+            padding: 28px 20px;
+        }
+        body[data-layout="split"] .login-container {
+            height: auto;
+            overflow-y: visible;
+            padding: 20px 16px 32px;
+        }
+    }
     </style>
 </head>
 <body>
@@ -1823,11 +1955,20 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         </div>
     </div>
     
-    <!-- Background -->
+    <!-- Background / Split Left Panel -->
     <div class="background-layer" id="backgroundLayer">
         <div class="bg-shape bg-shape-1"></div>
         <div class="bg-shape bg-shape-2"></div>
         <div class="bg-shape bg-shape-3"></div>
+        <!-- Branding shown only in split layout mode -->
+        <div class="split-panel-brand" id="splitPanelBrand" aria-hidden="true">
+            <div class="sp-logo-wrap" id="spLogoWrap">
+                <img id="spLogo" src="" alt="" class="sp-logo">
+            </div>
+            <div class="sp-divider"></div>
+            <div class="sp-name" id="spName">Your Organisation</div>
+            <div class="sp-tagline" id="spTagline">Please sign in to continue</div>
+        </div>
     </div>
     
     <!--
@@ -1977,11 +2118,18 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                             Solve this math problem
                         </p>
 
+                        <!-- Math captcha: arithmetic question (hidden in alpha mode) -->
                         <div class="captcha-question" id="captchaQuestion"
                              role="img"
                              aria-label="Math problem: 3 plus 5 equals what?">
                             3 + 5 = ?
                         </div>
+
+                        <!-- Alpha captcha: canvas image (hidden in math mode) -->
+                        <canvas id="captchaCanvas" width="220" height="64"
+                                style="display:none;"
+                                role="img"
+                                aria-label="Security code image"></canvas>
 
                         <label for="captchaAnswer" class="sr-only">Enter the answer to the security question</label>
                         <input type="text" id="captchaAnswer" name="captchaAnswer"
@@ -2177,6 +2325,23 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
     (function() {
         'use strict';
         
+        // ── initLayout ────────────────────────────────────────────────────────
+        // Applies the layout.style setting. "split" transforms the existing
+        // .background-layer and .login-container into a two-column split layout
+        // using body[data-layout="split"] CSS selectors — no DOM restructuring.
+        function initLayout() {
+            var c = DominoLoginConfig;
+            var style = c.layout?.style || 'centered';
+            if (style === 'split') {
+                document.body.dataset.layout = 'split';
+                var brandEl = document.getElementById('splitPanelBrand');
+                if (brandEl) brandEl.removeAttribute('aria-hidden');
+            } else {
+                delete document.body.dataset.layout;
+            }
+            console.log('[Layout] style:', style);
+        }
+
         function applyConfig() {
             if (typeof DominoLoginConfig === 'undefined') return;
             const c = DominoLoginConfig;
@@ -2210,8 +2375,29 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 
                 const badge = document.getElementById('dominoBadge');
                 if (badge) badge.style.display = c.branding.showDominoBadge ? 'inline-flex' : 'none';
+
+                // ── Split panel branding (only visible when layout.style = "split") ──
+                var spName    = document.getElementById('spName');
+                var spTagline = document.getElementById('spTagline');
+                var spLogo    = document.getElementById('spLogo');
+                var spLogoWrap = document.getElementById('spLogoWrap');
+                if (spName && c.branding.companyName) spName.textContent = c.branding.companyName;
+                if (spTagline) {
+                    spTagline.innerHTML = (c.branding.welcomeTitle || '') +
+                        (c.branding.welcomeSubtitle
+                            ? '<br><small style="opacity:0.82;font-size:0.88em;">' + c.branding.welcomeSubtitle + '</small>'
+                            : '');
+                }
+                if (spLogo && spLogoWrap && c.branding.logoUrl && c.branding.logoUrl.trim() !== '') {
+                    spLogo.src = c.branding.logoUrl;
+                    spLogo.alt = c.branding.logoAlt || '';
+                    spLogoWrap.style.display = 'block';
+                }
             }
-            
+
+            // ── Layout style ──────────────────────────────────────────────────
+            initLayout();
+
             // Version info
             if (c.version) {
                 setText('versionNumber', c.version);
@@ -2836,10 +3022,14 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         }
         
         // =====================================================================
-        // CAPTCHA (Accessible Math CAPTCHA with Audio)
+        // CAPTCHA — supports type: "math" (default) and type: "alpha"
+        // Set DominoLoginConfig.captcha.type = "alpha" to switch to the
+        // 5-character alphanumeric canvas CAPTCHA with audio spelling.
         // =====================================================================
-        let captchaAnswer = 0;
+        let captchaAnswer  = 0;     // math mode: numeric answer
+        let currentCaptchaCode = ''; // alpha mode: string code
         let captchaAttempts = 0;
+        var CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
         // Returns true only when CAPTCHA should be shown and validated.
         // Returns false when globally disabled OR suppressed by MFA.
@@ -2854,19 +3044,46 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         function initCaptcha() {
             const c = DominoLoginConfig;
             if (!isCaptchaActive()) return;
-            
-            const container = document.getElementById('captchaContainer');
+
+            const container   = document.getElementById('captchaContainer');
+            const questionEl  = document.getElementById('captchaQuestion');
+            const canvasEl    = document.getElementById('captchaCanvas');
+            const answerEl    = document.getElementById('captchaAnswer');
             if (!container) return;
-            
+
+            const isAlpha = (c.captcha?.type === 'alpha');
+
+            // Show/hide the right display element
+            if (questionEl) questionEl.style.display = isAlpha ? 'none' : '';
+            if (canvasEl)   canvasEl.style.display   = isAlpha ? 'block' : 'none';
+
+            // Configure answer input for the active type
+            if (answerEl) {
+                if (isAlpha) {
+                    answerEl.setAttribute('inputmode', 'text');
+                    answerEl.removeAttribute('pattern');
+                    answerEl.setAttribute('maxlength', String(c.captcha?.length || 5));
+                    answerEl.dataset.captchaType = 'alpha';
+                    answerEl.placeholder = 'Enter code';
+                } else {
+                    answerEl.setAttribute('inputmode', 'numeric');
+                    answerEl.setAttribute('pattern', '[0-9]*');
+                    answerEl.removeAttribute('maxlength');
+                    delete answerEl.dataset.captchaType;
+                    answerEl.placeholder = 'Your answer';
+                }
+            }
+
             container.style.display = 'block';
             generateCaptcha();
 
             document.getElementById('captchaAudioBtn')?.addEventListener('click', speakCaptcha);
             document.getElementById('captchaRefreshBtn')?.addEventListener('click', generateCaptcha);
 
-            // Inform AT users that a required security section has appeared
-            srAnnounce('Security verification required. Please solve the math problem and enter the answer.', 'polite');
-            // Form submit validation is handled by initFormValidation()
+            var msg = isAlpha
+                ? 'Security verification required. Type the 5-character code shown in the image.'
+                : 'Security verification required. Please solve the math problem and enter the answer.';
+            srAnnounce(msg, 'polite');
         }
         
         // ── Helpers: body-level live region announce ──────────────────────────
@@ -2901,43 +3118,116 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             if (statusEl) statusEl.textContent = '';
 
             const c = DominoLoginConfig;
-            const difficulty = c.captcha?.difficulty || 'easy';
-            let num1, num2, operator;
-
-            if (difficulty === 'easy') {
-                num1 = Math.floor(Math.random() * 10) + 1;
-                num2 = Math.floor(Math.random() * 10) + 1;
-                operator = '+';
-                captchaAnswer = num1 + num2;
-            } else if (difficulty === 'medium') {
-                num1 = Math.floor(Math.random() * 20) + 1;
-                num2 = Math.floor(Math.random() * 10) + 1;
-                operator = Math.random() > 0.5 ? '+' : '-';
-                captchaAnswer = operator === '+' ? num1 + num2 : num1 - num2;
-            } else {
-                num1 = Math.floor(Math.random() * 12) + 1;
-                num2 = Math.floor(Math.random() * 12) + 1;
-                operator = '×';
-                captchaAnswer = num1 * num2;
-            }
-
-            const question = num1 + ' ' + operator + ' ' + num2 + ' = ?';
-            const questionEl = document.getElementById('captchaQuestion');
-            const expectedEl = document.getElementById('captchaExpected');
-
-            if (questionEl) {
-                questionEl.textContent = question;
-                questionEl.setAttribute('aria-label', buildAriaLabel(num1, operator, num2));
-            }
-            if (expectedEl) expectedEl.value = captchaAnswer;
-
             const answerEl = document.getElementById('captchaAnswer');
             if (answerEl) answerEl.value = '';
             document.getElementById('captchaError')?.classList.remove('visible');
 
-            srAnnounce('New security question: ' + num1 + ' ' + spellOperator(operator) + ' ' + num2 + '. Please enter the answer below.', 'polite');
+            if (c.captcha?.type === 'alpha') {
+                // ── Alpha mode ────────────────────────────────────────────────
+                var chars  = c.captcha?.charset || CAPTCHA_CHARS;
+                var len    = c.captcha?.length  || 5;
+                var code   = '';
+                for (var i = 0; i < len; i++) {
+                    code += chars[Math.floor(Math.random() * chars.length)];
+                }
+                currentCaptchaCode = code;
+                renderCaptchaCanvas(code);
+                srAnnounce('New security code generated. Look at the image and type the ' + len + ' characters.', 'polite');
+            } else {
+                // ── Math mode (default) ───────────────────────────────────────
+                const difficulty = c.captcha?.difficulty || 'easy';
+                let num1, num2, operator;
+
+                if (difficulty === 'easy') {
+                    num1 = Math.floor(Math.random() * 10) + 1;
+                    num2 = Math.floor(Math.random() * 10) + 1;
+                    operator = '+';
+                    captchaAnswer = num1 + num2;
+                } else if (difficulty === 'medium') {
+                    num1 = Math.floor(Math.random() * 20) + 1;
+                    num2 = Math.floor(Math.random() * 10) + 1;
+                    operator = Math.random() > 0.5 ? '+' : '-';
+                    captchaAnswer = operator === '+' ? num1 + num2 : num1 - num2;
+                } else {
+                    num1 = Math.floor(Math.random() * 12) + 1;
+                    num2 = Math.floor(Math.random() * 12) + 1;
+                    operator = '×';
+                    captchaAnswer = num1 * num2;
+                }
+
+                const question   = num1 + ' ' + operator + ' ' + num2 + ' = ?';
+                const questionEl = document.getElementById('captchaQuestion');
+                const expectedEl = document.getElementById('captchaExpected');
+
+                if (questionEl) {
+                    questionEl.textContent = question;
+                    questionEl.setAttribute('aria-label', buildAriaLabel(num1, operator, num2));
+                }
+                if (expectedEl) expectedEl.value = captchaAnswer;
+
+                srAnnounce('New security question: ' + num1 + ' ' + spellOperator(operator) + ' ' + num2 + '. Please enter the answer below.', 'polite');
+            }
 
             if (typeof validateFormRealtime === 'function') validateFormRealtime();
+        }
+
+        // ── renderCaptchaCanvas ───────────────────────────────────────────────
+        function renderCaptchaCanvas(code) {
+            var canvas = document.getElementById('captchaCanvas');
+            if (!canvas || !canvas.getContext) return;
+            var ctx = canvas.getContext('2d');
+            var W = canvas.width, H = canvas.height;
+
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            var bgColor   = isDark ? '#1e2030' : '#f0f4ff';
+            var textColor = isDark ? '#e8eaf6' : '#1a1a3e';
+            var noiseColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,64,0.06)';
+            var lineColors = ['#4f46e5','#0ea5e9','#10b981','#f59e0b','#ef4444'];
+
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, W, H);
+
+            // Dot noise
+            for (var d = 0; d < 60; d++) {
+                ctx.fillStyle = noiseColor;
+                ctx.beginPath();
+                ctx.arc(Math.random()*W, Math.random()*H, Math.random()*2+0.5, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            // Bezier noise lines
+            for (var l = 0; l < 4; l++) {
+                ctx.strokeStyle = lineColors[l % lineColors.length];
+                ctx.lineWidth   = 0.9;
+                ctx.globalAlpha = 0.35;
+                ctx.beginPath();
+                ctx.moveTo(Math.random()*W, Math.random()*H);
+                ctx.bezierCurveTo(
+                    Math.random()*W, Math.random()*H,
+                    Math.random()*W, Math.random()*H,
+                    Math.random()*W, Math.random()*H
+                );
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+
+            // Characters
+            var charColors = isDark
+                ? ['#a5b4fc','#67e8f9','#6ee7b7','#fcd34d','#fca5a5']
+                : ['#3730a3','#0369a1','#065f46','#92400e','#991b1b'];
+            var cellW = W / code.length;
+            for (var ci = 0; ci < code.length; ci++) {
+                var fontSize = Math.floor(H * 0.52) + Math.floor(Math.random() * 6);
+                ctx.font = 'bold ' + fontSize + 'px "Courier New", monospace';
+                ctx.fillStyle = charColors[ci % charColors.length];
+                ctx.save();
+                var cx = cellW * ci + cellW / 2;
+                var cy = H / 2 + fontSize * 0.35;
+                ctx.translate(cx, cy);
+                ctx.rotate((Math.random() - 0.5) * 0.4);
+                ctx.fillText(code[ci], -fontSize * 0.28, 0);
+                ctx.restore();
+            }
         }
 
         // ── speakCaptcha ─────────────────────────────────────────────────────
@@ -2947,13 +3237,19 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             const c = DominoLoginConfig;
             if (!c.captcha?.enableAudio) return;
 
-            var questionEl = document.getElementById('captchaQuestion');
-            var audioBtn   = document.getElementById('captchaAudioBtn');
-            var statusEl   = document.getElementById('captchaAudioStatus');
-            if (!questionEl) return;
+            var audioBtn = document.getElementById('captchaAudioBtn');
+            var statusEl = document.getElementById('captchaAudioStatus');
+            var spokenText;
 
-            var ariaLabel  = questionEl.getAttribute('aria-label') || '';
-            var spokenText = ariaLabel || ('Security question: ' + questionEl.textContent.trim());
+            if (c.captcha?.type === 'alpha') {
+                if (!currentCaptchaCode) return;
+                spokenText = 'Security code: ' + currentCaptchaCode.split('').join(', ');
+            } else {
+                var questionEl = document.getElementById('captchaQuestion');
+                if (!questionEl) return;
+                var ariaLabel = questionEl.getAttribute('aria-label') || '';
+                spokenText = ariaLabel || ('Security question: ' + questionEl.textContent.trim());
+            }
 
             if (!('speechSynthesis' in window)) {
                 var fallback = 'Audio not available. ' + spokenText;
@@ -3030,85 +3326,77 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         function validateCaptchaInput() {
             const c = DominoLoginConfig;
             if (!isCaptchaActive()) return { valid: true, message: '' };
-            
-            const answerEl = document.getElementById('captchaAnswer');
-            const errorEl = document.getElementById('captchaError');
-            const userAnswer = parseInt(answerEl?.value, 10);
-            
-            // Check if CAPTCHA is empty
-            if (!answerEl?.value || answerEl.value.trim() === '') {
-                const msg = '🔢 Please solve the security question';
-                if (errorEl) {
-                    errorEl.textContent = msg;
-                    errorEl.classList.add('visible');
-                }
-                if (answerEl) {
-                    answerEl.classList.add('input-error');
-                }
-                return { valid: false, message: msg };
+
+            const answerEl  = document.getElementById('captchaAnswer');
+            const errorEl   = document.getElementById('captchaError');
+            const userInput = (answerEl?.value || '').trim();
+
+            // Empty check
+            if (!userInput) {
+                const emptyMsg = c.captcha?.type === 'alpha'
+                    ? '🔤 Please type the security code shown'
+                    : '🔢 Please solve the security question';
+                if (errorEl) { errorEl.textContent = emptyMsg; errorEl.classList.add('visible'); }
+                if (answerEl) answerEl.classList.add('input-error');
+                return { valid: false, message: emptyMsg };
             }
-            
-            // Check if answer is correct
-            if (isNaN(userAnswer) || userAnswer !== captchaAnswer) {
+
+            var isCorrect;
+            var wrongMsg;
+
+            if (c.captcha?.type === 'alpha') {
+                // Alpha: case-insensitive exact match
+                isCorrect = userInput.toUpperCase() === currentCaptchaCode;
+                wrongMsg  = '❌ Incorrect code — try again';
+            } else {
+                // Math: numeric comparison
+                const userNum = parseInt(userInput, 10);
+                isCorrect = !isNaN(userNum) && userNum === captchaAnswer;
+                wrongMsg  = '❌ Incorrect answer, please try again';
+            }
+
+            if (!isCorrect) {
                 captchaAttempts++;
-                const msg = '❌ Incorrect answer, please try again';
-                
-                if (errorEl) {
-                    errorEl.textContent = msg;
-                    errorEl.classList.add('visible');
-                }
-                if (answerEl) {
-                    answerEl.classList.add('input-error');
-                }
-                
-                // Generate new CAPTCHA after max attempts
+                if (errorEl) { errorEl.textContent = wrongMsg; errorEl.classList.add('visible'); }
+                if (answerEl) answerEl.classList.add('input-error');
                 if (captchaAttempts >= (c.captcha?.maxAttempts || 3)) {
                     captchaAttempts = 0;
                     generateCaptcha();
                 }
-                
-                return { valid: false, message: msg };
+                return { valid: false, message: wrongMsg };
             }
-            
-            // Valid
+
             if (errorEl) errorEl.classList.remove('visible');
             if (answerEl) answerEl.classList.remove('input-error');
             return { valid: true, message: '' };
         }
         
         // =====================================================================
-        // REAL-TIME VALIDATION - Enable submit only when all fields are valid
+        // REAL-TIME VALIDATION
+        // math mode: button enabled only when username + password + captcha all valid
+        // alpha mode: button enabled when username + password filled; captcha is
+        //             validated on submit only so the user is never locked out by it
         // =====================================================================
         function validateFormRealtime() {
             const c = DominoLoginConfig;
-            const submitBtn = document.getElementById('submitBtn');
+            const submitBtn  = document.getElementById('submitBtn');
             const usernameEl = document.getElementById('Username');
             const passwordEl = document.getElementById('Password');
-            const captchaEl = document.getElementById('captchaAnswer');
+            const captchaEl  = document.getElementById('captchaAnswer');
             const captchaErrorEl = document.getElementById('captchaError');
-            const passwordErrorEl = document.getElementById('passwordError');
-            
-            if (!submitBtn) return;
-            
-            let allValid = true;
 
-            // Check username
+            if (!submitBtn) return;
+
             const usernameValid = usernameEl && usernameEl.value.trim().length > 0;
-            if (!usernameValid) allValid = false;
-            
-            // Password gate: non-empty only. Length is NOT enforced on a login
-            // form — Domino validates credentials server-side. Enforcing a client-
-            // side minimum prevents users with legacy short passwords from logging in.
-            const passwordValue = passwordEl?.value || '';
-            const passwordValid = passwordValue.length > 0;
-            if (!passwordValid) allValid = false;
-            
-            // Check CAPTCHA if enabled and not suppressed by MFA
-            if (isCaptchaActive()) {
+            const passwordValid = passwordEl && passwordEl.value.length > 0;
+            let allValid = usernameValid && passwordValid;
+
+            // Math captcha: gate the submit button on correctness in real-time
+            if (isCaptchaActive() && c.captcha?.type !== 'alpha') {
                 const captchaValue = captchaEl?.value?.trim() || '';
-                const userAnswer = parseInt(captchaValue, 10);
+                const userAnswer   = parseInt(captchaValue, 10);
                 const captchaValid = captchaValue !== '' && !isNaN(userAnswer) && userAnswer === captchaAnswer;
-                
+
                 if (captchaEl && captchaErrorEl) {
                     if (captchaValue !== '' && !captchaValid) {
                         captchaEl.classList.add('input-error');
@@ -3126,17 +3414,17 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                         captchaErrorEl.classList.remove('visible');
                     }
                 }
-                
+
                 if (!captchaValid) allValid = false;
             }
-            
-            // Enable/disable submit button
+            // Alpha captcha: no real-time gating — validated on submit only
+
             submitBtn.disabled = !allValid;
-            
-            console.log('[Validation] Username:', usernameValid, 'Password:', passwordValid, 
-                        'CAPTCHA:', isCaptchaActive() ? (allValid ? 'valid' : 'invalid') : 'disabled',
+
+            console.log('[Validation] Username:', usernameValid, 'Password:', passwordValid,
+                        'captcha.type:', c.captcha?.type || 'math',
                         '=> Submit enabled:', allValid);
-            
+
             return allValid;
         }
         
