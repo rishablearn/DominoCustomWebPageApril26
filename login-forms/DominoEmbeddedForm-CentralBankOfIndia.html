@@ -185,7 +185,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             enableKeyboardShortcuts: true,
             showQuickLinks: false,
             enableTranslations: false,           // English only for CBI
-            enableCaptcha: false,                // CAPTCHA not shown in CentMail UI
+            enableCaptcha: true,                 // Alpha canvas CAPTCHA
             enableMFA: true,                     // Domino 12.0.1+ TOTP MFA
             enableLoginTracking: true
         },
@@ -201,7 +201,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             autoSubmit: true,
             showTimer: true,
             // Set false to show CAPTCHA alongside MFA (not recommended — MFA already proves human)
-            disableCaptchaWhenMFA: true,
+            disableCaptchaWhenMFA: false,         // Show captcha even when MFA is enabled
             promptTitle: "Multi-Factor Authentication",
             promptSubtitle: "Enter the 6-digit token from your authenticator app",
             backupText: "Unable to access your authenticator?",
@@ -296,7 +296,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         // type: "alpha" — 5-character alphanumeric canvas CAPTCHA with audio
         // =====================================================================
         captcha: {
-            type: "math",            // "math" | "alpha"
+            type: "alpha",           // "math" | "alpha"
             difficulty: "easy",      // math only: "easy" | "medium" | "hard"
             length: 5,               // alpha only: number of characters
             charset: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", // alpha only: no I,O,0,1,l
@@ -304,11 +304,11 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             maxAttempts: 3,
             labels: {
                 title: "Security Verification",
-                instruction: "Please solve this simple math problem",
-                placeholder: "Enter your answer",
-                audioButton: "Listen to audio version",
-                refreshButton: "Get new question",
-                errorMessage: "Incorrect answer, please try again"
+                instruction: "Enter the 5 characters shown above",
+                placeholder: "Enter security code",
+                audioButton: "Listen to code",
+                refreshButton: "New code",
+                errorMessage: "Incorrect code, please try again"
             }
         },
 
@@ -2040,13 +2040,81 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         color: rgba(255,255,255,0.9) !important;
     }
 
-    /* ── CAPTCHA (disabled but styled if enabled) ────────────────────────── */
+    /* ── ALPHA CAPTCHA on gradient background ─────────────────────────────── */
+    /* Container */
     body[data-layout="split"] .captcha-container {
         background: rgba(255,255,255,0.12) !important;
         border-color: rgba(255,255,255,0.3) !important;
         color: #fff !important;
+        margin: 12px 0 !important;
     }
-    body[data-layout="split"] #captchaInstruction { color: rgba(255,255,255,0.88) !important; }
+    /* Title row */
+    body[data-layout="split"] .captcha-title,
+    body[data-layout="split"] #captchaTitleText {
+        color: #fff !important;
+        font-weight: 600 !important;
+    }
+    /* Instruction text */
+    body[data-layout="split"] #captchaInstruction {
+        color: rgba(255,255,255,0.85) !important;
+        font-size: 0.83rem !important;
+        margin-bottom: 10px !important;
+    }
+    /* Canvas: rounded with white border so it stands out on gradient */
+    body[data-layout="split"] #captchaCanvas {
+        border-radius: 8px !important;
+        border: 2px solid rgba(255,255,255,0.45) !important;
+        display: block;
+        margin: 0 auto 10px !important;
+    }
+    /* Math captcha question box (hidden in alpha mode, styled in case math is used) */
+    body[data-layout="split"] .captcha-question {
+        background: rgba(255,255,255,0.9) !important;
+        color: #1a1a2e !important;
+        border-radius: 8px !important;
+    }
+    /* Security-code input */
+    body[data-layout="split"] .captcha-input {
+        background: #ffffff !important;
+        color: #1a1a2e !important;
+        border: 2px solid rgba(255,255,255,0.5) !important;
+        font-size: 1rem !important;
+        letter-spacing: 0.22em !important;
+        text-align: center !important;
+    }
+    body[data-layout="split"] .captcha-input:focus {
+        border-color: #ffffff !important;
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.28) !important;
+        outline: none !important;
+    }
+    /* Audio / Refresh buttons */
+    body[data-layout="split"] .captcha-btn {
+        background: rgba(255,255,255,0.18) !important;
+        color: #fff !important;
+        border: 1.5px solid rgba(255,255,255,0.4) !important;
+        font-weight: 500 !important;
+    }
+    body[data-layout="split"] .captcha-btn:hover,
+    body[data-layout="split"] .captcha-btn:focus-visible {
+        background: rgba(255,255,255,0.34) !important;
+        border-color: rgba(255,255,255,0.7) !important;
+        color: #fff !important;
+        outline: 2px solid rgba(255,255,255,0.55) !important;
+        outline-offset: 2px !important;
+    }
+    body[data-layout="split"] .captcha-btn.speaking {
+        background: rgba(255,255,255,0.5) !important;
+        color: #222 !important;
+    }
+    /* Audio status line */
+    body[data-layout="split"] .captcha-audio-status {
+        color: rgba(255,255,255,0.7) !important;
+    }
+    /* Inline error message */
+    body[data-layout="split"] .captcha-error {
+        color: #ffccdd !important;
+        font-weight: 500 !important;
+    }
 
     /* ── FOOTER ──────────────────────────────────────────────────────────── */
     body[data-layout="split"] footer { border-top-color: rgba(255,255,255,0.15) !important; }
