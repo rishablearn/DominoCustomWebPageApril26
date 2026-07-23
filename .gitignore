@@ -22,3 +22,6 @@ npm-debug.log*
 # Build
 dist/
 build/
+
+# Private / client-specific variants — not synced to GitHub
+login-forms/DominoEmbeddedForm-CentralBankOfIndia.html
