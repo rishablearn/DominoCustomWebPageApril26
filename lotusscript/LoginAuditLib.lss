@@ -1,7 +1,7 @@
 '===========================================================================
-' LoginAuditLib.lss  —  Script Library "LoginAuditLib"
+' LoginAuditLib.lss  -  Script Library "LoginAuditLib"
 '
-' Version  : 3.0.0
+' Version  : 3.1.0
 ' Requires : HCL Domino 12.0.1+ (developed against Domino 14 class docs)
 '
 ' PURPOSE
@@ -167,7 +167,7 @@ Function GetQueryParam(web As NotesDocument, ByVal paramName As String) As Strin
 End Function
 
 '===========================================================================
-' Identity — server-verified only
+' Identity - server-verified only
 '===========================================================================
 
 ' Returns the caller's canonical name (CN=.../O=...), or "" if not
@@ -214,7 +214,7 @@ Function IsTrustedProxy(ByVal ip As String) As Boolean
     Next i
 End Function
 
-' Direct peer address, unless the peer is a trusted proxy — then the
+' Direct peer address, unless the peer is a trusted proxy - then the
 ' right-most X-Forwarded-For entry that is NOT itself a trusted proxy.
 ' Returns "unknown" if nothing valid is found.
 Function GetClientIp(web As NotesDocument) As String
@@ -321,7 +321,7 @@ Function ParseDeviceType(ByVal ua As String) As String
 End Function
 
 ' Coarse device fingerprint used ONLY for "have we seen this device before".
-' Not a strong identifier (User-Agent is client controlled) — it feeds an
+' Not a strong identifier (User-Agent is client controlled) - it feeds an
 ' informational flag, never an access decision.
 Function MakeDeviceKey(ByVal browser As String, ByVal os As String, ByVal devType As String) As String
     MakeDeviceKey = LCase$(browser & "|" & os & "|" & devType)
@@ -416,8 +416,8 @@ Function JsonEscape(ByVal s As String) As String
     r = Replace(r, Chr$(10), "\n")
     r = Replace(r, Chr$(12), "\f")
     r = Replace(r, Chr$(13), "\r")
-    r = Replace(r, "<", "<")
-    r = Replace(r, ">", ">")
+    r = Replace(r, "<", "\u003c")
+    r = Replace(r, ">", "\u003e")
     JsonEscape = r
 End Function
 
@@ -457,7 +457,7 @@ Sub PrintJsonHeaders()
 End Sub
 
 '===========================================================================
-' Mail helpers (optional — only used when enabled in the constants above)
+' Mail helpers (optional - only used when enabled in the constants above)
 '===========================================================================
 
 Sub SendNewSigninAlert(db As NotesDatabase, ByVal toName As String, ByVal ip As String, _
@@ -523,7 +523,7 @@ Function ReadersFor(ByVal userName As String) As Variant
 End Function
 
 '===========================================================================
-' Error logging — best effort, never raises
+' Error logging - best effort, never raises
 '===========================================================================
 Sub LogAuditError(session As NotesSession, db As NotesDatabase, ByVal agentName As String, _
                   ByVal errNum As Long, ByVal errLine As Long, ByVal errMsg As String)

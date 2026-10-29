@@ -77,6 +77,13 @@ for f in "$ROOT/lotusscript/"*.lss; do
     echo "  ✅  lotusscript/$(basename "$f")"
 done
 
+# ── DXL installer — INSTALLER_VERSION constant ────────────────────────────────
+f="$ROOT/deploy/notes-client/Agent0_Installer_DXL.lss"
+if [ -f "$f" ]; then
+    sedi "s/^Const INSTALLER_VERSION = \"[0-9][0-9.]*\"/Const INSTALLER_VERSION = \"${NEW_VERSION}\"/" "$f"
+    echo "  ✅  deploy/notes-client/Agent0_Installer_DXL.lss"
+fi
+
 # ── Verse viewer — header comment ─────────────────────────────────────────────
 f="$ROOT/verse-extension/LoginActivityViewer.html"
 if [ -f "$f" ]; then

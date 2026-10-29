@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view xmlns="http://www.lotus.com/dxl" version="14.0" name="(AuditErrors)">
+<code event="selection"><formula>SELECT Form = "AuditError"</formula></code>
+<column itemname="ErrWhen" sort="descending" width="20"><code event="value"><formula>ErrWhen</formula></code></column>
+<column itemname="Agent" width="18"><code event="value"><formula>Agent</formula></code></column>
+<column itemname="ErrNum" width="8"><code event="value"><formula>ErrNum</formula></code></column>
+<column itemname="ErrMsg" width="60"><code event="value"><formula>ErrMsg</formula></code></column>
+</view>

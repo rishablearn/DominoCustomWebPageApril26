@@ -1,6 +1,6 @@
 # Project Overview
 
-> **Version:** 3.0.0 | **Compatible:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-prem 3.2.x | **Last Updated:** 2026-10-28
+> **Version:** 3.1.0 | **Compatible:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-prem 3.2.x | **Last Updated:** 2026-10-29
 
 ## What this is
 

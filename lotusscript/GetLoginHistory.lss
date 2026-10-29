@@ -1,7 +1,7 @@
 '===========================================================================
-' GetLoginHistory.lss  —  Agent "GetLoginHistory"  (LOGINAUDIT.NSF)
+' GetLoginHistory.lss  -  Agent "GetLoginHistory"  (LOGINAUDIT.NSF)
 '
-' Version  : 3.0.0   (replaces v1.0.0 which read names.nsf)
+' Version  : 3.1.0   (replaces v1.0.0 which read names.nsf)
 ' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
 '
 ' WHAT IT DOES

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.lotus.com/dxl" version="14.0" name="LoginEvent">
+<body>
+<richtext>
+<pardef id="1"/>
+<par def="1"><run>Login Event (written by the LoginLanding agent - do not edit except ReviewStatus)</run></par>
+<par def="1"><run>----------------------------------------</run></par>
+<par def="1"><run>UserCanonical: </run><field name="UserCanonical" type="text"/></par>
+<par def="1"><run>UserCommon: </run><field name="UserCommon" type="text"/></par>
+<par def="1"><run>LoginTime: </run><field name="LoginTime" type="datetime"/></par>
+<par def="1"><run>LoginTimeUTC: </run><field name="LoginTimeUTC" type="text"/></par>
+<par def="1"><run>IP: </run><field name="IP" type="text"/></par>
+<par def="1"><run>RemoteAddr: </run><field name="RemoteAddr" type="text"/></par>
+<par def="1"><run>ForwardedFor: </run><field name="ForwardedFor" type="text"/></par>
+<par def="1"><run>UserAgent: </run><field name="UserAgent" type="text"/></par>
+<par def="1"><run>Browser: </run><field name="Browser" type="text"/></par>
+<par def="1"><run>OS: </run><field name="OS" type="text"/></par>
+<par def="1"><run>DeviceType: </run><field name="DeviceType" type="text"/></par>
+<par def="1"><run>DeviceKey: </run><field name="DeviceKey" type="text"/></par>
+<par def="1"><run>AccessSource: </run><field name="AccessSource" type="text"/></par>
+<par def="1"><run>AuthMethod: </run><field name="AuthMethod" type="text"/></par>
+<par def="1"><run>FirstLogin: </run><field name="FirstLogin" type="text"/></par>
+<par def="1"><run>NewIP: </run><field name="NewIP" type="text"/></par>
+<par def="1"><run>NewDevice: </run><field name="NewDevice" type="text"/></par>
+<par def="1"><run>Heartbeats: </run><field name="Heartbeats" type="number"/></par>
+<par def="1"><run>LastSeen: </run><field name="LastSeen" type="datetime"/></par>
+<par def="1"><run>EndTime: </run><field name="EndTime" type="datetime"/></par>
+<par def="1"><run>EndReason: </run><field name="EndReason" type="text"/></par>
+<par def="1"><run>----------------------------------------</run></par>
+<par def="1"><run>Review ("This wasn't me" reports)</run></par>
+<par def="1"><run>NotMeFlag: </run><field name="NotMeFlag" type="text"/></par>
+<par def="1"><run>NotMeTime: </run><field name="NotMeTime" type="datetime"/></par>
+<par def="1"><run>ReviewStatus (OPEN or CLOSED): </run><field name="ReviewStatus" type="text"/></par>
+<par def="1"><run>----------------------------------------</run></par>
+<par def="1"><run>System Fields</run></par>
+<par def="1"><run>Form: </run><field name="Form" type="text" kind="computedwhencomposed"><code event="defaultvalue"><formula>"LoginEvent"</formula></code></field></par>
+<par def="1"><run>Readers: </run><field name="Readers" type="readers"/></par>
+</richtext>
+</body>
+</form>

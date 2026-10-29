@@ -1,6 +1,6 @@
 # HCL Verse — Login Activity Extension
 
-> **Version:** 3.0.0 | **Last Updated:** 2026-10-28 | Developed against HCL Verse on-premises 3.2.7  
+> **Version:** 3.1.0 | **Last Updated:** 2026-10-29 | Developed against HCL Verse on-premises 3.2.7  
 > Not yet executed on a server — see the test plan in `02-Deployment-Guide.md` §7.
 
 Adds **Login Activity** to the Verse navbar *More* menu. It opens a window showing the user's last 5 successful logins (time, IP, access source, browser/device, approximate duration, new-IP/new-device flags), a **This wasn't me** button and a **Sign out** button.

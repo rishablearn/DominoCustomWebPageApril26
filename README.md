@@ -1,7 +1,7 @@
 # HCL Domino Custom Login Page + Login Activity (HCL Verse)
 
-**Version:** 3.0.0  
-**Last Updated:** 2026-10-28  
+**Version:** 3.1.0  
+**Last Updated:** 2026-10-29
 **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)
 
 A branded login page for HCL Domino that is **self-contained HTML** (embedded in `DOMCFG.NSF`, no MIME setup), plus a **server-side login audit**: users see their last 5 successful logins — IP address, login time, session duration (approximate), access source, new-IP/new-device flags — in an HCL Verse "Login Activity" window, and can report a sign-in as "This wasn't me".
@@ -37,8 +37,11 @@ Only **successful** logins are recorded: a failed login never reaches the landin
 | `lotusscript/Heartbeat.lss` | Session-duration heartbeat / explicit end |
 | `lotusscript/NotMe.lss` | "This wasn't me" report |
 | `lotusscript/PurgeLoginAudit.lss` | Scheduled retention job (dry-run by default) |
+| `deploy/notes-client/Agent0_Installer_DXL.lss` | One-shot installer (Notes client) that builds `loginaudit.nsf`: ACL, 2 forms, 3 views, library, 5 agents via DXL import |
+| `deploy/dxl/` | `MANIFEST.txt`, form + view DXL |
+| `deploy/scripts/` | `lint_lss.py`, `validate_dxl.py` |
 | `verse-extension/` | Viewer page + `applications.json` / `merge-snippet.json` |
-| `docs/` | Overview, deployment + test plan, Verse extension guide |
+| `docs/` | Overview (incl. `04-DXL-Install.md`), deployment + test plan, Verse extension guide |
 | `EVALUATION.md` | Review that led to this design |
 
 ## Quick start
@@ -57,6 +60,10 @@ Only **successful** logins are recorded: a failed login never reaches the landin
 - Agents were written to the documented LotusScript/Domino behaviour; exact server behaviours marked *(verify)* in the docs must be confirmed in testing.
 
 ## Changelog
+
+### 3.1.0 (2026-10-29)
+- **New:** DXL installer (`deploy/notes-client/Agent0_Installer_DXL.lss`) building `loginaudit.nsf` (ACL, forms `LoginEvent`/`AuditError`, views `(LoginsByUser)`/`(NotMeReports)`/`(AuditErrors)`, library, 5 agents); `docs/04-DXL-Install.md`; `deploy/scripts/` checks.
+- **Fixed:** `.lss` sources are ASCII-only (em dashes in comments); `JsonEscape` now escapes `<` and `>` as `\u003c`/`\u003e` (the replace was a no-op).
 
 ### 3.0.0 (2026-10-28)
 - **New:** server-side login audit (`loginaudit.nsf`), successful logins only, server time, trusted-proxy aware IP, parsed User-Agent, access source, new-IP/new-device flags, approximate duration, "This wasn't me", retention purge.

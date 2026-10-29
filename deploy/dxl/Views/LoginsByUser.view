@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<view xmlns="http://www.lotus.com/dxl" version="14.0" name="(LoginsByUser)">
+<code event="selection"><formula>SELECT Form = "LoginEvent"</formula></code>
+<column itemname="UserCanonical" sort="ascending" width="40"><code event="value"><formula>UserCanonical</formula></code></column>
+<column itemname="LoginTime" sort="descending" width="20"><code event="value"><formula>LoginTime</formula></code></column>
+<column itemname="IP" width="18"><code event="value"><formula>IP</formula></code></column>
+</view>

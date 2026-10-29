@@ -1,6 +1,6 @@
 # Deployment Guide and Test Plan
 
-> **Version:** 3.0.0 | **Last Updated:** 2026-10-28  
+> **Version:** 3.1.0 | **Last Updated:** 2026-10-29  
 > Written to documented HCL behaviour; **not yet executed on a server**. Items marked *(verify)* must be confirmed in testing.
 
 Placeholders: `<SERVER>`, `<SERVICE_ID>` (agent signer; must be a member of `LocalDomainAdmins`). Never put real credentials in these files.

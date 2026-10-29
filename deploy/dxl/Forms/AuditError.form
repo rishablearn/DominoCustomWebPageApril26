@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<form xmlns="http://www.lotus.com/dxl" version="14.0" name="AuditError">
+<body>
+<richtext>
+<pardef id="1"/>
+<par def="1"><run>Login Audit Error (written by the agents, best effort)</run></par>
+<par def="1"><run>----------------------------------------</run></par>
+<par def="1"><run>ErrWhen: </run><field name="ErrWhen" type="datetime"/></par>
+<par def="1"><run>Agent: </run><field name="Agent" type="text"/></par>
+<par def="1"><run>ErrNum: </run><field name="ErrNum" type="number"/></par>
+<par def="1"><run>ErrLine: </run><field name="ErrLine" type="number"/></par>
+<par def="1"><run>ErrMsg: </run><field name="ErrMsg" type="text"/></par>
+<par def="1"><run>----------------------------------------</run></par>
+<par def="1"><run>System Fields</run></par>
+<par def="1"><run>Form: </run><field name="Form" type="text" kind="computedwhencomposed"><code event="defaultvalue"><formula>"AuditError"</formula></code></field></par>
+<par def="1"><run>Readers: </run><field name="Readers" type="readers"/></par>
+</richtext>
+</body>
+</form>

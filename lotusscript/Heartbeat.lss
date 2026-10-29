@@ -1,7 +1,7 @@
 '===========================================================================
-' Heartbeat.lss  —  Agent "Heartbeat"  (LOGINAUDIT.NSF)
+' Heartbeat.lss  -  Agent "Heartbeat"  (LOGINAUDIT.NSF)
 '
-' Version  : 3.0.0
+' Version  : 3.1.0
 ' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
 '
 ' WHAT IT DOES
@@ -14,7 +14,7 @@
 '
 ' IMPORTANT LIMITATION: duration is only as good as the heartbeat source.
 ' Verse 3.2.7 documents no always-on background extension point, so a login
-' that never had a heartbeat shows duration "not measured" — never a guess.
+' that never had a heartbeat shows duration "not measured" - never a guess.
 '
 ' REQUEST   POST or GET  /loginaudit.nsf/Heartbeat?OpenAgent[&end=1]
 '           Header required:  X-Requested-With: LoginAudit

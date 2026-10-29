@@ -1,0 +1,844 @@
+'==============================================================================
+' Agent 0 : Installer (DXL)        RUN ONCE, FROM A NOTES CLIENT, AS AN ADMIN
+' Project : HCL Domino Custom Login Page + Login Activity (loginaudit.nsf)
+' Pattern : same installer pattern as DominoPasswordReset-March2026 (NotesDXLImporter)
+' Where   : paste into a NEW agent in ANY scratch database (for example a blank
+'           database on your workstation). Trigger = Actions menu, Target = None.
+'           It is NOT part of loginaudit.nsf. Delete it after use.
+' Needs   : only a Notes client and the repository folder. NO external tools:
+'           everything runs in LotusScript. Files are read from THIS workstation's
+'           disk (REPO_FOLDER), never from the server.
+' Does    : 1. creates loginaudit.nsf (or, if you allow it, updates an existing one)
+'           2. sets the ACL on a NEW database only (docs\02-Deployment-Guide.md 2.1)
+'           3. imports the design in stages and writes a log file per stage
+'              deploy\dxl\Forms\*.form, deploy\dxl\Views\*.view   (stage 1)
+'              lotusscript\*.lss  library + agents                   (stage 2)
+'                 DXL for the code is BUILT HERE from the .lss files, so the .lss
+'                 files stay the single source of truth for all code.
+'           The file list and the library order come from deploy\dxl\MANIFEST.txt.
+' It never touches names.nsf or domcfg.nsf. It does NOT import the login page
+' (login-forms\, docs 02 section 1) or the Verse viewer file resource (docs 02 section 4).
+' STATUS  : the pattern is the one used in DominoPasswordReset-March2026; THIS file has
+'           not been run against a Domino server yet. Use a non-production server first.
+' Every <PLACEHOLDER> below MUST be replaced. The agent refuses to run otherwise.
+'==============================================================================
+
+'(Options)
+Option Public
+Option Declare
+
+'(Declarations)
+' ---- DEPLOYMENT SETTINGS: you provide these -------------------------------
+Const TARGET_SERVER = "<TARGET_SERVER>"          ' server to create the NSF on; the word LOCAL = this workstation
+Const TARGET_FILE = "loginaudit.nsf"             ' path/file name on that server, e.g. apps\loginaudit.nsf
+Const TARGET_TITLE = "Login Audit"
+Const REPO_FOLDER = "<REPO_FOLDER_PATH>"         ' repository root (the folder that CONTAINS deploy and lotusscript), AS SEEN BY THIS WORKSTATION, e.g. C:\Temp\DominoCustomWebPage or /Users/<you>/CascadeProjects/DominoCustomWebPageApril26
+Const SIGNER_ID = "<SIGNER_ID>"                  ' service ID that signs the app (Editor, new DB only). MUST be a member of REVIEW_GROUP (Readers fields apply to agents)
+Const REVIEW_GROUP = "LocalDomainAdmins"         ' Editor; reviews "not me" reports; must equal READER_ADMIN_GROUP in LoginAuditLib.lss
+Const SERVER_GROUP = "LocalDomainServers"        ' Manager (new DB only)
+Const INSTALL_MODE = "NEW"                       ' NEW = create the database (stops if it exists) | UPDATE = import into the EXISTING database (stops if it is not found; same-named design REPLACED; ACL not changed) | CHECK = change nothing, show which database was found and what it contains
+Const APPLY_ACL = False                          ' False = the ACL is set only on a NEW database. True = also apply it (idempotent) to the EXISTING database in UPDATE mode, e.g. after a failed first run
+Const INSTALL_DESIGN = True                      ' stage 1: forms + views
+Const INSTALL_CODE = True                        ' stage 2: script libraries + agents. False = paste the .lss code by hand
+Const AGENTS_UNRESTRICTED = False                ' False = restricted agents (docs 02 section 3 step 4). True only if testing shows a restricted-operation error
+' ---------------------------------------------------------------------------
+
+Const MANIFEST_REL = "deploy/dxl/MANIFEST.txt"
+Const INSTALLER_VERSION = "3.1.0"                 ' this installer's version; must equal the ' Version header of lotusscript\LoginAuditLib.lss or the install stops
+Dim gVersion As String        ' read from the LoginAuditLib.lss header (single source of the version number)
+Dim gRoot As String           ' REPO_FOLDER with a trailing path separator
+Dim gSep As String            ' path separator used by REPO_FOLDER
+
+Sub Initialize
+	On Error GoTo EH
+	Dim session As New NotesSession
+	Dim db As NotesDatabase, probe As NotesDatabase
+	Dim srv As String, problems As String, detail As String, question As String
+	Dim openNote As String, mode As String, report As String, targetText As String
+	Dim existed As Boolean, ok1 As Boolean, ok2 As Boolean, okVerify As Boolean, aclFailed As Boolean
+	Dim nForm As Long, nView As Long, nLib As Long, nAgent As Long
+	Dim answer As Integer
+
+	problems = CheckSettings()
+	If problems <> "" Then
+		Messagebox "Installer stopped. Fix these settings first:" & Chr$(10) & problems, , "Installer"
+		Exit Sub
+	End If
+	mode = UCase$(Trim$(INSTALL_MODE))
+
+	' --- installer and project files must be the same version ----------------------
+	gVersion = ReadVersion(session, detail)
+	If gVersion = "" Then
+		Messagebox "Installer stopped: cannot read the version." & Chr$(10) & detail, , "Installer"
+		Exit Sub
+	End If
+	If gVersion <> INSTALLER_VERSION Then
+		Messagebox "Installer stopped: this installer is v" & INSTALLER_VERSION & " but the project files are v" & gVersion & ". Use the installer from the same project version (copy deploy\notes-client\Agent0_Installer_DXL.lss again).", , "Installer"
+		Exit Sub
+	End If
+
+	' --- every file in the manifest must exist BEFORE anything is created -----
+	problems = CheckSources(session, nForm, nView, nLib, nAgent)
+	If problems <> "" Then
+		Messagebox "Installer stopped (nothing was created). Source problems:" & Chr$(10) & problems, , "Installer"
+		Exit Sub
+	End If
+
+	srv = TARGET_SERVER
+	If UCase$(srv) = "LOCAL" Then srv = ""
+	targetText = ServerLabel(srv) & "!!" & TARGET_FILE
+
+	' --- find the database -----------------------------------------------------------
+	Set probe = New NotesDatabase("", "")
+	On Error Resume Next
+	existed = probe.Open(srv, TARGET_FILE)
+	If Err <> 0 Then openNote = CStr(Err) & " " & Error$
+	On Error GoTo EH
+
+	If mode = "CHECK" Then
+		If Not existed Then
+			Messagebox "CHECK: " & targetText & " was NOT FOUND." & Chr$(10) & "Nothing was created or changed." & Chr$(10) & openNote & Chr$(10) & Chr$(10) & _
+			"The database you are looking at must be on exactly this server and path. Fix TARGET_SERVER / TARGET_FILE.", , "Installer"
+			Exit Sub
+		End If
+		okVerify = VerifyInstall(session, srv, probe.FilePath, True, True, report)
+		Messagebox "CHECK ONLY - nothing was changed." & Chr$(10) & Chr$(10) & DescribeDb(probe) & Chr$(10) & Chr$(10) & report, , "Installer"
+		Exit Sub
+	End If
+	If mode = "NEW" And existed Then
+		Messagebox targetText & " already exists. Nothing was changed." & Chr$(10) & _
+		"Set INSTALL_MODE = ""UPDATE"" to import into the existing database (same-named design is replaced), or ""CHECK"" to see what it contains.", , "Installer"
+		Exit Sub
+	End If
+	If mode = "UPDATE" And Not existed Then
+		Messagebox "INSTALL_MODE is UPDATE but " & targetText & " was NOT FOUND. Nothing was created." & Chr$(10) & openNote & Chr$(10) & Chr$(10) & _
+		"The database you want to fill must be on exactly this server and path (LOCAL = this workstation). Fix TARGET_SERVER / TARGET_FILE, or use INSTALL_MODE = ""NEW"" to create it.", , "Installer"
+		Exit Sub
+	End If
+
+	' --- confirm before creating or replacing anything --------------------------
+	question = "VERSION " & gVersion & "    MODE " & mode & Chr$(10) & Chr$(10)
+	question = question & "TARGET" & Chr$(10)
+	If existed Then
+		question = question & "  EXISTING database opened:" & Chr$(10) & "  " & DescribeDb(probe) & Chr$(10)
+		If APPLY_ACL Then
+			question = question & "  Same-named forms, views, libraries and agents will be REPLACED. The ACL from the settings WILL BE APPLIED (APPLY_ACL = True)." & Chr$(10)
+		Else
+			question = question & "  Same-named forms, views, libraries and agents will be REPLACED. ACL unchanged." & Chr$(10)
+		End If
+	Else
+		question = question & "  Server: " & ServerLabel(srv) & Chr$(10) & "  File:   " & TARGET_FILE & Chr$(10)
+		question = question & "  A NEW database will be created, with the ACL from the settings." & Chr$(10)
+	End If
+	question = question & Chr$(10) & "SOURCE (this workstation)" & Chr$(10) & "  " & gRoot & Chr$(10) & Chr$(10)
+	question = question & "WILL IMPORT" & Chr$(10)
+	If INSTALL_DESIGN Then question = question & "  " & nForm & " forms, " & nView & " views" & Chr$(10)
+	If INSTALL_CODE Then question = question & "  " & nLib & " script libraries, " & nAgent & " agents" & Chr$(10)
+	question = question & Chr$(10) & "Continue?"
+	answer = Messagebox(question, 4 + 32 + 256, "Installer")	' Yes/No, question icon, default = No
+	If answer <> 6 Then	' 6 = IDYES
+		Messagebox "Cancelled. Nothing was created or changed.", , "Installer"
+		Exit Sub
+	End If
+
+	' --- create or reuse -------------------------------------------------------
+	If existed Then
+		Set db = probe
+	Else
+		' NotesDbDirectory has no CreateDatabase; use NotesDatabase.Create
+		' (server, file, openFlag=True opens the new database).
+		Set db = New NotesDatabase("", "")
+		Call db.Create(srv, TARGET_FILE, True)
+		db.Title = TARGET_TITLE & " v" & gVersion
+		Call ApplyAclOrStop(db, aclFailed)
+		If aclFailed Then Exit Sub
+	End If
+	If existed And APPLY_ACL Then
+		Call ApplyAclOrStop(db, aclFailed)
+		If aclFailed Then Exit Sub
+	End If
+	Call WriteDiagFile("install start", "v" & gVersion & " mode=" & mode & " existed=" & existed & " RunBy=" & session.UserName & Chr$(10) & DescribeDb(db))
+
+	' --- imports (each stage reported separately) -----------------------------
+	ok1 = True
+	If INSTALL_DESIGN Then
+		ok1 = ImportDesign(session, db, detail)
+		If Not ok1 Then
+			Messagebox "Stage 1 (forms and views) failed; nothing else was attempted." & Chr$(10) & Left$(detail, 1500), , "Installer"
+			Exit Sub
+		End If
+	End If
+
+	ok2 = True
+	If INSTALL_CODE Then
+		ok2 = ImportCode(session, db, detail)
+		If Not ok2 Then
+			Messagebox "Stage 2 (script library and agents) failed. Forms and views are in place; install the code by hand (docs\02-Deployment-Guide.md section 3)." & Chr$(10) & Left$(detail, 1500), , "Installer"
+		End If
+	End If
+
+	db.Title = TARGET_TITLE & " v" & gVersion	' the title shows the installed version; an import can reset it
+
+	' --- read the database back from disk: did the design really arrive? -------------
+	okVerify = VerifyInstall(session, srv, db.FilePath, INSTALL_DESIGN, INSTALL_CODE, report)
+	Call WriteDiagFile("install end", "v" & gVersion & " design=" & ok1 & " code=" & ok2 & " verified=" & okVerify & Chr$(10) & DescribeDb(db) & Chr$(10) & report)
+	Messagebox IfText(okVerify, "Installer finished and VERIFIED.", "Installer finished, but VERIFICATION FAILED - the design is NOT all in the database.") & Chr$(10) & Chr$(10) & _
+	"Version " & gVersion & Chr$(10) & DescribeDb(db) & Chr$(10) & Chr$(10) & report & Chr$(10) & Chr$(10) & _
+	"Open exactly this database. Next: (1) edit the constants at the top of script library LoginAuditLib (TRUSTED_PROXIES, SECURITY_MAILBOX, RETENTION_DAYS ...), (2) Recompile All LotusScript and sign the whole database with " & SIGNER_ID & " (which must be a member of " & REVIEW_GROUP & "), (3) set agent PurgeLoginAudit to run on schedule, daily, on the server (it is imported as an Action-menu agent), (4) import verse-extension\LoginActivityViewer.html as a file resource, (5) docs\02-Deployment-Guide.md sections 3-7. Delete this installer agent." & Chr$(10) & _
+	"Stage logs: " & gRoot & "installer_*.log", , "Installer"
+	Exit Sub
+
+EH:
+	Messagebox "Installer error " & Err & ": " & Error$ & " (line " & Erl & ")", , "Installer"
+	Exit Sub
+End Sub
+
+'------------------------------------------------------------------------------
+' Settings, source check, ACL
+'------------------------------------------------------------------------------
+Function CheckSettings() As String
+	Dim s As String
+	Dim chk As Variant, i As Integer
+	chk = Split(TARGET_SERVER & "|" & TARGET_FILE & "|" & REPO_FOLDER & "|" & SIGNER_ID & "|" & REVIEW_GROUP & "|" & SERVER_GROUP, "|")
+	For i = 0 To Ubound(chk)
+		If InStr(chk(i), "<") > 0 Or Trim$(CStr(chk(i))) = "" Then s = s & "  - setting #" & (i + 1) & " still a placeholder/empty" & Chr$(10)
+	Next
+	If UCase$(Trim$(INSTALL_MODE)) <> "NEW" And UCase$(Trim$(INSTALL_MODE)) <> "UPDATE" And UCase$(Trim$(INSTALL_MODE)) <> "CHECK" Then s = s & "  - INSTALL_MODE must be NEW, UPDATE or CHECK" & Chr$(10)
+	If InStr(LCase$(TARGET_FILE), "names.nsf") > 0 Or InStr(LCase$(TARGET_FILE), "domcfg.nsf") > 0 Then s = s & "  - TARGET_FILE must not be names.nsf or domcfg.nsf" & Chr$(10)
+	If LCase$(Right$(Trim$(TARGET_FILE), 4)) <> ".nsf" Then s = s & "  - TARGET_FILE must end with .nsf" & Chr$(10)
+
+	' REPO_FOLDER: the separator style is taken from the path; a missing trailing separator is added.
+	If InStr(REPO_FOLDER, "\") > 0 Then gSep = "\" Else gSep = "/"
+	gRoot = Trim$(REPO_FOLDER)
+	If Right$(gRoot, 1) <> gSep Then gRoot = gRoot & gSep
+	CheckSettings = s
+End Function
+
+'------------------------------------------------------------------------------
+' Where did it go, and is it really there?
+'------------------------------------------------------------------------------
+Function ServerLabel(srv As String) As String
+	If srv = "" Then ServerLabel = "LOCAL (this workstation)" Else ServerLabel = srv
+End Function
+
+Function DescribeDb(d As NotesDatabase) As String
+	DescribeDb = "Server: " & ServerLabel(d.Server) & Chr$(10) & "File: " & d.FilePath & Chr$(10) & "Title: " & d.Title & Chr$(10) & "Replica ID: " & d.ReplicaID
+End Function
+
+Function ManifestNames(session As NotesSession, wantKind As String) As String
+	' "|Name1|Name2|" of every manifest line of the given kind (F, V, L, A).
+	Dim manifest As String, lines As Variant, parts As Variant, ln As String, detail As String
+	Dim i As Long
+	manifest = ReadTextFile(session, MANIFEST_REL, detail)
+	lines = Split(manifest, Chr$(10))
+	For i = 0 To Ubound(lines)
+		ln = Trim$(CStr(lines(i)))
+		If ln <> "" And Left$(ln, 1) <> "#" Then
+			parts = Split(ln, "|")
+			If Ubound(parts) = 2 Then
+				If UCase$(Trim$(CStr(parts(0)))) = wantKind Then ManifestNames = ManifestNames & "|" & Trim$(CStr(parts(1))) & "|"
+			End If
+		End If
+	Next
+End Function
+
+Function NoteTitles(vdb As NotesDatabase, kindCode As String) As String
+	' "|Title1|Title2|" of every script library (L) or agent (A) design note. Reads the notes directly,
+	' so it also works for UNSIGNED notes (NotesDatabase.GetAgent raises error 4005 "Document is not signed"
+	' on agents that were imported but not signed yet).
+	Dim nc As NotesNoteCollection, doc As NotesDocument, id As String, t As Variant
+	Set nc = vdb.CreateNoteCollection(False)
+	If kindCode = "L" Then nc.SelectScriptLibraries = True
+	If kindCode = "A" Then nc.SelectAgents = True
+	Call nc.BuildCollection
+	id = nc.GetFirstNoteID
+	Do Until id = ""
+		Set doc = vdb.GetDocumentByID(id)
+		If Not (doc Is Nothing) Then
+			t = doc.GetItemValue("$TITLE")
+			If IsArray(t) Then NoteTitles = NoteTitles & "|" & CStr(t(LBound(t))) & "|"
+		End If
+		id = nc.GetNextNoteID(id)
+	Loop
+End Function
+
+Function VerifyInstall(session As NotesSession, srv As String, filePath As String, checkDesign As Boolean, checkCode As Boolean, report As String) As Boolean
+	' Re-opens the database from disk and looks for every design element named in the manifest.
+	On Error GoTo EH
+	Dim vdb As NotesDatabase
+	Dim lst As Variant, kinds As Variant
+	Dim kindCode As String, itemName As String, label As String
+	Dim missing As String, libs As String, agents As String
+	Dim found As Long, total As Long
+	Dim i As Long, j As Long
+	Dim hit As Boolean, doKind As Boolean
+
+	Set vdb = New NotesDatabase("", "")
+	If Not vdb.Open(srv, filePath) Then
+		report = "Cannot re-open " & filePath & " to verify it."
+		Exit Function
+	End If
+	libs = NoteTitles(vdb, "L")
+	agents = NoteTitles(vdb, "A")
+
+	kinds = Split("F|V|L|A", "|")
+	For i = 0 To Ubound(kinds)
+		kindCode = CStr(kinds(i))
+		doKind = True
+		If (kindCode = "F" Or kindCode = "V") And Not checkDesign Then doKind = False
+		If (kindCode = "L" Or kindCode = "A") And Not checkCode Then doKind = False
+		If doKind Then
+			found = 0
+			total = 0
+			missing = ""
+			lst = Split(ManifestNames(session, kindCode), "|")
+			For j = 0 To Ubound(lst)
+				itemName = Trim$(CStr(lst(j)))
+				If itemName <> "" Then
+					total = total + 1
+					hit = False
+					Select Case kindCode
+					Case "F"
+						hit = Not (vdb.GetForm(itemName) Is Nothing)
+					Case "V"
+						hit = Not (vdb.GetView(itemName) Is Nothing)
+					Case "A"
+						hit = (InStr(1, agents, "|" & itemName & "|", 1) > 0)
+					Case "L"
+						hit = (InStr(1, libs, "|" & itemName & "|", 1) > 0)
+					End Select
+					If hit Then
+						found = found + 1
+					Else
+						missing = missing & " " & itemName
+					End If
+				End If
+			Next
+			Select Case kindCode
+			Case "F"
+				label = "Forms"
+			Case "V"
+				label = "Views"
+			Case "L"
+				label = "Script libraries"
+			Case "A"
+				label = "Agents"
+			End Select
+			report = report & label & ": " & found & " of " & total & " found"
+			If missing <> "" Then report = report & "  MISSING:" & missing
+			report = report & Chr$(10)
+		End If
+	Next
+	VerifyInstall = (InStr(report, "MISSING") = 0)
+	Exit Function
+EH:
+	report = report & "Verification error " & Err & ": " & Error$ & " (line " & Erl & ")"
+	VerifyInstall = False
+	Exit Function
+End Function
+
+Function SrcPath(relPath As String) As String
+	' File below <REPO_FOLDER> ; the manifest uses "/" in paths.
+	SrcPath = gRoot & Replace(Replace(relPath, "/", gSep), IfText(gSep = "\", "/", "\"), gSep)
+End Function
+
+Function CheckSources(session As NotesSession, nForm As Long, nView As Long, nLib As Long, nAgent As Long) As String
+	' Reads deploy\dxl\MANIFEST.txt and checks every listed file exists. Nothing is created yet.
+	Dim manifest As String, lines As Variant, parts As Variant
+	Dim ln As String, kind As String, s As String, detail As String, src As String
+	Dim i As Long
+
+	manifest = ReadTextFile(session, MANIFEST_REL, detail)
+	If manifest = "" Then
+		CheckSources = "  - " & detail & Chr$(10) & "  - REPO_FOLDER must be the repository root (it contains deploy and lotusscript)." & Chr$(10)
+		Exit Function
+	End If
+	lines = Split(manifest, Chr$(10))
+	For i = 0 To Ubound(lines)
+		ln = Trim$(CStr(lines(i)))
+		If ln <> "" And Left$(ln, 1) <> "#" Then
+			parts = Split(ln, "|")
+			If Ubound(parts) <> 2 Then
+				s = s & "  - MANIFEST line " & (i + 1) & ": expected kind|name|file" & Chr$(10)
+			Else
+				kind = UCase$(Trim$(CStr(parts(0))))
+				If Dir$(SrcPath(Trim$(CStr(parts(2))))) = "" Then
+					s = s & "  - missing file: " & SrcPath(Trim$(CStr(parts(2)))) & Chr$(10)
+				ElseIf kind = "L" Or kind = "A" Then
+					src = ReadTextFile(session, Trim$(CStr(parts(2))), detail)
+					If src <> "" Then
+						If HeaderVersion(src) <> gVersion Then s = s & "  - " & Trim$(CStr(parts(2))) & ": header 'Version' is '" & HeaderVersion(src) & "' but the project version is '" & gVersion & "'" & Chr$(10)
+					End If
+				End If
+				Select Case kind
+				Case "F"
+					nForm = nForm + 1
+				Case "V"
+					nView = nView + 1
+				Case "L"
+					nLib = nLib + 1
+				Case "A"
+					nAgent = nAgent + 1
+				Case Else
+					s = s & "  - MANIFEST line " & (i + 1) & ": kind must be F, V, L or A" & Chr$(10)
+				End Select
+			End If
+		End If
+	Next
+	CheckSources = s
+End Function
+
+Sub ApplyAclOrStop(db As NotesDatabase, failed As Boolean)
+	' Runs SetupACL; on error explains exactly what state the database is in and stops the install.
+	Dim msg As String
+	On Error Resume Next
+	Call SetupACL(db)
+	If Err <> 0 Then msg = "Error " & CStr(Err) & ": " & Error$
+	On Error GoTo 0
+	If msg <> "" Then
+		failed = True
+		Messagebox "ACL setup FAILED. Nothing was imported." & Chr$(10) & Chr$(10) & msg & Chr$(10) & Chr$(10) & _
+		"The database exists at " & ServerLabel(db.Server) & "!!" & db.FilePath & " with its default ACL (the creating ID is Manager)." & Chr$(10) & _
+		"Either delete it and run again with INSTALL_MODE = ""NEW"", or fix the cause and run with INSTALL_MODE = ""UPDATE"" and APPLY_ACL = True.", , "Installer"
+	End If
+End Sub
+
+Sub SetupACL(db As NotesDatabase)
+	' docs\02-Deployment-Guide.md 2.1. The creating ID stays Manager so you cannot lock yourself out.
+	' Safe to run again on an existing database. No custom roles are used.
+	Dim s As New NotesSession
+	Dim acl As NotesACL, e As NotesACLEntry
+	Dim nMgr As Integer
+	Set acl = db.ACL
+
+	' 1) Managers FIRST (see PwdReset installer: lowering -Default- with no Manager gives error 4005).
+	Call SetEntry(acl, s.UserName, ACLLEVEL_MANAGER)
+	Call SetEntry(acl, SERVER_GROUP, ACLLEVEL_MANAGER)
+
+	' 2) Reviewers and the agent signer: Editor. The signer deletes documents in PurgeLoginAudit.
+	Call SetEntry(acl, REVIEW_GROUP, ACLLEVEL_EDITOR)
+	If LCase$(Trim$(SIGNER_ID)) <> LCase$(Trim$(s.UserName)) Then
+		Call SetEntry(acl, SIGNER_ID, ACLLEVEL_EDITOR)
+		Set e = acl.GetEntry(SIGNER_ID)
+		e.CanDeleteDocuments = True
+		e.CanCreateDocuments = True
+	End If
+
+	' 3) Verify a named Manager exists before changing the default entries.
+	Set e = acl.GetFirstEntry()
+	Do While Not e Is Nothing
+		If e.Level = ACLLEVEL_MANAGER And UCase$(e.Name) <> "-DEFAULT-" Then nMgr = nMgr + 1
+		Set e = acl.GetNextEntry(e)
+	Loop
+	If nMgr = 0 Then Error 1000, "ACL setup stopped: no named Manager entry could be created. Check SERVER_GROUP and the running ID."
+
+	' 4) Signed-in users run the agents (Reader); anonymous users get nothing. Event documents
+	'    carry a Readers item, so Reader here does not expose other users' events.
+	Call SetEntry(acl, "-Default-", ACLLEVEL_READER)
+	Call SetEntry(acl, "Anonymous", ACLLEVEL_NOACCESS)
+	Call acl.Save
+End Sub
+
+Sub SetEntry(acl As NotesACL, nm As String, lvl As Integer)
+	Dim e As NotesACLEntry
+	Set e = acl.GetEntry(nm)
+	If e Is Nothing Then Set e = acl.CreateACLEntry(nm, lvl)
+	e.Level = lvl
+End Sub
+
+'------------------------------------------------------------------------------
+' File and DXL import helpers
+'------------------------------------------------------------------------------
+Function ReadTextFile(session As NotesSession, relPath As String, detail As String) As String
+	' Whole text file below <REPO_FOLDER> as UTF-8 text with LF line ends; "" + detail on failure.
+	On Error GoTo EH
+	Dim stm As NotesStream, t As String
+	Set stm = session.CreateStream()
+	If Not stm.Open(SrcPath(relPath), "UTF-8") Then
+		detail = "Cannot open " & SrcPath(relPath)
+		Exit Function
+	End If
+	If stm.Bytes = 0 Then
+		detail = relPath & " is empty"
+		Call stm.Close
+		Exit Function
+	End If
+	' Read line by line with the default arguments (no STMREAD_* constant needed;
+	' the constant names are not available in every build). Each line is returned
+	' without its line end, so LF is re-added to rebuild the text.
+	Do Until stm.IsEOS
+		t = t & stm.ReadText() & Chr$(10)
+	Loop
+	Call stm.Close
+	ReadTextFile = Replace(t, Chr$(13) & Chr$(10), Chr$(10))
+	Exit Function
+EH:
+	detail = relPath & " read FAILED: " & Err & " " & Error$
+	ReadTextFile = ""
+	Exit Function
+End Function
+
+Function ReadVersion(session As NotesSession, detail As String) As String
+	' Version number = the header line  ' Version  : x.y.z  of lotusscript\LoginAuditLib.lss
+	Dim t As String
+	t = ReadTextFile(session, "lotusscript/LoginAuditLib.lss", detail)
+	If t = "" Then Exit Function
+	ReadVersion = HeaderVersion(t)
+	If ReadVersion = "" Then detail = "no ' Version header line found in LoginAuditLib.lss"
+
+End Function
+
+Function HeaderVersion(src As String) As String
+	' Value of the header line  ' Version        : x.y.z  (looked for in the first 15 lines); "" if missing.
+	Dim lines As Variant, i As Long, t As String, p As Long
+	lines = Split(src, Chr$(10))
+	For i = 0 To Ubound(lines)
+		If i > 14 Then Exit For
+		t = Trim$(CStr(lines(i)))
+		If StartsCI(t, "' Version") Then
+			p = InStr(t, ":")
+			If p > 0 Then HeaderVersion = Trim$(Mid$(t, p + 1))
+			Exit Function
+		End If
+	Next
+End Function
+
+Function UnwrapDxl(src As String) As String
+	' A form/view .dxl file is a standalone document. To import all of them in one stage they are
+	' placed inside one <database> element, so the XML declaration is removed and the root's own
+	' xmlns / version attributes (only valid on the outermost element) are dropped.
+	Dim t As String, p As Long
+	t = src
+	p = InStr(t, "<?xml")
+	If p > 0 Then
+		p = InStr(p, t, "?>")
+		If p > 0 Then t = Mid$(t, p + 2)
+	End If
+	t = Replace(t, " xmlns=""http://www.lotus.com/dxl""", "", 1, 1)
+	t = Replace(t, " version=""14.0""", "", 1, 1)
+	UnwrapDxl = TrimLF(t)
+End Function
+
+Function ImportDesign(session As NotesSession, db As NotesDatabase, detail As String) As Boolean
+	' Stage 1: every F (form) and V (view) line of the manifest, in one <database> document.
+	On Error GoTo EH
+	Dim manifest As String, lines As Variant, parts As Variant
+	Dim ln As String, kind As String, nm As String, src As String, x As String
+	Dim problems As String, tmp As String
+	Dim i As Long, nForm As Long, nView As Long
+
+	manifest = ReadTextFile(session, MANIFEST_REL, detail)
+	If manifest = "" Then Exit Function
+
+	x = "<?xml version=""1.0"" encoding=""utf-8""?>" & Chr$(10) & "<database xmlns=""http://www.lotus.com/dxl"">" & Chr$(10)
+	lines = Split(manifest, Chr$(10))
+	For i = 0 To Ubound(lines)
+		ln = Trim$(CStr(lines(i)))
+		If ln <> "" And Left$(ln, 1) <> "#" Then
+			parts = Split(ln, "|")
+			If Ubound(parts) = 2 Then
+				kind = UCase$(Trim$(CStr(parts(0))))
+				nm = Trim$(CStr(parts(1)))
+				If kind = "F" Or kind = "V" Then
+					src = ReadTextFile(session, Trim$(CStr(parts(2))), tmp)
+					If src = "" Then
+						problems = problems & "  - " & tmp & Chr$(10)
+					Else
+						x = x & UnwrapDxl(src) & Chr$(10)
+						If kind = "F" Then nForm = nForm + 1 Else nView = nView + 1
+					End If
+				End If
+			End If
+		End If
+	Next
+	If problems <> "" Then
+		detail = "Design stage NOT imported (nothing partial was written). Problems:" & Chr$(10) & problems
+		Exit Function
+	End If
+	x = x & "</database>" & Chr$(10)
+	Call WriteDiagFile("design generated dxl", x)	' the exact DXL sent to the importer: installer_design_generated_dxl.log
+	ImportDesign = ImportDxlText(session, db, x, "design (" & nForm & " forms, " & nView & " views)", detail)
+	Exit Function
+EH:
+	detail = "Design stage FAILED: " & Err & " " & Error$ & " (line " & Erl & ")"
+	ImportDesign = False
+	Exit Function
+End Function
+
+Function ImportDxlText(session As NotesSession, db As NotesDatabase, dxl As String, label As String, detail As String) As Boolean
+	On Error GoTo EH
+	' NOTE: "Imp" is a reserved LotusScript operator (logical implication),
+	' so it cannot be used as a variable name. Renamed to dxlImp.
+	Dim stm As NotesStream
+	Dim dxlImp As NotesDXLImporter
+	Set stm = session.CreateStream()
+	Call stm.WriteText(dxl)
+	stm.Position = 0
+	Set dxlImp = session.CreateDXLImporter()
+	dxlImp.DesignImportOption = DXLIMPORTOPTION_REPLACE_ELSE_CREATE
+	dxlImp.DocumentImportOption = DXLIMPORTOPTION_IGNORE
+	dxlImp.ACLImportOption = DXLIMPORTOPTION_IGNORE
+	dxlImp.ReplaceDBProperties = False
+	dxlImp.ReplicaRequiredForReplaceOrUpdate = False
+	dxlImp.ExitOnFirstFatalError = True
+	Call dxlImp.Import(stm, db)
+	Call stm.Close
+	' Always keep the importer log on disk.
+	Call WriteDiagFile(label, "IMPORT OK" & Chr$(10) & "Notes created/updated: " & dxlImp.ImportedNoteCount & Chr$(10) & dxlImp.Log)
+	If dxlImp.ImportedNoteCount = 0 Then
+		detail = label & " ran but imported 0 notes. Importer log: " & Left$(dxlImp.Log, 1500) & " | full log: " & DiagFileName(label)
+		ImportDxlText = False
+		Exit Function
+	End If
+	detail = label & " imported. Notes created/updated: " & dxlImp.ImportedNoteCount
+	' LotusScript compile problems come back as importer WARNINGS, not errors: report them.
+	If InStr(dxlImp.Log, "<warning") > 0 Then
+		detail = detail & " | WITH WARNINGS (code did not compile): " & Left$(dxlImp.Log, 1500) & " | full log: " & DiagFileName(label)
+		Messagebox label & ": imported WITH WARNINGS. Some LotusScript did not compile." & Chr$(10) & Left$(dxlImp.Log, 1200) & Chr$(10) & "Full log: " & DiagFileName(label), , "Installer"
+	End If
+	ImportDxlText = True
+	Exit Function
+EH:
+	detail = label & " FAILED: " & Err & " " & Error$
+	If Not dxlImp Is Nothing Then
+		detail = detail & " | importer log: " & Left$(dxlImp.Log, 1500)
+		Call WriteDiagFile(label, "IMPORT FAILED " & Err & " " & Error$ & Chr$(10) & dxlImp.Log)
+	Else
+		Call WriteDiagFile(label, "IMPORT FAILED " & Err & " " & Error$)
+	End If
+	detail = detail & " | full log: " & DiagFileName(label)
+	ImportDxlText = False
+	Exit Function
+End Function
+
+Function DiagFileName(label As String) As String
+	' Diagnostic log next to the project folder, e.g. <REPO_FOLDER>installer_design__10_forms__...log
+	Dim t As String, i As Long, c As String, r As String
+	t = Left$(label, 40)
+	For i = 1 To Len(t)
+		c = Mid$(t, i, 1)
+		If (c >= "A" And c <= "Z") Or (c >= "a" And c <= "z") Or (c >= "0" And c <= "9") Then r = r & c Else r = r & "_"
+	Next
+	DiagFileName = gRoot & "installer_" & r & ".log"
+End Function
+
+Sub WriteDiagFile(label As String, msg As String)
+	' Best effort; never raises. Overwrites the previous log for the same stage.
+	On Error Resume Next
+	Dim s As New NotesSession, f As NotesStream
+	Set f = s.CreateStream()
+	If f.Open(DiagFileName(label), "UTF-8") Then
+		Call f.Truncate
+		Call f.WriteText(Format$(Now, "yyyy-mm-dd hh:nn:ss") & "  " & label & Chr$(10) & msg)
+		Call f.Close
+	End If
+End Sub
+
+'------------------------------------------------------------------------------
+' Code stage: build DXL for script libraries and agents from the .lss sources
+' listed in deploy\dxl\MANIFEST.txt, then import it.
+'------------------------------------------------------------------------------
+Function ImportCode(session As NotesSession, db As NotesDatabase, detail As String) As Boolean
+	On Error GoTo EH
+	Dim manifest As String, lines As Variant, parts As Variant
+	Dim ln As String, kind As String, nm As String, src As String, elem As String
+	Dim x As String, seen As String, problems As String, tmp As String, agentAttr As String
+	Dim i As Long, nLib As Long, nAgent As Long
+
+	manifest = ReadTextFile(session, MANIFEST_REL, detail)
+	If manifest = "" Then Exit Function
+	If AGENTS_UNRESTRICTED Then agentAttr = " restrictions=""unrestricted"""
+
+	x = "<?xml version=""1.0"" encoding=""utf-8""?>" & Chr$(10) & "<database xmlns=""http://www.lotus.com/dxl"">" & Chr$(10)
+	lines = Split(manifest, Chr$(10))
+	For i = 0 To Ubound(lines)
+		ln = Trim$(CStr(lines(i)))
+		If ln <> "" And Left$(ln, 1) <> "#" Then
+			parts = Split(ln, "|")
+			If Ubound(parts) <> 2 Then
+				problems = problems & "  - MANIFEST line " & (i + 1) & ": expected kind|name|file" & Chr$(10)
+			Else
+				kind = UCase$(Trim$(CStr(parts(0))))
+				nm = Trim$(CStr(parts(1)))
+				If kind = "L" Or kind = "A" Then
+					src = ReadTextFile(session, Trim$(CStr(parts(2))), tmp)
+					If src = "" Then
+						problems = problems & "  - " & tmp & Chr$(10)
+					ElseIf HasNonAscii(src) Then
+						problems = problems & "  - " & Trim$(CStr(parts(2))) & " contains non-ASCII characters (keep .lss files ASCII)" & Chr$(10)
+					Else
+						elem = BuildCodeElements(src, nm & " (" & Trim$(CStr(parts(2))) & ")", seen, problems)
+						If kind = "L" Then
+							x = x & "<scriptlibrary name=""" & XmlEsc(nm) & """>" & elem & "</scriptlibrary>" & Chr$(10)
+							seen = seen & "|" & nm & "|"
+							nLib = nLib + 1
+						Else
+							' Imported as a menu agent, target none, NOT run as web user (runs as the signer).
+							' Run-on-behalf and signing are done in Designer afterwards.
+							x = x & "<agent name=""" & XmlEsc(nm) & """" & agentAttr & "><trigger type=""actionsmenu""/><documentset type=""runonce""/>" & elem & "</agent>" & Chr$(10)
+							nAgent = nAgent + 1
+						End If
+					End If
+				End If
+			End If
+		End If
+	Next
+	If problems <> "" Then
+		detail = "Code stage NOT imported (nothing partial was written). Problems:" & Chr$(10) & problems
+		Exit Function
+	End If
+	x = x & "</database>" & Chr$(10)
+	Call WriteDiagFile("code generated dxl", x)	' the exact DXL sent to the importer: installer_code_generated_dxl.log
+	ImportCode = ImportDxlText(session, db, x, "code (" & nLib & " libraries, " & nAgent & " agents)", detail)
+	Exit Function
+EH:
+	detail = "Code stage FAILED: " & Err & " " & Error$ & " (line " & Erl & ")"
+	ImportCode = False
+	Exit Function
+End Function
+
+Function BuildCodeElements(src As String, label As String, seen As String, problems As String) As String
+	' Splits LotusScript source into: options | declarations | one <code> element per Sub/Function.
+	' Source conventions (already used by all .lss files):
+	'   - '(Options) and '(Declarations) marker lines are skipped
+	'   - Sub / Function / Class start in column 1 and end with End Sub/Function/Class in column 1
+	'   - Option and Use lines go to options; everything else outside procedures goes to declarations
+	Dim lines As Variant, i As Long, j As Long
+	Dim ln As String, block As String, pending As String
+	Dim opts As String, decl As String, procs As String
+	Dim pname As String, ev As String, useName As String
+	Dim isSub As Boolean, started As Boolean
+	Dim LF As String
+	LF = Chr$(10)
+	lines = Split(src, LF)
+	i = 0
+	Do While i <= Ubound(lines)
+		ln = CStr(lines(i))
+		pname = ProcName(ln, isSub)
+		If IsMarker(ln) Then
+			' skipped
+		ElseIf pname <> "" Then
+			started = True
+			block = pending & ln & LF
+			pending = ""
+			i = i + 1
+			Do While i <= Ubound(lines)
+				block = block & CStr(lines(i)) & LF
+				If StartsCI(CStr(lines(i)), "End Sub") Or StartsCI(CStr(lines(i)), "End Function") Then Exit Do
+				i = i + 1
+			Loop
+			ev = pname
+			If isSub And LCase$(pname) = "initialize" Then ev = "initialize"
+			procs = procs & "<code event=""" & XmlEsc(ev) & """><lotusscript>" & XmlEsc(TrimLF(block)) & "</lotusscript></code>"
+		ElseIf IsClassStart(ln) Then
+			started = True
+			block = pending & ln & LF
+			pending = ""
+			i = i + 1
+			Do While i <= Ubound(lines)
+				block = block & CStr(lines(i)) & LF
+				If StartsCI(CStr(lines(i)), "End Class") Then Exit Do
+				i = i + 1
+			Loop
+			decl = decl & block
+		ElseIf Trim$(ln) = "" Or Left$(LTrim$(ln), 1) = "'" Then
+			If started Then pending = pending & ln & LF Else opts = opts & ln & LF
+		ElseIf StartsCI(ln, "Option ") Or StartsCI(ln, "Use ") Or StartsCI(ln, "UseLSX ") Then
+			opts = opts & pending & ln & LF
+			pending = ""
+			If StartsCI(ln, "Use """) Then
+				useName = Mid$(ln, 6)
+				j = InStr(useName, """")
+				If j > 0 Then useName = Left$(useName, j - 1)
+				If InStr(seen, "|" & useName & "|") = 0 Then problems = problems & "  - " & label & ": Use """ & useName & """ is not defined above it in MANIFEST.txt" & Chr$(10)
+			End If
+		Else
+			started = True
+			decl = decl & pending & ln & LF
+			pending = ""
+		End If
+		i = i + 1
+	Loop
+
+	If Trim$(opts) <> "" Then BuildCodeElements = "<code event=""options""><lotusscript>" & XmlEsc(TrimLF(opts)) & "</lotusscript></code>"
+	If Trim$(decl) <> "" Then BuildCodeElements = BuildCodeElements & "<code event=""declarations""><lotusscript>" & XmlEsc(TrimLF(decl)) & "</lotusscript></code>"
+	BuildCodeElements = BuildCodeElements & procs
+End Function
+
+Function StartsCI(s As String, prefix As String) As Boolean
+	StartsCI = (LCase$(Left$(s, Len(prefix))) = LCase$(prefix))
+End Function
+
+Function IsMarker(ln As String) As Boolean
+	Dim t As String
+	t = Trim$(ln)
+	IsMarker = (LCase$(t) = "'(options)" Or LCase$(t) = "'(declarations)")
+End Function
+
+Function StripScope(ln As String) As String
+	If StartsCI(ln, "Public ") Then
+		StripScope = Mid$(ln, 8)
+	ElseIf StartsCI(ln, "Private ") Then
+		StripScope = Mid$(ln, 9)
+	Else
+		StripScope = ln
+	End If
+End Function
+
+Function IsClassStart(ln As String) As Boolean
+	IsClassStart = StartsCI(StripScope(ln), "Class ")
+End Function
+
+Function ProcName(ln As String, isSub As Boolean) As String
+	' Name of a column-1 Sub/Function declaration, else "". Sets isSub.
+	Dim t As String, i As Long, c As String
+	t = StripScope(ln)
+	If StartsCI(t, "Sub ") Then
+		isSub = True
+		t = Mid$(t, 5)
+	ElseIf StartsCI(t, "Function ") Then
+		isSub = False
+		t = Mid$(t, 10)
+	Else
+		Exit Function
+	End If
+	t = LTrim$(t)
+	For i = 1 To Len(t)
+		c = Mid$(t, i, 1)
+		If Not ((c >= "A" And c <= "Z") Or (c >= "a" And c <= "z") Or (c >= "0" And c <= "9") Or c = "_") Then Exit For
+	Next
+	ProcName = Left$(t, i - 1)
+End Function
+
+Function TrimLF(s As String) As String
+	Dim t As String
+	t = s
+	Do While Left$(t, 1) = Chr$(10)
+		t = Mid$(t, 2)
+	Loop
+	Do While Right$(t, 1) = Chr$(10)
+		t = Left$(t, Len(t) - 1)
+	Loop
+	TrimLF = t
+End Function
+
+Function XmlEsc(s As String) As String
+	Dim t As String
+	t = Replace(s, "&", "&amp;")
+	t = Replace(t, "<", "&lt;")
+	t = Replace(t, ">", "&gt;")
+	t = Replace(t, """", "&quot;")
+	XmlEsc = t
+End Function
+
+Function HasNonAscii(s As String) As Boolean
+	Dim i As Long
+	For i = 1 To Len(s)
+		If Asc(Mid$(s, i, 1)) > 127 Then HasNonAscii = True: Exit Function
+	Next
+End Function
+
+Function IfText(cond As Boolean, a As String, b As String) As String
+	' LotusScript has no IIf. Returns a when cond is True, else b (both are evaluated).
+	If cond Then IfText = a Else IfText = b
+End Function

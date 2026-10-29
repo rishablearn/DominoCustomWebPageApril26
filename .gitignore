@@ -25,3 +25,6 @@ build/
 
 # Private / client-specific variants — not synced to GitHub
 login-forms/DominoEmbeddedForm-CentralBankOfIndia.html
+
+# Installer logs
+installer_*.log
