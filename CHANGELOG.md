@@ -4,6 +4,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-10-29
+
+### Fixed
+- **3.1.0 did not compile on import** (importer: `7118 Unexpected: list; Expected: Identifier` in `LoginAuditLib`, then `12051 Syntax Error` on all 5 agents, which cascade from the library). Cause: a variable named `list` in `IsTrustedProxy`; `List` is a LotusScript keyword. Renamed to `proxyList`. Do not deploy 3.1.0.
+- `PurgeLoginAudit`: variable `log` shadowed the built-in `Log` function; renamed to `auditLog` (not reported yet, would have failed next).
+- Installer: the version in an `.lss` header is the first word after the colon, so a trailing note can no longer cause "header Version is 3.1.0 but project version is 3.1.0".
+
+### Changed
+- `tools/lint_lss.py` rejects LotusScript keywords and built-in function names used as variable or parameter names (`list`, `log`, `left`, `name`, `date`, ...) and header lines with text after the version number.
+
 ## [3.1.0] - 2026-10-29
 
 ### Added

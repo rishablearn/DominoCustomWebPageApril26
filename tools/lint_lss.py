@@ -15,9 +15,14 @@ import os
 import re
 import sys
 
-RESERVED = {"imp", "eqv", "mod", "name", "error", "date", "time", "end", "type", "list", "me", "new",
-            "step", "to", "until", "while", "loop", "then", "else", "elseif", "call", "set", "print",
-            "base", "default", "property", "stop", "resume", "option", "left", "right", "mid", "len", "format"}
+RESERVED = set("""abs acos arrayappend arraygetindex arrayunique asc asin atn atn2 bin chr cos csng cdbl cint clng
+cstr cvar cbool cdat date datenumber datevalue day end erase err erl error evaluate exit exp fix format forall
+function hex hour implode input int isarray isdate isempty iselement isnull isnumeric isobject isscalar
+isunknown join lbound lcase left len list log lset ltrim me mid minute month name new now oct print private
+property public rem resume return right rnd round rset rtrim second select set sgn sin sleep space split sqr
+stop str strcompare string tan then time timer timevalue to trim type typename ubound ucase use val variant
+weekday while with write year imp eqv mod and or not xor is as byval byref call case class const declare delete
+each false true goto step until loop else elseif base default option stop""".split())
 PROC_RE = re.compile(r"^\s*(?:Public\s+|Private\s+|Static\s+)*(Sub|Function)\s+([A-Za-z_]\w*)\s*(\((.*)\))?", re.I)
 CLASS_RE = re.compile(r"^\s*(?:Public\s+|Private\s+)?Class\s+([A-Za-z_]\w*)", re.I)
 END_PROC_RE = re.compile(r"^\s*End\s+(Sub|Function)\b", re.I)
@@ -34,7 +39,7 @@ def names_from_decl(text):
     text = re.sub(r"=.*$", "", text)                  # Const x = 1
     for part in text.split(","):
         m = re.match(r"\s*(?:ByVal\s+)?([A-Za-z_]\w*)", part)
-        if m and m.group(1).lower() not in ("as", "preserve", "list"):
+        if m and m.group(1).lower() not in ("as", "preserve"):
             out.append(m.group(1))
     return out
 
@@ -89,11 +94,16 @@ def lint(path, version, problems, check_header=True):
                     problems.append("%s:%d: ForAll alias '%s' is already declared (remove the Dim / rename it)" % (base, ln_no, alias))
             proc_names = None
             continue
+        pm = PROC_RE.match(code)
+        if pm and pm.group(4):
+            for n in names_from_decl(pm.group(4)):
+                if n.lower() in RESERVED:
+                    problems.append("%s:%d: parameter '%s' is a reserved word or built-in function, rename it" % (base, i, n))
         d = DIM_RE.match(code)
         if d and not re.match(r"^\s*(?:Public|Private)\s+(?:Sub|Function|Class)\b", code, re.I):
             for n in names_from_decl(d.group(1)):
                 if n.lower() in RESERVED:
-                    problems.append("%s:%d: '%s' is a reserved word, rename the variable" % (base, i, n))
+                    problems.append("%s:%d: '%s' is a reserved word or built-in function name, rename the variable" % (base, i, n))
                 if proc_names is not None:
                     proc_names.add(n)
                 elif in_class:

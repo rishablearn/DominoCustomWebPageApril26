@@ -1,7 +1,7 @@
 '===========================================================================
 ' PurgeLoginAudit.lss  -  Agent "PurgeLoginAudit"  (LOGINAUDIT.NSF)
 '
-' Version  : 3.1.0
+' Version  : 3.1.1
 ' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
 '
 ' WHAT IT DOES
@@ -29,34 +29,34 @@ Const ERROR_DOC_DAYS = 30
 Sub Initialize()
     Dim session As New NotesSession
     Dim db      As NotesDatabase
-    Dim log     As New NotesLog("PurgeLoginAudit")
+    Dim auditLog     As New NotesLog("PurgeLoginAudit")
 
     On Error GoTo ErrHandler
-    Call log.OpenAgentLog()
+    Call auditLog.OpenAgentLog()
 
     Set db = session.CurrentDatabase
 
-    Call log.LogAction("Start. Retention=" & RETENTION_DAYS & " days, DryRun=" & PURGE_DRY_RUN)
+    Call auditLog.LogAction("Start. Retention=" & RETENTION_DAYS & " days, DryRun=" & PURGE_DRY_RUN)
 
-    Call PurgeByFormula(db, log, _
+    Call PurgeByFormula(db, auditLog, _
         |Form = "LoginEvent" & LoginTime < @Adjust(@Today; 0; 0; -| & RETENTION_DAYS & |; 0; 0; 0) & ReviewStatus != "OPEN"|, _
         "LoginEvent")
 
-    Call PurgeByFormula(db, log, _
+    Call PurgeByFormula(db, auditLog, _
         |Form = "AuditError" & ErrWhen <@Adjust(@Today; 0; 0; -| & ERROR_DOC_DAYS & |; 0; 0; 0)|, _
         "AuditError")
 
-    Call log.LogAction("Done.")
-    Call log.Close()
+    Call auditLog.LogAction("Done.")
+    Call auditLog.Close()
     Exit Sub
 
 ErrHandler:
-    Call log.LogError(Err, "Line " & Erl & ": " & Error$)
-    Call log.Close()
+    Call auditLog.LogError(Err, "Line " & Erl & ": " & Error$)
+    Call auditLog.Close()
     Exit Sub
 End Sub
 
-Sub PurgeByFormula(db As NotesDatabase, log As NotesLog, ByVal formula As String, ByVal label As String)
+Sub PurgeByFormula(db As NotesDatabase, auditLog As NotesLog, ByVal formula As String, ByVal label As String)
     Dim dc      As NotesDocumentCollection
     Dim doc     As NotesDocument
     Dim nextDoc As NotesDocument
@@ -64,12 +64,12 @@ Sub PurgeByFormula(db As NotesDatabase, log As NotesLog, ByVal formula As String
 
     Set dc = db.Search(formula, Nothing, 0)
     If dc.Count = 0 Then
-        Call log.LogAction(label & ": nothing to purge")
+        Call auditLog.LogAction(label & ": nothing to purge")
         Exit Sub
     End If
 
     If PURGE_DRY_RUN Then
-        Call log.LogAction(label & ": DRY RUN - would delete " & dc.Count & " document(s)")
+        Call auditLog.LogAction(label & ": DRY RUN - would delete " & dc.Count & " document(s)")
         Exit Sub
     End If
 
@@ -80,5 +80,5 @@ Sub PurgeByFormula(db As NotesDatabase, log As NotesLog, ByVal formula As String
         removed = removed + 1
         Set doc = nextDoc
     Loop
-    Call log.LogAction(label & ": deleted " & removed & " document(s)")
+    Call auditLog.LogAction(label & ": deleted " & removed & " document(s)")
 End Sub

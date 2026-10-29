@@ -1,7 +1,7 @@
 '===========================================================================
 ' LoginAuditLib.lss  -  Script Library "LoginAuditLib"
 '
-' Version  : 3.1.0
+' Version  : 3.1.1
 ' Requires : HCL Domino 12.0.1+ (developed against Domino 14 class docs)
 '
 ' PURPOSE
@@ -201,13 +201,13 @@ Function IsValidIp(ByVal s As String) As Boolean
 End Function
 
 Function IsTrustedProxy(ByVal ip As String) As Boolean
-    Dim list As Variant
+    Dim proxyList As Variant
     Dim i    As Integer
     IsTrustedProxy = False
     If Trim$(TRUSTED_PROXIES) = "" Then Exit Function
-    list = Split(TRUSTED_PROXIES, ",")
-    For i = 0 To UBound(list)
-        If LCase$(Trim$(CStr(list(i)))) = LCase$(ip) Then
+    proxyList = Split(TRUSTED_PROXIES, ",")
+    For i = 0 To UBound(proxyList)
+        If LCase$(Trim$(CStr(proxyList(i)))) = LCase$(ip) Then
             IsTrustedProxy = True
             Exit Function
         End If
