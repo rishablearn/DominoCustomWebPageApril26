@@ -83,8 +83,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
      */
     const DominoLoginConfig = {
         // Version info - displayed at bottom of page
-        version: "2.6.0",
-        versionDate: "2026-07-21",
+        version: "3.0.0",
+        versionDate: "2026-10-28",
         
         branding: {
             companyName: "Your Company Name",
@@ -194,18 +194,18 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             enablePasswordStrength: true,        // Password strength meter
             enableRememberUsername: true,        // Remember last username
             enableOfflineDetection: true,        // Network status indicator
-            enableSessionWarning: true,          // Session timeout warning
+            enableSessionWarning: false,         // Client-side timer only (not tied to the real Domino session) - leave off
             enableKeyboardShortcuts: true,       // Keyboard shortcuts
             showQuickLinks: true,                // Quick links section
             enableTranslations: true,            // Multi-language support
             enableCaptcha: true,                 // CAPTCHA verification
             enableMFA: false,                    // TOTP multi-factor authentication (Domino 12.0.1+)
-            enableLoginTracking: true            // Log login attempts to Person document
+            enableLoginAudit: true               // Record successful logins via LoginLanding agent (loginaudit.nsf)
         },
 
         // =====================================================================
         // MFA / TOTP SETTINGS  (Requires Domino 12.0.1+ with MFA enabled)
-        // See docs/LotusScript/LoginTracker.lss and README.md for setup
+        // Domino enforces MFA server-side; see docs/02-Deployment-Guide.md §8.2
         // =====================================================================
         mfa: {
             enable: false,
@@ -240,52 +240,36 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         },
 
         // =====================================================================
-        // LOGIN ATTEMPT TRACKING
+        // LOGIN AUDIT  (successful logins, recorded SERVER-SIDE)
         // =====================================================================
-        // WHAT IT DOES:
-        //   1. On each login attempt, client-side data is collected:
-        //      timestamp, timezone, browser/platform, screen resolution, MFA flag.
-        //   2. An async POST fires to agentUrl (LotusScript agent below).
-        //   3. The agent reads the real client IP from CGI headers and prepends
-        //      a new entry to LoginHistory on the Person document in names.nsf.
-        //   4. The same payload is saved to localStorage. On the NEXT login, a
-        //      "Last Login Attempt" banner is shown at the top of the form.
+        // HOW IT WORKS
+        //   The browser does NOT send any tracking data.  After Domino has
+        //   authenticated the user it redirects to the LoginLanding agent
+        //   (RedirectTo is rewritten below).  That agent identifies the user
+        //   from the server session, records IP / time / browser / access
+        //   source in loginaudit.nsf, then redirects to "next".
+        //   Failed logins never reach the agent, so only successful logins
+        //   are recorded.
         //
-        // PREREQUISITES (complete BEFORE setting enable: true):
-        //   a) Deploy LoginTracker.lss as agent "LogLoginAttempt" in DOMCFG.NSF
-        //      — full steps in docs/LotusScript/LoginTracker.lss
-        //   b) Sign the agent with an ID that has Author/Editor access to names.nsf
-        //   c) Set DOMCFG.NSF ACL: Anonymous = Reader (agent runs as web user)
-        //   d) No Person document form changes required — LoginHistory is written
-        //      dynamically. To make it visible in Domino Administrator:
-        //      optionally add a text field "LoginHistory" to the Person subform
-        //      in pubnames.ntf (not mandatory for tracking to work).
+        // PREREQUISITES: loginaudit.nsf + agents deployed (docs/02-Deployment-Guide.md)
         //
-        // LoginHistory field format (pipe-delimited, last 5 entries retained):
-        //   TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA
-        //   Example:
-        //   "2026-06-25T07:30:00Z|192.168.1.10|ATTEMPT|Chrome|Win10|Asia/Kolkata|1920x1080|0"
-        //
-        // QUICK START:
-        //   1. Set enable: true below
-        //   2. Deploy the agent (see prerequisite above)
-        //   3. Open the login page — the banner immediately confirms tracking is
-        //      active. Submit once; on the next load it shows your last attempt.
+        // landingUrl : agent URL, server-relative, must contain ?OpenAgent
+        // defaultNext: where users go when the login page had no RedirectTo
+        //              (the server re-validates this: same-site paths only)
         // =====================================================================
-        loginTracking: {
+        loginAudit: {
             enable: true,
-            agentUrl: "/domcfg.nsf/LogLoginAttempt?OpenAgent",
-            maxHistory: 5,
-            trackValidationFailures: false
+            landingUrl: "/loginaudit.nsf/LoginLanding?OpenAgent",
+            defaultNext: "/verse"
         },
 
         // =====================================================================
         // ADMIN / DEBUG
-        // showStatusPanel: shows a small status badge on the login page indicating
-        //   which features are active. Set true while configuring, false in production.
+        // showStatusPanel: small status badge listing active features.
+        //   Use while configuring; keep false in production.
         // =====================================================================
         debug: {
-            showStatusPanel: true
+            showStatusPanel: false
         },
 
         session: {
@@ -1751,24 +1735,6 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
     [data-theme="dark"] .mfa-setup-body  { background: var(--card-bg); }
     [data-theme="dark"] .mfa-scratch-panel { background: var(--card-bg); }
 
-    /* ===== Last Login Banner ===== */
-    .last-login-banner { display: none; margin-bottom: 16px; background: var(--input-bg, #f8f9fa);
-        border: 1px solid var(--input-border); border-radius: 10px; padding: 10px 14px;
-        font-size: 0.78rem; color: var(--text-secondary); }
-    .last-login-banner.visible { display: block; }
-    .last-login-banner.tracking-active-only { border-color: var(--primary-color); border-style: dashed; opacity: 0.85; }
-    .last-login-title { font-weight: 600; color: var(--text-primary); margin-bottom: 4px;
-        font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
-    .last-login-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; }
-    .last-login-row { display: flex; align-items: baseline; gap: 4px; }
-    .last-login-label { color: var(--text-secondary); font-size: 0.72rem; white-space: nowrap; }
-    .last-login-val { color: var(--text-primary); font-weight: 500; font-size: 0.78rem;
-        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
-    .last-login-status-ok   { color: #28a745; font-weight: 700; }
-    .last-login-status-fail { color: #dc3545; font-weight: 700; }
-    .last-login-status-warn { color: #e67e22; font-weight: 700; }
-    .last-login-first-use { font-size: 0.76rem; color: var(--text-secondary); font-style: italic; padding: 2px 0; }
-    [data-theme="dark"] .last-login-banner { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); }
     @media (prefers-reduced-motion: reduce) { .totp-ring-fill { transition: none; } }
     @media (forced-colors: active) { .totp-input:focus, .totp-input.filled { outline: 3px solid ButtonText; } }
 
@@ -2081,19 +2047,6 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     </div>
                 </div>
                 
-                <!-- Last Login Banner -->
-                <div class="last-login-banner" id="lastLoginBanner" role="note" aria-label="Previous login information">
-                    <div class="last-login-title"><span aria-hidden="true">🕐</span><span>Last Login Attempt</span></div>
-                    <div class="last-login-rows">
-                        <div class="last-login-row"><span class="last-login-label">Date:</span><span class="last-login-val" id="llDate">—</span></div>
-                        <div class="last-login-row"><span class="last-login-label">Status:</span><span class="last-login-val" id="llStatus">—</span></div>
-                        <div class="last-login-row"><span class="last-login-label">Browser:</span><span class="last-login-val" id="llBrowser">—</span></div>
-                        <div class="last-login-row"><span class="last-login-label">Timezone:</span><span class="last-login-val" id="llTimezone">—</span></div>
-                        <div class="last-login-row"><span class="last-login-label">Screen:</span><span class="last-login-val" id="llScreen">—</span></div>
-                        <div class="last-login-row"><span class="last-login-label">MFA Used:</span><span class="last-login-val" id="llMFA">—</span></div>
-                    </div>
-                </div>
-
                 <!-- Options Row -->
                 <div class="form-options" id="formOptions" style="display: none;">
                     <label class="checkbox-label" id="rememberMeContainer">
@@ -2314,8 +2267,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 <strong>HCL Domino</strong>
             </div>
             <div class="version-info" id="versionInfo">
-                <span>Version <span id="versionNumber">2.5.1</span></span>
-                <span class="version-date" id="versionDate">2026-07-01</span>
+                <span>Version <span id="versionNumber">3.0.0</span></span>
+                <span class="version-date" id="versionDate">2026-10-28</span>
             </div>
         </footer>
     </div>
@@ -2461,7 +2414,10 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 const redirect = document.getElementById('RedirectTo');
                 if (redirect) {
                     const urlParams = new URLSearchParams(window.location.search);
-                    redirect.value = urlParams.get('RedirectTo') || c.domino.defaultRedirectTo || '/';
+                    const requested = urlParams.get('RedirectTo') || c.domino.defaultRedirectTo || '/';
+                    redirect.value = (c.features?.enableLoginAudit && c.loginAudit?.enable)
+                        ? buildLandingUrl(c, requested)
+                        : requested;
                 }
             }
             
@@ -2637,7 +2593,6 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     const displayMsg = errorMessages[0] || '❌ Please fix the errors before submitting.';
                     showError(displayMsg);
                     if (firstInvalidField) firstInvalidField.focus();
-                    if (c.loginTracking?.trackValidationFailures) trackLoginAttempt({ validationFail: true }, null);
                     resetSubmitButton();
                     return false;
                 }
@@ -2650,10 +2605,8 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                     return false;
                 }
 
-                // Track then submit
-                e.preventDefault();
-                trackLoginAttempt({}, function() { form.submit(); });
-                return false;
+                // Valid: let the browser submit the form to Domino normally.
+                // (No client-side tracking — logins are recorded server-side by LoginLanding.)
             });
             
             // Clear errors on input
@@ -2828,6 +2781,24 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             if (!navigator.onLine) updateStatus(false);
         }
         
+        // Login audit: send the browser through the LoginLanding agent after Domino
+        // has authenticated the user.  Only same-origin PATHS are passed as "next";
+        // the agent validates it again server-side (open-redirect protection).
+        function auditNext(requested) {
+            try {
+                const u = new URL(requested, window.location.origin);
+                if (u.origin !== window.location.origin) return '';
+                const path = u.pathname + u.search;
+                return (path.charAt(0) === '/' && path.charAt(1) !== '/') ? path : '';
+            } catch (e) { return ''; }
+        }
+        function buildLandingUrl(c, requested) {
+            const base = c.loginAudit.landingUrl || '/loginaudit.nsf/LoginLanding?OpenAgent';
+            let next = auditNext(requested);
+            if (!next || next === '/') next = c.loginAudit.defaultNext || '';
+            return next ? base + '&next=' + encodeURIComponent(next) : base;
+        }
+
         // Session Warning
         function initSessionWarning() {
             const c = DominoLoginConfig;
@@ -3503,7 +3474,6 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             initWCAG();
             setupMFA();
             setupMFAEnrollment();
-            setupLoginTracking();
             setupStatusPanel();
 
             // Real-time validation - enables submit only when all fields valid
@@ -3597,7 +3567,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             if (errorEl) errorEl.textContent = '';
             var hf = document.getElementById('totpHiddenField');
             if (hf) hf.value = code;
-            trackLoginAttempt({ mfa: true }, function() { document.getElementById('loginForm')?.submit(); });
+            document.getElementById('loginForm')?.submit();
         }
 
         function startTOTPTimer(windowSec) {
@@ -3739,37 +3709,24 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             var hf = document.getElementById('totpHiddenField');
             if (hf) hf.value = code;
 
-            trackLoginAttempt({ mfa: true }, function() {
-                document.getElementById('loginForm')?.submit();
-            });
-        }
-
-        // =====================================================================
-        // LOGIN ATTEMPT TRACKING
-        // =====================================================================
-        function setupLoginTracking() {
-            var cfg = DominoLoginConfig.loginTracking || {};
-            // features.enableLoginTracking is a shorthand; sync it into loginTracking.enable
-            if (DominoLoginConfig.features?.enableLoginTracking) cfg.enable = true;
-            if (!cfg.enable) return;
-            showLastLoginBanner();
+            document.getElementById('loginForm')?.submit();
         }
 
         // =====================================================================
         // FEATURE STATUS PANEL
         // Shown when CONFIG.debug.showStatusPanel = true.
-        // Displays active/inactive state of LoginTracking, MFA, and CAPTCHA.
+        // Displays active/inactive state of Login audit, MFA, and CAPTCHA.
         // =====================================================================
         function setupStatusPanel() {
             var cfg = DominoLoginConfig;
             if (!cfg.debug?.showStatusPanel) return;
             var panel = document.getElementById('featureStatusPanel');
             if (!panel) return;
-            var trackingOn = !!(cfg.loginTracking?.enable || cfg.features?.enableLoginTracking);
+            var trackingOn = !!(cfg.loginAudit?.enable && cfg.features?.enableLoginAudit);
             var mfaOn      = !!(cfg.features?.enableMFA || cfg.mfa?.enable);
             var captchaOn  = !!(cfg.features?.enableCaptcha);
             [
-                { id: 'fspTracking', label: 'Tracking', on: trackingOn },
+                { id: 'fspTracking', label: 'Login audit', on: trackingOn },
                 { id: 'fspMFA',      label: 'MFA',      on: mfaOn      },
                 { id: 'fspCaptcha',  label: 'CAPTCHA',  on: captchaOn  }
             ].forEach(function(item) {
@@ -3781,120 +3738,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             panel.style.display = 'flex';
         }
 
-        function buildAttemptPayload(extra) {
-            var ua = navigator.userAgent;
-            var usernameEl = document.getElementById('Username') ||
-                             document.querySelector('input[name="Username"]') ||
-                             document.querySelector('input[type="text"]');
-            return {
-                username: usernameEl ? (usernameEl.value || '') : '',
-                ts:       new Date().toISOString(),
-                tz:       Intl.DateTimeFormat().resolvedOptions().timeZone,
-                lang:     navigator.language,
-                scr:      screen.width + 'x' + screen.height,
-                browser:  detectBrowserDE(ua),
-                platform: (navigator.userAgentData?.platform || navigator.platform || '').substring(0, 30),
-                mfa:      extra?.mfa ? '1' : '0',
-                status:   'ATTEMPT'
-            };
-        }
-        function detectBrowserDE(ua) {
-            if (/Edg\//i.test(ua))    return 'Edge';
-            if (/OPR\//i.test(ua))    return 'Opera';
-            if (/Chrome\//i.test(ua)) return 'Chrome';
-            if (/Firefox\//i.test(ua))return 'Firefox';
-            if (/Safari\//i.test(ua)) return 'Safari';
-            return 'Browser';
-        }
-        function trackLoginAttempt(extra, callback) {
-            var cfg = DominoLoginConfig.loginTracking || {};
-            if (!DominoLoginConfig.features?.enableLoginTracking && !cfg.enable) {
-                console.log('[Tracking] Skipped — tracking not enabled (set loginTracking.enable:true or features.enableLoginTracking:true)');
-                if (callback) callback(); return;
-            }
-            var payload;
-            try {
-                payload = buildAttemptPayload(extra);
-            } catch (buildErr) {
-                console.warn('[Tracking] buildAttemptPayload failed:', buildErr);
-                if (callback) callback(); return;
-            }
-            try {
-                localStorage.setItem('lastLoginAttempt', JSON.stringify(payload));
-                console.log('[Tracking] localStorage saved — user:', payload.username, '| ts:', payload.ts);
-            } catch (lsErr) {
-                console.warn('[Tracking] localStorage.setItem failed:', lsErr);
-            }
-            var agentUrl = cfg.agentUrl || '/domcfg.nsf/LogLoginAttempt?OpenAgent';
-            var body = Object.keys(payload).map(function(k) {
-                return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]);
-            }).join('&');
-            try {
-                if (navigator.sendBeacon) {
-                    var blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
-                    var sent = navigator.sendBeacon(agentUrl, blob);
-                    console.log('[Tracking] sendBeacon →', agentUrl, '— queued:', sent);
-                } else {
-                    console.log('[Tracking] sendBeacon not available — using sync XHR fallback');
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('POST', agentUrl, false);
-                    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                    try { xhr.send(body); } catch(xhrErr) { console.warn('[Tracking] XHR fallback failed:', xhrErr); }
-                }
-            } catch(beaconErr) {
-                console.warn('[Tracking] Beacon/XHR error:', beaconErr);
-            }
-            if (callback) callback();
-        }
-        function showLastLoginBanner() {
-            var banner = document.getElementById('lastLoginBanner');
-            if (!banner) return;
 
-            var raw;
-            try { raw = localStorage.getItem('lastLoginAttempt'); } catch (e) {}
-
-            if (!raw) {
-                // Tracking enabled but no prior attempt on this device yet.
-                // Show placeholder so admins can confirm tracking is wired up.
-                var titleSpan = banner.querySelector('.last-login-title span:last-child');
-                if (titleSpan) titleSpan.textContent = 'Login Activity Tracking Active';
-                var rowsEl = banner.querySelector('.last-login-rows');
-                if (rowsEl) rowsEl.innerHTML =
-                    '<div class="last-login-first-use">' +
-                    'No previous login recorded on this device. ' +
-                    'Your next attempt will be stored here.' +
-                    '</div>';
-                banner.classList.add('visible', 'tracking-active-only');
-                return;
-            }
-
-            var d;
-            try { d = JSON.parse(raw); } catch (e) { return; }
-
-            var fmt = function(iso) {
-                try { return new Date(iso).toLocaleString(navigator.language, {
-                    year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
-                catch(e) { return iso; }
-            };
-            var setVal = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val || '—'; };
-
-            setVal('llDate',    fmt(d.ts));
-            setVal('llBrowser', d.browser + (d.platform ? ' / ' + d.platform : ''));
-            setVal('llTimezone', d.tz || '—');
-            setVal('llScreen',  d.scr || '—');
-            setVal('llMFA',     d.mfa === '1' ? 'Yes ✓' : 'No');
-
-            var statusEl = document.getElementById('llStatus');
-            if (statusEl) {
-                var st = (d.status || 'ATTEMPT').toUpperCase();
-                statusEl.textContent = st;
-                statusEl.className = 'last-login-val ' +
-                    (st === 'SUCCESS' ? 'last-login-status-ok'  :
-                     st === 'FAILED'  ? 'last-login-status-fail' :
-                                        'last-login-status-warn');
-            }
-            banner.classList.add('visible');
-        }
         
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);

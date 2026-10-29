@@ -36,13 +36,10 @@ The script updates **all** of the following in one shot:
 |------|-------------|
 | `VERSION` | New version number |
 | `login-forms/DominoEmbeddedForm.html` | `CONFIG.version`, `CONFIG.versionDate`, footer `<span id="versionNumber">` |
-| `login-forms/EnterpriseLoginForm.html` | Same as above |
-| `login-forms/CustomLoginForm-Domino.html` | Version comment header |
-| `config.js` | `@version` JSDoc tag |
-| `i18n/translations.js` | `@version` JSDoc tag |
-| `js/login.js` | `@version` JSDoc tag |
-| `README.md` | Badge, **Version:** line, **Last Updated:** date |
-| `docs/*.md` | Inline `vX.Y.Z` references |
+| `lotusscript/*.lss` | `Version  :` header line |
+| `verse-extension/LoginActivityViewer.html` | Header comment version |
+| `README.md` | **Version:** and **Last Updated:** lines |
+| `docs/*.md` | **Version:**, **Last Updated:** and inline `vX.Y.Z` references |
 
 ### Step 3 — Add a changelog entry
 
@@ -58,7 +55,7 @@ After a version bump, the HTML forms must be **re-pasted** into Domino Designer:
 4. Select all (Ctrl+A) → **Text → Pass-Thru HTML** (turns green)
 5. Save → `tell http restart`
 
-Repeat for any other deployed form (`EnterpriseLoginForm`, etc.).
+Also re-save and re-sign any changed LotusScript library/agents in `loginaudit.nsf` (paste the updated `lotusscript/*.lss`).
 
 ### Step 5 — Commit
 

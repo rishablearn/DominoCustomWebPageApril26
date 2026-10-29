@@ -1,0 +1,206 @@
+'===========================================================================
+' LoginLanding.lss  —  Agent "LoginLanding"  (LOGINAUDIT.NSF)
+'
+' Version  : 3.0.0
+' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
+'
+' WHAT IT DOES
+' ------------
+' The login form sends the browser here AFTER Domino has authenticated the
+' user (RedirectTo = /loginaudit.nsf/LoginLanding?OpenAgent&next=/verse).
+' Because the request only reaches this agent with a valid session:
+'   * the user identity is the server-verified Remote_User (not a POSTed name)
+'   * a record means a SUCCESSFUL login (failed logins never get here)
+' The agent writes one LoginEvent document (server time, IP, parsed
+' User-Agent, access source, new-IP/new-device flags) and redirects the user
+' to the validated ?next= path.  It FAILS OPEN for the user: if recording
+' fails the user is still redirected and an AuditError document is written.
+'
+' AGENT PROPERTIES (Designer)
+'   Name                     : LoginLanding
+'   Trigger                  : On Schedule -> Never   (any "On Event" gives HTTP 500)
+'   Act on                   : None
+'   Run as web user          : UNCHECKED  (runs as the signer — see README)
+'   Sign with                : service ID that is a member of LocalDomainAdmins
+'
+' TEST (authenticated browser):
+'   https://<server>/loginaudit.nsf/LoginLanding?OpenAgent&next=/verse
+'   -> 302 to /verse, one new LoginEvent document.
+'   Anonymous / no session -> redirect only, nothing recorded.
+'===========================================================================
+Option Public
+Option Declare
+Use "LoginAuditLib"
+
+Const DIAG_MODE = False   ' True: show identity/IP diagnostics instead of redirecting
+                          ' (testing only; shows the caller's OWN request data)
+
+Sub Initialize()
+    Dim session As New NotesSession
+    Dim web     As NotesDocument
+    Dim db      As NotesDatabase
+    Dim nextUrl As String
+
+    On Error GoTo ErrHandler
+
+    Set web = session.DocumentContext
+    Set db = session.CurrentDatabase
+    nextUrl = SafeNext(GetQueryParam(web, "next"))
+
+    If DIAG_MODE Then
+        Call PrintDiagnostics(session, web, nextUrl)
+        Exit Sub
+    End If
+
+    Call RecordLogin(session, db, web, nextUrl)
+
+Done:
+    Call SendRedirect(nextUrl)
+    Exit Sub
+
+ErrHandler:
+    Call LogAuditError(session, db, "LoginLanding", Err, Erl, Error$)
+    Resume Done
+End Sub
+
+'---------------------------------------------------------------------------
+Sub RecordLogin(session As NotesSession, db As NotesDatabase, web As NotesDocument, ByVal nextUrl As String)
+    Dim caller   As String
+    Dim ua       As String
+    Dim ip       As String
+    Dim browser  As String
+    Dim os       As String
+    Dim devType  As String
+    Dim devKey   As String
+    Dim view     As NotesView
+    Dim isFirst  As Boolean
+    Dim newIp    As Boolean
+    Dim newDev   As Boolean
+    Dim doc      As NotesDocument
+    Dim nowDt    As NotesDateTime
+    Dim nn       As NotesName
+    Dim it       As NotesItem
+    Dim reasons  As String
+
+    caller = GetCaller(web, session)
+    If caller = "" Then Exit Sub                 ' unauthenticated: record nothing
+
+    ua      = CleanText(GetCgi(web, "HTTP_USER_AGENT"), 300)
+    ip      = GetClientIp(web)
+    browser = ParseBrowser(ua)
+    os      = ParseOS(ua)
+    devType = ParseDeviceType(ua)
+    devKey  = MakeDeviceKey(browser, os, devType)
+
+    Set view = db.GetView(VIEW_BY_USER)
+    If view Is Nothing Then Error 1001, "View " & VIEW_BY_USER & " not found in " & db.FilePath
+
+    Set nowDt = New NotesDateTime("")
+    Call nowDt.SetNow
+
+    If IsDuplicate(view, caller, ip, devKey, nowDt) Then Exit Sub   ' idempotent on reload
+
+    Call AnalyseHistory(view, caller, ip, devKey, isFirst, newIp, newDev)
+
+    Set nn = session.CreateName(caller)
+
+    Set doc = db.CreateDocument()
+    Call doc.ReplaceItemValue("Form", "LoginEvent")
+    Call doc.ReplaceItemValue("UserCanonical", caller)
+    Call doc.ReplaceItemValue("UserCommon", nn.Common)
+    Call doc.ReplaceItemValue("LoginTime", nowDt)            ' SERVER time, never client time
+    Call doc.ReplaceItemValue("LoginTimeUTC", IsoUtc(nowDt))
+    Call doc.ReplaceItemValue("IP", ip)
+    Call doc.ReplaceItemValue("RemoteAddr", CleanText(GetCgi(web, "Remote_Addr"), 45))
+    Call doc.ReplaceItemValue("ForwardedFor", CleanText(GetCgi(web, "HTTP_X_FORWARDED_FOR"), 200))
+    Call doc.ReplaceItemValue("UserAgent", ua)
+    Call doc.ReplaceItemValue("Browser", browser)
+    Call doc.ReplaceItemValue("OS", os)
+    Call doc.ReplaceItemValue("DeviceType", devType)
+    Call doc.ReplaceItemValue("DeviceKey", devKey)
+    Call doc.ReplaceItemValue("AccessSource", GetAccessSource(nextUrl))
+    Call doc.ReplaceItemValue("AuthMethod", AUTH_METHOD_LABEL)
+    Call doc.ReplaceItemValue("FirstLogin", BoolFlag(isFirst))
+    Call doc.ReplaceItemValue("NewIP", BoolFlag(newIp))
+    Call doc.ReplaceItemValue("NewDevice", BoolFlag(newDev))
+    Call doc.ReplaceItemValue("Heartbeats", 0)
+    Call doc.ReplaceItemValue("NotMeFlag", "0")
+    Call doc.ReplaceItemValue("ReviewStatus", "")
+
+    ' Only the user and the reviewer group (LocalDomainAdmins) can read this document.
+    Set it = doc.ReplaceItemValue("Readers", ReadersFor(caller))
+    it.IsReaders = True
+
+    Call doc.Save(True, False)
+
+    If ALERT_ON_NEW_SIGNIN Then
+        If newIp Then reasons = "new IP address"
+        If newDev Then
+            If reasons <> "" Then reasons = reasons & " and "
+            reasons = reasons & "new device"
+        End If
+        If reasons <> "" Then
+            Call SendNewSigninAlert(db, caller, ip, browser, os, IsoUtc(nowDt), reasons)
+        End If
+    End If
+End Sub
+
+'---------------------------------------------------------------------------
+' True if the newest event for this user has the same IP + device and is
+' younger than DEDUPE_SECONDS (page reload / double redirect).
+Function IsDuplicate(view As NotesView, ByVal caller As String, ByVal ip As String, _
+                     ByVal devKey As String, nowDt As NotesDateTime) As Boolean
+    Dim vec   As NotesViewEntryCollection
+    Dim entry As NotesViewEntry
+    Dim doc   As NotesDocument
+    Dim dt    As NotesDateTime
+    IsDuplicate = False
+    Set vec = view.GetAllEntriesByKey(caller, True)
+    If vec Is Nothing Then Exit Function
+    If vec.Count = 0 Then Exit Function
+    Set entry = vec.GetFirstEntry()          ' newest first (col2 sorted descending)
+    If entry Is Nothing Then Exit Function
+    Set doc = entry.Document
+    If doc Is Nothing Then Exit Function
+    If ItemStr(doc, "IP") <> ip Then Exit Function
+    If ItemStr(doc, "DeviceKey") <> devKey Then Exit Function
+    Set dt = GetDt(doc, "LoginTime")
+    If dt Is Nothing Then Exit Function
+    If nowDt.TimeDifference(dt) < DEDUPE_SECONDS Then IsDuplicate = True
+End Function
+
+Function BoolFlag(ByVal b As Boolean) As String
+    If b Then
+        BoolFlag = "1"
+    Else
+        BoolFlag = "0"
+    End If
+End Function
+
+Sub SendRedirect(ByVal url As String)
+    If url = "" Then url = DEFAULT_NEXT
+    Print "Cache-Control: no-store"
+    Print "Location: " & url
+    Print ""
+End Sub
+
+'---------------------------------------------------------------------------
+' TESTING ONLY (DIAG_MODE = True).  Shows what the server sees for THIS request
+' so you can confirm Remote_User format, client IP and proxy headers.
+' Never prints cookies or the full CGI dump.
+Sub PrintDiagnostics(session As NotesSession, web As NotesDocument, ByVal nextUrl As String)
+    Print "Content-Type: text/plain; charset=UTF-8"
+    Print "Cache-Control: no-store"
+    Print ""
+    Print "LoginLanding DIAG (set DIAG_MODE = False after testing)"
+    Print "Remote_User (raw)     : " & GetCgi(web, "Remote_User")
+    Print "Caller (canonical)    : " & GetCaller(web, session)
+    Print "EffectiveUserName     : " & session.EffectiveUserName & "   <- signer when run-as-signer; NOT used"
+    Print "Remote_Addr           : " & GetCgi(web, "Remote_Addr")
+    Print "X-Forwarded-For       : " & GetCgi(web, "HTTP_X_FORWARDED_FOR")
+    Print "Client IP (computed)  : " & GetClientIp(web)
+    Print "Trusted proxies       : [" & TRUSTED_PROXIES & "]"
+    Print "User-Agent            : " & CleanText(GetCgi(web, "HTTP_USER_AGENT"), 300)
+    Print "next (validated)      : " & nextUrl
+    Print "HTTPS                 : " & GetCgi(web, "HTTPS")
+End Sub

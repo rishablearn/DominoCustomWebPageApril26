@@ -1,0 +1,116 @@
+'===========================================================================
+' NotMe.lss  —  Agent "NotMe"  (LOGINAUDIT.NSF)
+'
+' Version  : 3.0.0
+' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
+'
+' WHAT IT DOES
+' ------------
+' Lets a user flag one of THEIR OWN sign-ins as "This wasn't me".
+' Sets NotMeFlag=1, ReviewStatus=OPEN and (optionally) mails the security
+' mailbox configured in LoginAuditLib (SECURITY_MAILBOX).  Security admins
+' review reports in the (NotMeReports) view.
+'
+' REQUEST   POST /loginaudit.nsf/NotMe?OpenAgent
+'           Content-Type: application/x-www-form-urlencoded
+'           Body: id=<32-hex UNID of the event>
+'           Header required: X-Requested-With: LoginAudit   (CSRF guard)
+' RESPONSE  {"ok":true} | {"ok":false,"reason":"auth|bad_request|not_found|error"}
+'
+' AUTHORISATION: the event must belong to the caller (canonical-name match);
+' otherwise "not_found" is returned (no information about other users' events).
+'
+' AGENT PROPERTIES: On Schedule -> Never; act on None; Run as web user UNCHECKED;
+'                   signed by the service ID (member of LocalDomainAdmins).
+'===========================================================================
+Option Public
+Option Declare
+Use "LoginAuditLib"
+
+Sub Initialize()
+    Dim session As New NotesSession
+    Dim web     As NotesDocument
+    Dim db      As NotesDatabase
+    Dim doc     As NotesDocument
+    Dim caller  As String
+    Dim unid    As String
+    Dim dt      As NotesDateTime
+
+    Call PrintJsonHeaders()
+    On Error GoTo ErrHandler
+
+    Set web = session.DocumentContext
+    Set db = session.CurrentDatabase
+
+    caller = GetCaller(web, session)
+    If caller = "" Then
+        Print |{"ok":false,"reason":"auth"}|
+        Exit Sub
+    End If
+
+    If UCase$(GetCgi(web, "Request_Method")) <> "POST" Or _
+       GetCgi(web, "HTTP_X_REQUESTED_WITH") <> "LoginAudit" Then
+        Print |{"ok":false,"reason":"bad_request"}|
+        Exit Sub
+    End If
+
+    unid = Trim$(GetParamFromString(GetCgi(web, "Request_Content"), "id"))
+    If Len(unid) <> 32 Then
+        Print |{"ok":false,"reason":"bad_request"}|
+        Exit Sub
+    End If
+    If Not IsHex(unid) Then
+        Print |{"ok":false,"reason":"bad_request"}|
+        Exit Sub
+    End If
+
+    Set doc = GetEventByUnid(db, unid)
+    If doc Is Nothing Then
+        Print |{"ok":false,"reason":"not_found"}|
+        Exit Sub
+    End If
+    If ItemStr(doc, "Form") <> "LoginEvent" Then
+        Print |{"ok":false,"reason":"not_found"}|
+        Exit Sub
+    End If
+    If LCase$(ItemStr(doc, "UserCanonical")) <> LCase$(caller) Then
+        Print |{"ok":false,"reason":"not_found"}|      ' not the caller's event
+        Exit Sub
+    End If
+
+    If ItemStr(doc, "NotMeFlag") <> "1" Then
+        Set dt = New NotesDateTime("")
+        Call dt.SetNow
+        Call doc.ReplaceItemValue("NotMeFlag", "1")
+        Call doc.ReplaceItemValue("NotMeTime", dt)
+        Call doc.ReplaceItemValue("ReviewStatus", "OPEN")
+        Call doc.Save(True, False)
+        Call SendNotMeNotice(db, caller, ItemStr(doc, "IP"), ItemStr(doc, "LoginTimeUTC"), doc.UniversalID)
+    End If
+
+    Print |{"ok":true}|
+    Exit Sub
+
+ErrHandler:
+    Call LogAuditError(session, db, "NotMe", Err, Erl, Error$)
+    Print |{"ok":false,"reason":"error"}|
+    Exit Sub
+End Sub
+
+' True if every character is a hex digit.
+Function IsHex(ByVal s As String) As Boolean
+    Dim i As Integer
+    IsHex = False
+    If s = "" Then Exit Function
+    For i = 1 To Len(s)
+        If Not (Mid$(s, i, 1) Like "[0-9A-Fa-f]") Then Exit Function
+    Next i
+    IsHex = True
+End Function
+
+' GetDocumentByUNID raises an error for an unknown UNID — convert to Nothing.
+Function GetEventByUnid(db As NotesDatabase, ByVal unid As String) As NotesDocument
+    On Error Resume Next
+    Set GetEventByUnid = Nothing
+    Set GetEventByUnid = db.GetDocumentByUNID(unid)
+End Function

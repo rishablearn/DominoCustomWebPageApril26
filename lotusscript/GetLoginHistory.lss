@@ -1,250 +1,167 @@
 '===========================================================================
-' GetLoginHistory.lss
-' LotusScript Agent — Return current user's login history as JSON
+' GetLoginHistory.lss  —  Agent "GetLoginHistory"  (LOGINAUDIT.NSF)
 '
-' Version  : 1.0.0
-' Date     : 2026-06-09
-' Requires : HCL Domino 12.0.1+
+' Version  : 3.0.0   (replaces v1.0.0 which read names.nsf)
+' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
 '
-' PURPOSE
-' -------
-' Called via HTTP GET by LoginActivityViewer.html in the HCL Verse
-' extension popup.  Reads the authenticated user's LoginHistory field
-' from their Person document in NAMES.NSF and returns it as a JSON array.
+' WHAT IT DOES
+' ------------
+' Returns the caller's last MAX_HISTORY_SHOWN (5) SUCCESSFUL logins as JSON
+' for the HCL Verse "Login Activity" viewer.
 '
-' Each entry in the JSON array corresponds to one pipe-delimited item
-' previously written by the LogLoginAttempt agent:
+' SECURITY
+'   * Caller = server-set Remote_User, normalised to canonical name.
+'   * Lookup is an EXACT key match on the canonical name in (LoginsByUser).
+'     (v1.0.0 used a partial match, which could return another user's data.)
+'   * No user-controlled input is accepted at all.
+'   * Anonymous -> {"ok":false,"reason":"auth","events":[]}
 '
-'   TIMESTAMP|IP|STATUS|BROWSER|PLATFORM|TIMEZONE|SCREEN|MFA
-'
-' RESPONSE FORMAT
-'   Content-Type: application/json
-'   [
-'     { "ts":"2026-06-09T08:00:00Z", "ip":"192.168.1.5",
-'       "status":"ATTEMPT", "browser":"Chrome", "platform":"Win32",
-'       "tz":"Asia/Kolkata", "scr":"1920x1080", "mfa":"0" },
-'     ...
+' RESPONSE
+' {
+'   "ok": true, "user": "Scott Good", "retentionDays": 365,
+'   "events": [
+'     { "id":"<UNID>", "loginTime":"2026-10-28T08:00:00Z",
+'       "ip":"203.0.113.9", "browser":"Chrome", "os":"Windows",
+'       "deviceType":"Desktop", "accessSource":"HCL Verse (web)",
+'       "authMethod":"Domino password", "firstLogin":false,
+'       "newIp":true, "newDevice":false, "notMe":false,
+'       "thisDevice":true,
+'       "sessionState":"active|ended|unmeasured", "durationSec":1260 or null }
 '   ]
+' }
 '
-' HOW TO DEPLOY
-' -------------
-' Source file: lotusscript/GetLoginHistory.lss
-' 1. Open DOMCFG.NSF in Domino Designer.
-' 2. Create → Agent.
-'      Name                              : GetLoginHistory
-'      Language                          : LotusScript
-'      When should this agent run        : On Schedule → Never
-'        *** Any 'On Event' option causes HTTP 500 on ?OpenAgent calls ***
-'      Which document(s) should it act on: None
-'      Run as web user                   : CHECKED
-'        (agent runs as authenticated Verse user — ensures only their own
-'         LoginHistory is returned, not another user's data)
-' 3. In the Script editor, paste this entire file.
-' 4. Save and sign the agent with an ID that has Reader access to NAMES.NSF.
-' 5. In DOMCFG.NSF ACL:
-'      Authenticated users : at minimum Reader access
-'      Anonymous           : No access  (prevents unauthenticated queries)
-' 6. Verify:
-'      Open a browser where you are logged in to Domino.
-'      Navigate to:  https://yourserver/domcfg.nsf/GetLoginHistory?OpenAgent
-'      Expected response: a JSON array (possibly empty [])
-'
-' SECURITY NOTES
-' --------------
-'  - Agent returns ONLY the data of the currently authenticated user.
-'  - Anonymous requests are silently returned as [].
-'  - No user-controlled input is accepted — no injection risk.
-'  - LoginHistory field contains no passwords or PII beyond browser info.
-'
+' AGENT PROPERTIES: On Schedule -> Never; act on None; Run as web user UNCHECKED;
+'                   signed by the service ID (member of LocalDomainAdmins).
 '===========================================================================
 Option Public
 Option Declare
+Use "LoginAuditLib"
 
-Const NAMES_SERVER  = ""          ' "" = current server; "Server/Org" for remote
-Const NAMES_DB_PATH = "names.nsf"
-
-'===========================================================================
 Sub Initialize()
     Dim session As New NotesSession
-    On Error GoTo ErrorHandler
+    Dim web     As NotesDocument
+    Dim db      As NotesDatabase
+    Dim view    As NotesView
+    Dim vec     As NotesViewEntryCollection
+    Dim entry   As NotesViewEntry
+    Dim doc     As NotesDocument
+    Dim caller  As String
+    Dim ua      As String
+    Dim reqIp   As String
+    Dim reqKey  As String
+    Dim nowDt   As NotesDateTime
+    Dim n       As Integer
+    Dim items() As String
+    Dim nn      As NotesName
 
-    ' Write JSON content-type first
-    Print "Content-type: application/json"
-    Print "X-Content-Type-Options: nosniff"
-    Print "Cache-Control: no-store"
-    Print ""
+    Call PrintJsonHeaders()
+    On Error GoTo ErrHandler
 
-    '-- 1. Identify the authenticated user -----------------------------------
-    Dim currentUser As String
-    currentUser = session.CommonUserName
+    Set web = session.DocumentContext
+    Set db = session.CurrentDatabase
 
-    If currentUser = "" Or UCase(currentUser) = "ANONYMOUS" Then
-        Print "[]"
+    caller = GetCaller(web, session)
+    If caller = "" Then
+        Print |{"ok":false,"reason":"auth","events":[]}|
         Exit Sub
     End If
 
-    '-- 2. Open NAMES.NSF ----------------------------------------------------
-    Dim namesDb As NotesDatabase
-    Set namesDb = New NotesDatabase(NAMES_SERVER, NAMES_DB_PATH)
+    ua     = CleanText(GetCgi(web, "HTTP_USER_AGENT"), 300)
+    reqIp  = GetClientIp(web)
+    reqKey = MakeDeviceKey(ParseBrowser(ua), ParseOS(ua), ParseDeviceType(ua))
 
-    If Not namesDb.IsOpen Then
-        Call namesDb.Open(NAMES_SERVER, NAMES_DB_PATH)
+    Set nowDt = New NotesDateTime("")
+    Call nowDt.SetNow
+
+    Set view = db.GetView(VIEW_BY_USER)
+    If view Is Nothing Then Error 1001, "View " & VIEW_BY_USER & " not found"
+
+    ReDim items(MAX_HISTORY_SHOWN - 1)
+    Set vec = view.GetAllEntriesByKey(caller, True)       ' exact canonical match
+    If Not (vec Is Nothing) Then
+        Set entry = vec.GetFirstEntry()                    ' newest first
+        Do While Not (entry Is Nothing)
+            If n >= MAX_HISTORY_SHOWN Then Exit Do
+            Set doc = entry.Document
+            If Not (doc Is Nothing) Then
+                items(n) = EventToJson(doc, reqIp, reqKey, nowDt)
+                n = n + 1
+            End If
+            Set entry = vec.GetNextEntry(entry)
+        Loop
     End If
 
-    If Not namesDb.IsOpen Then
-        Print "[]"
-        Exit Sub
+    Set nn = session.CreateName(caller)
+
+    Dim body As String
+    If n = 0 Then
+        body = ""
+    Else
+        ReDim Preserve items(n - 1)
+        body = Join(items, ",")
     End If
 
-    '-- 3. Locate the Person document ----------------------------------------
-    Dim personDoc As NotesDocument
-    Set personDoc = Nothing
+    Print "{" & JRaw("ok", "true") & "," & JStr("user", nn.Common) & "," & _
+          JRaw("retentionDays", CStr(RETENTION_DAYS)) & "," & _
+          JRaw("events", "[" & body & "]") & "}"
+    Exit Sub
 
-    ' Attempt 1: short name lookup via ($Users) view
-    Dim usersView As NotesView
-    Set usersView = namesDb.GetView("($Users)")
+ErrHandler:
+    Call LogAuditError(session, db, "GetLoginHistory", Err, Erl, Error$)
+    Print |{"ok":false,"reason":"error","events":[]}|
+    Exit Sub
+End Sub
 
-    If Not (usersView Is Nothing) Then
-        Set personDoc = usersView.GetDocumentByKey(currentUser, False)
-    End If
+'---------------------------------------------------------------------------
+Function EventToJson(doc As NotesDocument, ByVal reqIp As String, ByVal reqKey As String, _
+                     nowDt As NotesDateTime) As String
+    Dim loginDt As NotesDateTime
+    Dim lastDt  As NotesDateTime
+    Dim endDt   As NotesDateTime
+    Dim hb      As Long
+    Dim state   As String
+    Dim durSec  As Long
+    Dim durJson As String
 
-    ' Attempt 2: full canonical name
-    If personDoc Is Nothing Then
-        Dim fullName As String
-        fullName = session.UserName
-        If Not (usersView Is Nothing) And fullName <> "" Then
-            Set personDoc = usersView.GetDocumentByKey(fullName, True)
-        End If
-    End If
+    Set loginDt = GetDt(doc, "LoginTime")
+    Set lastDt  = GetDt(doc, "LastSeen")
+    Set endDt   = GetDt(doc, "EndTime")
+    hb = ItemNum(doc, "Heartbeats")
 
-    ' Attempt 3: internet (email) address view
-    If personDoc Is Nothing Then
-        Dim inetView As NotesView
-        Set inetView = namesDb.GetView("($VIMPeople)")
-        If Not (inetView Is Nothing) Then
-            Set personDoc = inetView.GetDocumentByKey(currentUser, False)
-            If personDoc Is Nothing Then
-                Set personDoc = inetView.GetDocumentByKey(session.UserName, True)
+    durJson = "null"
+    state = "unmeasured"
+
+    If Not (loginDt Is Nothing) Then
+        If Not (endDt Is Nothing) Then
+            state = "ended"
+            durSec = endDt.TimeDifference(loginDt)
+            If durSec >= 0 Then durJson = CStr(durSec)
+        ElseIf (hb > 0) And Not (lastDt Is Nothing) Then
+            durSec = lastDt.TimeDifference(loginDt)
+            If durSec >= 0 Then durJson = CStr(durSec)
+            If nowDt.TimeDifference(lastDt) <= ACTIVE_WINDOW_MIN * 60 Then
+                state = "active"
+            Else
+                state = "ended"
             End If
         End If
     End If
 
-    If personDoc Is Nothing Then
-        Print "[]"
-        GoTo Cleanup
-    End If
-
-    '-- 4. Read LoginHistory field -------------------------------------------
-    Dim histItems As Variant
-    histItems = personDoc.GetItemValue("LoginHistory")
-
-    '-- 5. Parse each pipe-delimited entry into a JSON object ---------------
-    Dim jsonParts() As String
-    Dim count As Integer
-    count = 0
-
-    ' Maximum entries: prevent oversized response
-    Dim maxItems As Integer
-    maxItems = UBound(histItems) + 1
-    If maxItems > 20 Then maxItems = 20
-
-    ReDim jsonParts(maxItems - 1)
-
-    Dim i        As Integer
-    Dim raw      As String
-    Dim parts    As Variant     ' Variant required to receive Split() result
-    Dim entryTs  As String
-    Dim entryIp  As String
-    Dim entrySt  As String
-    Dim entryBr  As String
-    Dim entryPl  As String
-    Dim entryTz  As String
-    Dim entryScr As String
-    Dim entryMfa As String
-
-    For i = 0 To maxItems - 1
-        raw = Trim(CStr(histItems(i)))
-        If raw <> "" Then
-            parts    = Split(raw, "|")
-            entryTs  = SafePart(parts, 0)
-            entryIp  = SafePart(parts, 1)
-            entrySt  = SafePart(parts, 2)
-            entryBr  = SafePart(parts, 3)
-            entryPl  = SafePart(parts, 4)
-            entryTz  = SafePart(parts, 5)
-            entryScr = SafePart(parts, 6)
-            entryMfa = SafePart(parts, 7)
-
-            jsonParts(count) = _
-                "{" & _
-                Q("ts")       & ":" & Q(JsonEscape(entryTs))  & "," & _
-                Q("ip")       & ":" & Q(JsonEscape(entryIp))  & "," & _
-                Q("status")   & ":" & Q(JsonEscape(entrySt))  & "," & _
-                Q("browser")  & ":" & Q(JsonEscape(entryBr))  & "," & _
-                Q("platform") & ":" & Q(JsonEscape(entryPl))  & "," & _
-                Q("tz")       & ":" & Q(JsonEscape(entryTz))  & "," & _
-                Q("scr")      & ":" & Q(JsonEscape(entryScr)) & "," & _
-                Q("mfa")      & ":" & Q(JsonEscape(entryMfa)) & _
-                "}"
-            count = count + 1
-        End If
-    Next i
-
-    '-- 6. Emit JSON ---------------------------------------------------------
-    If count = 0 Then
-        Print "[]"
-    Else
-        Dim resultArr() As String
-        ReDim resultArr(count - 1)
-        Dim j As Integer
-        For j = 0 To count - 1
-            resultArr(j) = jsonParts(j)
-        Next j
-        Print "[" & Join(resultArr, ",") & "]"
-    End If
-
-Cleanup:
-    ' Domino runtime releases all back-end objects when the sub exits
-    Exit Sub
-
-ErrorHandler:
-    ' Return empty array on any error — never expose internal messages
-    Print "[]"
-    Resume Cleanup
-End Sub
-
-'===========================================================================
-' SafePart — safely extract a pipe-split token by index
-'===========================================================================
-Function SafePart(parts() As String, idx As Integer) As String
-    On Error Resume Next
-    If idx >= 0 And idx <= UBound(parts) Then
-        SafePart = Trim(CStr(parts(idx)))
-    Else
-        SafePart = ""
-    End If
-    On Error GoTo 0
-End Function
-
-'===========================================================================
-' Q — wraps a string in JSON double quotes
-'===========================================================================
-Function Q(s As String) As String
-    Q = Chr(34) & s & Chr(34)
-End Function
-
-'===========================================================================
-' JsonEscape — escapes a string for safe embedding in JSON
-'===========================================================================
-Function JsonEscape(s As String) As String
-    Dim r As String
-    r = s
-    r = Join(Split(r, "\"),    "\\")
-    r = Join(Split(r, Chr(34)), "\" & Chr(34))
-    r = Join(Split(r, Chr(8)),  "\b")
-    r = Join(Split(r, Chr(12)), "\f")
-    r = Join(Split(r, Chr(10)), "\n")
-    r = Join(Split(r, Chr(13)), "\r")
-    r = Join(Split(r, Chr(9)),  "\t")
-    JsonEscape = r
+    EventToJson = "{" & _
+        JStr("id", doc.UniversalID) & "," & _
+        JStr("loginTime", ItemStr(doc, "LoginTimeUTC")) & "," & _
+        JStr("ip", ItemStr(doc, "IP")) & "," & _
+        JStr("browser", ItemStr(doc, "Browser")) & "," & _
+        JStr("os", ItemStr(doc, "OS")) & "," & _
+        JStr("deviceType", ItemStr(doc, "DeviceType")) & "," & _
+        JStr("accessSource", ItemStr(doc, "AccessSource")) & "," & _
+        JStr("authMethod", ItemStr(doc, "AuthMethod")) & "," & _
+        JRaw("firstLogin", JBool(ItemStr(doc, "FirstLogin") = "1")) & "," & _
+        JRaw("newIp", JBool(ItemStr(doc, "NewIP") = "1")) & "," & _
+        JRaw("newDevice", JBool(ItemStr(doc, "NewDevice") = "1")) & "," & _
+        JRaw("notMe", JBool(ItemStr(doc, "NotMeFlag") = "1")) & "," & _
+        JRaw("thisDevice", JBool((ItemStr(doc, "IP") = reqIp) And (ItemStr(doc, "DeviceKey") = reqKey))) & "," & _
+        JStr("sessionState", state) & "," & _
+        JRaw("durationSec", durJson) & _
+        "}"
 End Function

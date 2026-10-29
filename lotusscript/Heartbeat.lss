@@ -1,0 +1,154 @@
+'===========================================================================
+' Heartbeat.lss  —  Agent "Heartbeat"  (LOGINAUDIT.NSF)
+'
+' Version  : 3.0.0
+' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
+'
+' WHAT IT DOES
+' ------------
+' Extends the caller's most recent LoginEvent (same IP + same device) so the
+' history can show an APPROXIMATE session duration:
+'     duration = LastSeen - LoginTime        (or EndTime - LoginTime)
+' Call it periodically from a page that is open while the user is working
+' (the Login Activity viewer does this every 60 s) and with &end=1 on logout.
+'
+' IMPORTANT LIMITATION: duration is only as good as the heartbeat source.
+' Verse 3.2.7 documents no always-on background extension point, so a login
+' that never had a heartbeat shows duration "not measured" — never a guess.
+'
+' REQUEST   POST or GET  /loginaudit.nsf/Heartbeat?OpenAgent[&end=1]
+'           Header required:  X-Requested-With: LoginAudit
+'           (blocks cross-site form posts; a browser cannot set this header
+'            cross-origin without a CORS preflight that Domino will not grant)
+' RESPONSE  {"ok":true,"heartbeats":3,"state":"active"}  or {"ok":false,"reason":"..."}
+'           reasons: auth | bad_request | no_session | error
+'
+' AGENT PROPERTIES: On Schedule -> Never; act on None; Run as web user UNCHECKED;
+'                   signed by the service ID (member of LocalDomainAdmins).
+'===========================================================================
+Option Public
+Option Declare
+Use "LoginAuditLib"
+
+Sub Initialize()
+    Dim session As New NotesSession
+    Dim web     As NotesDocument
+    Dim db      As NotesDatabase
+    Dim view    As NotesView
+    Dim vec     As NotesViewEntryCollection
+    Dim entry   As NotesViewEntry
+    Dim doc     As NotesDocument
+    Dim target  As NotesDocument
+    Dim caller  As String
+    Dim ip      As String
+    Dim devKey  As String
+    Dim ua      As String
+    Dim doEnd   As Boolean
+    Dim n       As Integer
+    Dim nowDt   As NotesDateTime
+    Dim refDt   As NotesDateTime
+    Dim lastDt  As NotesDateTime
+    Dim hb      As Long
+
+    Call PrintJsonHeaders()
+    On Error GoTo ErrHandler
+
+    Set web = session.DocumentContext
+    Set db = session.CurrentDatabase
+
+    caller = GetCaller(web, session)
+    If caller = "" Then
+        Print |{"ok":false,"reason":"auth"}|
+        Exit Sub
+    End If
+
+    If GetCgi(web, "HTTP_X_REQUESTED_WITH") <> "LoginAudit" Then
+        Print |{"ok":false,"reason":"bad_request"}|
+        Exit Sub
+    End If
+    doEnd = (GetQueryParam(web, "end") = "1")
+
+    ua     = CleanText(GetCgi(web, "HTTP_USER_AGENT"), 300)
+    ip     = GetClientIp(web)
+    devKey = MakeDeviceKey(ParseBrowser(ua), ParseOS(ua), ParseDeviceType(ua))
+
+    Set nowDt = New NotesDateTime("")
+    Call nowDt.SetNow
+
+    Set view = db.GetView(VIEW_BY_USER)
+    If view Is Nothing Then Error 1001, "View " & VIEW_BY_USER & " not found"
+    Set vec = view.GetAllEntriesByKey(caller, True)
+
+    ' Newest events first; use the first open event for this IP + device.
+    If Not (vec Is Nothing) Then
+        Set entry = vec.GetFirstEntry()
+        Do While Not (entry Is Nothing)
+            If n >= 10 Then Exit Do
+            Set doc = entry.Document
+            If Not (doc Is Nothing) Then
+                If ItemStr(doc, "IP") = ip And ItemStr(doc, "DeviceKey") = devKey Then
+                    If Not doc.HasItem("EndTime") Then
+                        Set target = doc
+                        Exit Do
+                    End If
+                End If
+            End If
+            n = n + 1
+            Set entry = vec.GetNextEntry(entry)
+        Loop
+    End If
+
+    If target Is Nothing Then
+        Print |{"ok":false,"reason":"no_session"}|
+        Exit Sub
+    End If
+
+    ' Gap check: do not stitch a long silence onto an old event.
+    Set lastDt = GetDt(target, "LastSeen")
+    If lastDt Is Nothing Then
+        Set refDt = GetDt(target, "LoginTime")
+    Else
+        Set refDt = lastDt
+    End If
+    If refDt Is Nothing Then
+        Print |{"ok":false,"reason":"no_session"}|
+        Exit Sub
+    End If
+    If nowDt.TimeDifference(refDt) > HEARTBEAT_MAX_GAP_MIN * 60 Then
+        Print |{"ok":false,"reason":"no_session"}|
+        Exit Sub
+    End If
+
+    hb = ItemNum(target, "Heartbeats")
+
+    ' Rate limit (unless this is the explicit end-of-session call).
+    If Not doEnd Then
+        If Not (lastDt Is Nothing) Then
+            If nowDt.TimeDifference(lastDt) < HEARTBEAT_MIN_SEC Then
+                Print |{"ok":true,"heartbeats":| & CStr(hb) & |,"state":"active"}|
+                Exit Sub
+            End If
+        End If
+    End If
+
+    Call target.ReplaceItemValue("LastSeen", nowDt)
+    hb = hb + 1
+    Call target.ReplaceItemValue("Heartbeats", hb)
+    If doEnd Then
+        Call target.ReplaceItemValue("EndTime", nowDt)
+        Call target.ReplaceItemValue("EndReason", "LOGOUT")
+    End If
+    Call target.Save(True, False)
+
+    If doEnd Then
+        Print |{"ok":true,"heartbeats":| & CStr(hb) & |,"state":"ended"}|
+    Else
+        Print |{"ok":true,"heartbeats":| & CStr(hb) & |,"state":"active"}|
+    End If
+    Exit Sub
+
+ErrHandler:
+    Call LogAuditError(session, db, "Heartbeat", Err, Erl, Error$)
+    Print |{"ok":false,"reason":"error"}|
+    Exit Sub
+End Sub

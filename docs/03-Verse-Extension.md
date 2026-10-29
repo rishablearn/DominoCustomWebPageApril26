@@ -1,295 +1,80 @@
-# HCL Verse — Login Activity Viewer Extension
+# HCL Verse — Login Activity Extension
 
-## Deployment Guide
+> **Version:** 3.0.0 | **Last Updated:** 2026-10-28 | Developed against HCL Verse on-premises 3.2.7  
+> Not yet executed on a server — see the test plan in `02-Deployment-Guide.md` §7.
 
-> **What this adds:** A **"Login Activity"** link in the HCL Verse navbar "More" menu. Clicking it opens a popup showing the current user's login history (last 5 attempts) pulled in real time from `names.nsf`.
+Adds **Login Activity** to the Verse navbar *More* menu. It opens a window showing the user's last 5 successful logins (time, IP, access source, browser/device, approximate duration, new-IP/new-device flags), a **This wasn't me** button and a **Sign out** button.
 
----
-
-## Architecture Overview
+## Architecture
 
 ```
-HCL Verse (navbar More menu)
-  └─ "Login Activity" link  ← injected by applications.json extension
-        │
-        ▼  (opens popup)
-  LoginActivityViewer.html  ← File Resource in DOMCFG.NSF
-        │
-        ├─ reads  localStorage['lastLoginAttempt']  (instant, same-origin)
-        │
-        └─ fetches  /domcfg.nsf/GetLoginHistory?OpenAgent
-                          │
-                          ▼
-               GetLoginHistory (LotusScript Agent in DOMCFG.NSF)
-                          │
-                          └─ reads LoginHistory field → names.nsf Person document
+Verse navbar ▸ More ▸ "Login Activity"   (com.ibm.action.link, order 96500)
+        └─▶ https://<SERVER>/loginaudit.nsf/LoginActivityViewer.html   (File Resource)
+                ├─ GET  /loginaudit.nsf/GetLoginHistory?OpenAgent
+                ├─ POST /loginaudit.nsf/Heartbeat?OpenAgent     (every 60 s while open)
+                └─ POST /loginaudit.nsf/NotMe?OpenAgent
 ```
 
-**Data source priority:**
-1. If the `GetLoginHistory` agent responds successfully → shows full server history
-2. If agent is unreachable → shows the last attempt from `localStorage` (this browser only)
-3. If neither available → shows empty state with setup instructions
+The page and the agents are in the same database and origin, so no CORS configuration is needed. The page uses only `textContent` (no HTML injection) and makes no external requests.
 
----
+## Deploy
 
-## Prerequisites
+1. Complete `02-Deployment-Guide.md` §2–§4 (database, agents, viewer file resource).
+2. Register the extension with Verse (`applications.json`).
 
-| Requirement | Details |
-|---|---|
-| HCL Domino | 12.0.1+ (14.x fully supported) |
-| HCL Verse | On-premises (with extensibility enabled) |
-| Login tracking enabled | `features.enableLoginTracking: true` in `EnterpriseLoginForm.html` or `DominoEmbeddedForm.html` |
-| `LogLoginAttempt` agent | Deployed and working (writes `LoginHistory` to Person document in `names.nsf`) |
-| Domino Designer | Required for deploying file resources and agents |
+### Option 1 — no existing `applications.json`
 
-> **If you haven't deployed the login tracking agent yet**, do that first by following the main project `README.md` (LotusScript Agent Deployment section). The viewer will function in degraded mode (localStorage only) without it, but the server-side history requires the agent.
+Edit `verse-extension/applications.json`, replace `YOUR_DOMINO_SERVER` with your host name, then deploy the file as in "Provider setup" below.
 
----
+### Option 2 — you already have an `applications.json`
 
-## Part A — Deploy the HTML Viewer Page
+It is a JSON **array**. Add the object from `verse-extension/merge-snippet.json` (after replacing `YOUR_DOMINO_SERVER`) as one more element, keeping commas valid. Validate the JSON before deploying.
 
-The `LoginActivityViewer.html` must be accessible at a URL your Domino server serves over HTTPS. The simplest approach is to add it as a **File Resource** in `DOMCFG.NSF`.
+The extension uses the documented Verse navbar link extension point `com.ibm.action.link`; order values 96000–96999 place a link in the *More* menu ([Extension Points](https://opensource.hcltechsw.com/Verse-Extension-Documentation/docs/extension-points/)). `link` must be an **absolute** HTTPS URL.
 
-### A1. Open DOMCFG.NSF in Domino Designer
+### Provider setup (Domino server `notes.ini`)
 
-1. Launch **Domino Designer**.
-2. **File → Open → HCL Notes Application**.
-3. Enter your server name and `domcfg.nsf`.
+Local file:
 
-### A2. Add as a File Resource
-
-1. In the left navigator, expand **Resources → Files**.
-2. Click **New File Resource** (or double-click an existing one to edit).
-3. In the dialog, select `LoginActivityViewer.html` from `verse-extension/`.
-4. Ensure the resource name is exactly: `LoginActivityViewer.html`
-5. Go to the **Web** tab and confirm MIME type is `text/html`.
-6. Save.
-
-> **URL after deployment:**
-> `https://yourserver/domcfg.nsf/LoginActivityViewer.html`
-
-### A3. Test the page
-
-Open the URL in a browser where you are **already logged in** to Domino. You should see the Login Activity Viewer popup page load. It will show a warning message about the agent until you deploy Part B.
-
----
-
-## Part B — Deploy the GetLoginHistory Agent
-
-### B1. Create the agent in DOMCFG.NSF
-
-1. In Designer, with `DOMCFG.NSF` open, click **Create → Agent**.
-2. Set these properties:
-
-   | Property | Value |
-   |---|---|
-   | **Name** | `GetLoginHistory` |
-   | **Language** | LotusScript |
-   | **When should this agent run** | **On Schedule → Never** |
-   | **Which document(s) should it act on** | **None** |
-   | **Run as web user** | **Checked** — agent runs as the authenticated Verse user |
-
-   > **Trigger must be "On Schedule → Never".** Any "On Event" sub-option causes HTTP 500 "Unsupported trigger and search in the background or embedded agent" when the agent is called via `?OpenAgent`.
-   >
-   > **Run as web user must be checked.** The Verse popup calls this agent while the user is already authenticated. Running as the web user ensures the agent returns only the calling user's own `LoginHistory`.
-
-3. In the Script area, paste the entire contents of `lotusscript/GetLoginHistory.lss`.
-4. Click **File → Compile** to verify there are no syntax errors.
-5. Save the agent (`Ctrl+S`).
-
-### B2. Sign the agent
-
-The agent needs to be signed with a Notes ID that has **at minimum Reader access** to `names.nsf`.
-
-1. In Designer, right-click the agent → **Sign**.
-2. Select the appropriate Domino Administrator ID.
-3. Click **OK**.
-
-### B3. Set DOMCFG.NSF ACL
-
-1. Open DOMCFG.NSF properties → **Access Control**.
-2. Ensure **Default** or specific authenticated groups have at least **Reader** access.
-3. Set **Anonymous** to **No Access** (prevents unauthenticated queries to the history agent).
-
-> **Important:** The `LoginActivityViewer.html` page itself can be public (Anonymous: Reader), but the `GetLoginHistory` agent should require authentication. Domino handles this automatically when Anonymous has No Access.
-
-### B4. Configure Server Security (if required)
-
-If the agent fails with a "Not allowed to run agents" error:
-
-1. Open **Domino Administrator → Configuration → Server Document → Security** tab.
-2. Under **Run restricted LotusScript/Java agents**, add the signing ID.
-3. Restart the HTTP task: `tell http restart`.
-
-### B5. Verify the agent
-
-Navigate to `https://yourserver/domcfg.nsf/GetLoginHistory?OpenAgent` while logged in.
-
-Expected response:
-```json
-[
-  {
-    "ts": "2026-06-09T08:00:00Z",
-    "ip": "192.168.1.5",
-    "status": "ATTEMPT",
-    "browser": "Chrome",
-    "platform": "Win32",
-    "tz": "Asia/Kolkata",
-    "scr": "1920x1080",
-    "mfa": "0"
-  }
-]
+```ini
+VOP_Extensibility_Data_Provider_Name=localFileProvider
+VOP_Extensibility_Applications_Json_FilePath=<PATH_ON_SERVER>/applications.json
 ```
 
-If you see `[]` and have LoginHistory data, check the agent signing and ACL.
+or HTTP:
 
----
-
-## Part C — Register the Verse Extension
-
-### Option 1: You DO NOT have an existing applications.json
-
-1. Open `verse-extension/applications.json`.
-2. Replace `YOUR_DOMINO_SERVER` with your actual server hostname, e.g.:
-   ```
-   "link": "https://mail.example.com/domcfg.nsf/LoginActivityViewer.html"
-   ```
-3. Deploy this `applications.json` to Domino using one of the two methods below.
-
----
-
-### Option 2: You ALREADY have an applications.json  ← Read carefully
-
-Your existing `applications.json` is an **array** (`[...]`). You need to **add one new object** to that array.
-
-#### Step-by-step merge:
-
-1. Open your existing `applications.json` in a text editor.
-2. Open `verse-extension/merge-snippet.json`.
-3. Replace `YOUR_DOMINO_SERVER` in `merge-snippet.json` with your actual hostname.
-4. In your existing `applications.json`, find the **last `}` before the closing `]`**.
-5. Add a comma after that `}`, then paste the contents of `merge-snippet.json`.
-
-**Before merge:**
-```json
-[
-  {
-    "name": "ExistingApp1",
-    "extensions": [...],
-    "services": ["Verse"]
-  }
-]
+```ini
+VOP_Extensibility_Data_Provider_Name=httpDataProvider
+VOP_Extensibility_Applications_Json_URL=https://<SERVER>/verse/applications.json
 ```
 
-**After merge:**
-```json
-[
-  {
-    "name": "ExistingApp1",
-    "extensions": [...],
-    "services": ["Verse"]
-  },
-  {
-    "name": "DominoLoginActivityViewer",
-    "title": "Login Activity Viewer",
-    "description": "Adds a Login Activity link to the HCL Verse More menu...",
-    "extensions": [
-      {
-        "id": "domino-login-activity",
-        "type": "com.ibm.action.link",
-        "path": "com.ibm.navbar.order.96500",
-        "name": "Login Activity",
-        "title": "Login Activity",
-        "description": "View your login history and security activity",
-        "payload": {
-          "link": "https://YOUR_DOMINO_SERVER/domcfg.nsf/LoginActivityViewer.html",
-          "window_features": "width=1040,height=720,resizable=yes,scrollbars=yes"
-        }
-      }
-    ],
-    "services": ["Verse"]
-  }
-]
-```
+Restart HTTP (`tell http restart`) after changing `notes.ini`. The provider re-reads the file periodically, so later edits to `applications.json` do not need a restart (per HCL's extension documentation) *(verify on your deployment)*.
 
-> **Validate JSON** before deploying: paste into https://jsonlint.com to catch any syntax errors introduced during the merge.
+## Test
 
----
+1. Sign in to Verse → **More** → **Login Activity** → a window opens (allow pop-ups for the server if blocked).
+2. Your recent sign-ins are listed, newest first; the current one is tagged *This device*.
+3. Leave it open 3+ minutes → press **Refresh** → the current session shows "≈ N min (active)".
+4. Run the rest of the table in `02-Deployment-Guide.md` §7 (other-user isolation, anonymous, "not me").
 
-### Deploy applications.json to Domino
+## About session duration
 
-#### Method 1 — Local File (localFileProvider)
+Duration is measured by the heartbeat the viewer sends **while it is open**, and by **Sign out** (which ends the session record before redirecting to Domino's logout). Verse 3.2.7 documents no always-on background extension point, so sessions where the viewer was never opened show "Not measured". The documentation also lists a widget extension point (`com.ibm.verse.ext.widget`) and `modifyOnSend` (hidden iframe) — neither provides a safe continuous heartbeat; do not use `modifyOnSend` for this, since it blocks message sending if it does not answer within 30 seconds.
 
-1. Copy `applications.json` to a path on the Domino server, e.g.:
-   `D:\Domino\Data\verse\applications.json`
-2. Add these lines to the server's `notes.ini`:
-   ```ini
-   VOP_Extensibility_Data_Provider_Name=localFileProvider
-   VOP_Extensibility_Applications_Json_FilePath=D:\Domino\Data\verse\applications.json
-   ```
-3. Restart HTTP: `tell http restart`
+## Troubleshooting
 
-> The localFileProvider polls for changes automatically. You can update `applications.json` without restarting HTTP.
-
-#### Method 2 — HTTP (httpDataProvider)
-
-1. Host `applications.json` on any HTTPS server accessible to Domino (can be Domino itself):
-   - Place it in `<DominoData>/domino/html/verse/applications.json`
-   - URL: `https://yourserver/verse/applications.json`
-2. Add these lines to `notes.ini`:
-   ```ini
-   VOP_Extensibility_Data_Provider_Name=httpDataProvider
-   VOP_Extensibility_Applications_Json_URL=https://yourserver/verse/applications.json
-   ```
-3. Restart HTTP: `tell http restart`
-
----
-
-## Part D — Test the Verse Extension
-
-1. Open HCL Verse in a browser (clear cache if needed).
-2. Click the **More** menu in the top navigation bar (the `⋯` or "More" item).
-3. You should see **"Login Activity"** in the dropdown.
-4. Click it — a popup window opens with your login history.
-
-### Troubleshooting
-
-| Symptom | Likely Cause | Fix |
+| Symptom | Likely cause | Fix |
 |---|---|---|
-| "Login Activity" not in More menu | `applications.json` not loaded | Check `notes.ini` parameters, restart HTTP |
-| Menu item appears but popup is blank | HTML file not deployed to DOMCFG.NSF | Verify file resource exists, check URL |
-| Popup shows "agent not reachable" | Agent not deployed or ACL issue | Follow Part B, verify agent URL manually |
-| Empty `[]` from agent | No `LoginHistory` field on Person doc | Enable login tracking on the login page first |
-| Popup blocked | Browser popup blocker | Allow popups for your Domino server domain |
-| Agent returns 401 | Anonymous has access to agent | Set Anonymous: No Access → Reader for auth users |
+| No "Login Activity" in More | `applications.json` not loaded | Check `notes.ini` provider lines and file path, restart HTTP, hard-refresh Verse |
+| Window blank / 404 | File resource missing or wrong DB | URL must be `/loginaudit.nsf/LoginActivityViewer.html` |
+| "You are not signed in" | Session expired | Sign in to Verse again |
+| "history is temporarily unavailable" | Agent error | Check `(AuditErrors)` view in `loginaudit.nsf` |
+| Table empty | No events yet, or events under another name | See Troubleshooting in `02-Deployment-Guide.md` §9 |
+| Pop-up blocked | Browser setting | Allow pop-ups for the Domino server |
 
----
+## Security notes
 
-## notes.ini Parameters Reference
-
-| Parameter | Purpose | Example |
-|---|---|---|
-| `VOP_Extensibility_Data_Provider_Name` | Which provider to use | `localFileProvider` or `httpDataProvider` |
-| `VOP_Extensibility_Applications_Json_FilePath` | Path for local file | `D:\Domino\Data\verse\applications.json` |
-| `VOP_Extensibility_Applications_Json_URL` | URL for HTTP provider | `https://yourserver/verse/applications.json` |
-
----
-
-## File Reference
-
-| File | Purpose | Deploy to |
-|---|---|---|
-| `verse-extension/LoginActivityViewer.html` | Popup UI page (self-contained, no external deps) | DOMCFG.NSF → File Resources |
-| `lotusscript/GetLoginHistory.lss` | LotusScript agent returning JSON history | DOMCFG.NSF → Agents (named `GetLoginHistory`) |
-| `verse-extension/applications.json` | Complete Verse extension file (new deployments) | Domino server file system or HTTP server |
-| `verse-extension/merge-snippet.json` | Single app object to add to existing `applications.json` | Merge manually into existing file |
-
----
-
-## Security Considerations
-
-- The viewer reads only the **current authenticated user's** data — no cross-user access.
-- Anonymous users receive an empty `[]` from the agent — no data leakage.
-- The `LoginHistory` field contains: timestamp, IP, browser name, platform, timezone, screen size, and MFA flag. **No passwords, tokens, or session IDs are stored.**
-- Follow [HCL Verse Secure Deployment Practices](https://opensource.hcltechsw.com/Verse-Extension-Documentation/docs/best-security-practices/) for additional hardening.
-- The `LoginActivityViewer.html` popup URL should use HTTPS (required for modern browsers to allow window.open with credentials).
+- The viewer shows only the signed-in user's events (exact canonical-name match; unrelated users are never returned).
+- "This wasn't me" and heartbeat calls require a custom request header and, for "not me", the event must belong to the caller.
+- Stored data: login time, IP, User-Agent (browser/OS), access source. No passwords, tokens or session cookies are stored.
+- Follow [HCL Verse security practices](https://opensource.hcltechsw.com/Verse-Extension-Documentation/docs/best-security-practices/) for extension deployment.

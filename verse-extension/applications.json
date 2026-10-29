@@ -2,7 +2,7 @@
   {
     "name": "DominoLoginActivityViewer",
     "title": "Login Activity Viewer",
-    "description": "Adds a Login Activity link to the HCL Verse More menu. Opens a popup showing the current user's login history retrieved from names.nsf via a Domino agent.",
+    "description": "Adds a Login Activity link to the HCL Verse More menu. Opens a popup showing the current user's login history retrieved from loginaudit.nsf via a Domino agent.",
     "extensions": [
       {
         "id": "domino-login-activity",
@@ -10,9 +10,9 @@
         "path": "com.ibm.navbar.order.96500",
         "name": "Login Activity",
         "title": "Login Activity",
-        "description": "View your login history and security activity",
+        "description": "View your last 5 sign-ins and report any you do not recognise",
         "payload": {
-          "link": "https://YOUR_DOMINO_SERVER/domcfg.nsf/LoginActivityViewer.html",
+          "link": "https://YOUR_DOMINO_SERVER/loginaudit.nsf/LoginActivityViewer.html",
           "window_features": "width=1040,height=720,resizable=yes,scrollbars=yes"
         }
       }

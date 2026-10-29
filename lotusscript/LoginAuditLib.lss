@@ -1,0 +1,547 @@
+'===========================================================================
+' LoginAuditLib.lss  —  Script Library "LoginAuditLib"
+'
+' Version  : 3.0.0
+' Requires : HCL Domino 12.0.1+ (developed against Domino 14 class docs)
+'
+' PURPOSE
+' -------
+' Shared configuration and helper functions for the login-audit agents:
+'   LoginLanding, Heartbeat, GetLoginHistory, NotMe, PurgeLoginAudit
+'
+' DEPLOY: LoginAUDIT.NSF -> Shared Code -> Script Libraries -> New
+'         Name: LoginAuditLib   (exact), language LotusScript,
+'         paste this whole file, save.  Every agent starts with:
+'             Use "LoginAuditLib"
+'
+' SECURITY MODEL (read this before changing anything)
+' ---------------------------------------------------
+'  * The user's identity ALWAYS comes from the server-set CGI variable
+'    Remote_User, never from anything the browser sends in the URL/body.
+'  * Agents run as the SIGNER (a service ID), NOT as the web user.  So
+'    NotesSession.EffectiveUserName is the signer here and MUST NOT be used
+'    to identify the caller.  GetCaller() fails closed (returns "") when
+'    Remote_User is empty or Anonymous.
+'  * Client-supplied data (User-Agent, X-Forwarded-For, redirect target)
+'    is validated, length-limited and stripped of control characters.
+'===========================================================================
+Option Public
+Option Declare
+
+'--- CONFIGURATION (edit here; keep identical in all environments unless noted)
+Const VIEW_BY_USER        = "(LoginsByUser)"     ' col1 = UserCanonical (asc), col2 = LoginTime (desc)
+' Reviewers: this existing Domino Directory group can read ALL events and
+' reviews "not me" reports.  No custom ACL roles are used.  The agent signer ID
+' must be a MEMBER of this group (agents run as the signer and Readers fields
+' apply to them too).  Optional EXTRA_READER = one more name/group, e.g. the signer.
+Const READER_ADMIN_GROUP  = "LocalDomainAdmins"
+Const EXTRA_READER        = ""
+Const DEFAULT_NEXT        = "/verse"             ' where users land after login if no valid ?next=
+Const MAX_HISTORY_SHOWN   = 5                    ' events returned to the user
+Const LOOKBACK_EVENTS     = 100                  ' prior events scanned for new-IP / new-device
+Const DEDUPE_SECONDS      = 15                   ' ignore a repeat landing from same IP+device within N s
+Const HEARTBEAT_MIN_SEC   = 20                   ' ignore heartbeats arriving faster than this
+Const HEARTBEAT_MAX_GAP_MIN = 60                 ' a heartbeat after a longer silence is not attached to the event
+Const ACTIVE_WINDOW_MIN   = 3                    ' last heartbeat within N minutes => "active"
+Const RETENTION_DAYS      = 365                  ' purge agent horizon (decision: 180-365)
+
+' Reverse proxy / WAF.  TESTING (no proxy): leave empty.
+' PRODUCTION: comma-separated IPs of YOUR proxies/load balancers, e.g.
+'   "10.0.0.5,10.0.0.6".  X-Forwarded-For is only trusted when the direct
+'   peer (Remote_Addr) is in this list; the right-most non-proxy address wins.
+Const TRUSTED_PROXIES     = ""
+
+' Shown to the user as the authentication method (the server enforces the
+' real method; this is a label).  Production with TOTP: "Domino password + TOTP"
+Const AUTH_METHOD_LABEL   = "Domino password"
+
+' Alerts.  Off by default (enable deliberately in production).
+Const ALERT_ON_NEW_SIGNIN = False                ' mail the user on new IP / new device
+Const SECURITY_MAILBOX    = ""                   ' "" = no mail; else address notified on "not me"
+Const ALERT_SUBJECT       = "New sign-in to your account"
+
+'===========================================================================
+' CGI / request helpers
+'===========================================================================
+
+' Safely read one CGI variable (DocumentContext item) as a string.
+Function GetCgi(web As NotesDocument, ByVal fieldName As String) As String
+    On Error Resume Next
+    Dim v As Variant
+    GetCgi = ""
+    v = web.GetItemValue(fieldName)
+    If IsArray(v) Then
+        If UBound(v) >= 0 Then GetCgi = CStr(v(0))
+    End If
+End Function
+
+' Safely read a text item from a stored document.
+Function ItemStr(doc As NotesDocument, ByVal itemName As String) As String
+    On Error Resume Next
+    Dim v As Variant
+    ItemStr = ""
+    v = doc.GetItemValue(itemName)
+    If IsArray(v) Then
+        If UBound(v) >= 0 Then ItemStr = CStr(v(0))
+    End If
+End Function
+
+' Safely read a numeric item from a stored document (0 if missing).
+Function ItemNum(doc As NotesDocument, ByVal itemName As String) As Long
+    On Error Resume Next
+    Dim v As Variant
+    ItemNum = 0
+    v = doc.GetItemValue(itemName)
+    If IsArray(v) Then
+        If UBound(v) >= 0 Then ItemNum = CLng(v(0))
+    End If
+End Function
+
+' Read a date/time item; returns Nothing if absent or not a date/time item.
+Function GetDt(doc As NotesDocument, ByVal itemName As String) As NotesDateTime
+    On Error Resume Next
+    Dim it As NotesItem
+    Set GetDt = Nothing
+    If Not doc.HasItem(itemName) Then Exit Function
+    Set it = doc.GetFirstItem(itemName)
+    If it Is Nothing Then Exit Function
+    If it.Type <> 1024 Then Exit Function        ' 1024 = DATETIMES
+    Set GetDt = it.DateTimeValue
+End Function
+
+' Decode %XX and + in a URL-encoded string.
+Function UrlDecode(ByVal s As String) As String
+    Dim result As String
+    Dim i      As Integer
+    Dim c      As String
+    Dim hx     As String
+    result = ""
+    i = 1
+    Do While i <= Len(s)
+        c = Mid$(s, i, 1)
+        If c = "+" Then
+            result = result & " "
+            i = i + 1
+        ElseIf c = "%" And i + 2 <= Len(s) Then
+            hx = Mid$(s, i + 1, 2)
+            If hx Like "[0-9A-Fa-f][0-9A-Fa-f]" Then
+                result = result & Chr$(Val("&H" & hx))
+                i = i + 3
+            Else
+                result = result & c
+                i = i + 1
+            End If
+        Else
+            result = result & c
+            i = i + 1
+        End If
+    Loop
+    UrlDecode = result
+End Function
+
+' Find a named parameter in a URL-encoded string (query string or POST body).
+' Case-insensitive on the key; returns the decoded value or "".
+Function GetParamFromString(ByVal src As String, ByVal paramName As String) As String
+    Dim pairs  As Variant
+    Dim i      As Integer
+    Dim eqPos  As Integer
+    Dim rawKey As String
+    GetParamFromString = ""
+    If src = "" Then Exit Function
+    pairs = Split(src, "&")
+    For i = 0 To UBound(pairs)
+        eqPos = InStr(CStr(pairs(i)), "=")
+        If eqPos > 0 Then
+            rawKey = Left$(CStr(pairs(i)), eqPos - 1)
+            If LCase$(UrlDecode(Trim$(rawKey))) = LCase$(paramName) Then
+                GetParamFromString = UrlDecode(Mid$(CStr(pairs(i)), eqPos + 1))
+                Exit Function
+            End If
+        End If
+    Next i
+End Function
+
+' Query-string parameter of the current request.
+Function GetQueryParam(web As NotesDocument, ByVal paramName As String) As String
+    GetQueryParam = GetParamFromString(GetCgi(web, "Query_String"), paramName)
+End Function
+
+'===========================================================================
+' Identity — server-verified only
+'===========================================================================
+
+' Returns the caller's canonical name (CN=.../O=...), or "" if not
+' authenticated.  Fails closed: never falls back to EffectiveUserName
+' (which is the agent signer when the agent runs as signer).
+Function GetCaller(web As NotesDocument, session As NotesSession) As String
+    Dim raw As String
+    Dim nn  As NotesName
+    GetCaller = ""
+    raw = Trim$(GetCgi(web, "Remote_User"))
+    If raw = "" Then Exit Function
+    Set nn = session.CreateName(raw)
+    If LCase$(nn.Common) = "anonymous" Then Exit Function
+    GetCaller = nn.Canonical
+End Function
+
+'===========================================================================
+' Client IP (reverse-proxy aware)
+'===========================================================================
+
+Function IsValidIp(ByVal s As String) As Boolean
+    Dim i  As Integer
+    Dim ch As String
+    IsValidIp = False
+    If Len(s) < 2 Or Len(s) > 45 Then Exit Function
+    For i = 1 To Len(s)
+        ch = Mid$(s, i, 1)
+        If Not (ch Like "[0-9A-Fa-f.:]") Then Exit Function
+    Next i
+    IsValidIp = True
+End Function
+
+Function IsTrustedProxy(ByVal ip As String) As Boolean
+    Dim list As Variant
+    Dim i    As Integer
+    IsTrustedProxy = False
+    If Trim$(TRUSTED_PROXIES) = "" Then Exit Function
+    list = Split(TRUSTED_PROXIES, ",")
+    For i = 0 To UBound(list)
+        If LCase$(Trim$(CStr(list(i)))) = LCase$(ip) Then
+            IsTrustedProxy = True
+            Exit Function
+        End If
+    Next i
+End Function
+
+' Direct peer address, unless the peer is a trusted proxy — then the
+' right-most X-Forwarded-For entry that is NOT itself a trusted proxy.
+' Returns "unknown" if nothing valid is found.
+Function GetClientIp(web As NotesDocument) As String
+    Dim remote As String
+    Dim xff    As String
+    Dim parts  As Variant
+    Dim i      As Integer
+    Dim cand   As String
+
+    remote = Trim$(GetCgi(web, "Remote_Addr"))
+    If Not IsValidIp(remote) Then remote = ""
+    If remote = "" Then
+        GetClientIp = "unknown"
+    Else
+        GetClientIp = remote
+    End If
+
+    If remote <> "" Then
+        If IsTrustedProxy(remote) Then
+            xff = GetCgi(web, "HTTP_X_FORWARDED_FOR")
+            If xff <> "" Then
+                parts = Split(xff, ",")
+                For i = UBound(parts) To 0 Step -1
+                    cand = Trim$(CStr(parts(i)))
+                    If IsValidIp(cand) Then
+                        If Not IsTrustedProxy(cand) Then
+                            GetClientIp = cand
+                            Exit Function
+                        End If
+                    End If
+                Next i
+            End If
+        End If
+    End If
+End Function
+
+'===========================================================================
+' Text sanitising and User-Agent parsing (server-side)
+'===========================================================================
+
+' Strip control characters and cap the length.
+Function CleanText(ByVal s As String, ByVal maxLen As Integer) As String
+    Dim r As String
+    Dim i As Integer
+    Dim c As Long
+    r = ""
+    If Len(s) > 2000 Then s = Left$(s, 2000)
+    For i = 1 To Len(s)
+        c = Asc(Mid$(s, i, 1))
+        If c >= 32 And c <> 127 Then r = r & Mid$(s, i, 1)
+        If Len(r) >= maxLen Then Exit For
+    Next i
+    CleanText = r
+End Function
+
+Function ParseBrowser(ByVal ua As String) As String
+    If ua = "" Then
+        ParseBrowser = "Unknown"
+    ElseIf InStr(ua, "Edg/") > 0 Or InStr(ua, "EdgA/") > 0 Or InStr(ua, "EdgiOS/") > 0 Then
+        ParseBrowser = "Edge"
+    ElseIf InStr(ua, "OPR/") > 0 Or InStr(ua, "Opera") > 0 Then
+        ParseBrowser = "Opera"
+    ElseIf InStr(ua, "Firefox/") > 0 Or InStr(ua, "FxiOS/") > 0 Then
+        ParseBrowser = "Firefox"
+    ElseIf InStr(ua, "Chrome/") > 0 Or InStr(ua, "CriOS/") > 0 Then
+        ParseBrowser = "Chrome"
+    ElseIf InStr(ua, "Safari/") > 0 Then
+        ParseBrowser = "Safari"
+    ElseIf InStr(ua, "MSIE") > 0 Or InStr(ua, "Trident/") > 0 Then
+        ParseBrowser = "Internet Explorer"
+    Else
+        ParseBrowser = "Other"
+    End If
+End Function
+
+Function ParseOS(ByVal ua As String) As String
+    If ua = "" Then
+        ParseOS = "Unknown"
+    ElseIf InStr(ua, "Windows") > 0 Then
+        ParseOS = "Windows"
+    ElseIf InStr(ua, "iPhone") > 0 Or InStr(ua, "iPad") > 0 Or InStr(ua, "iPod") > 0 Then
+        ParseOS = "iOS"
+    ElseIf InStr(ua, "Android") > 0 Then
+        ParseOS = "Android"
+    ElseIf InStr(ua, "Mac OS X") > 0 Or InStr(ua, "Macintosh") > 0 Then
+        ParseOS = "macOS"
+    ElseIf InStr(ua, "CrOS") > 0 Then
+        ParseOS = "ChromeOS"
+    ElseIf InStr(ua, "Linux") > 0 Then
+        ParseOS = "Linux"
+    Else
+        ParseOS = "Other"
+    End If
+End Function
+
+Function ParseDeviceType(ByVal ua As String) As String
+    If InStr(ua, "iPad") > 0 Or InStr(ua, "Tablet") > 0 Then
+        ParseDeviceType = "Tablet"
+    ElseIf InStr(ua, "Mobi") > 0 Or InStr(ua, "iPhone") > 0 Then
+        ParseDeviceType = "Mobile"
+    Else
+        ParseDeviceType = "Desktop"
+    End If
+End Function
+
+' Coarse device fingerprint used ONLY for "have we seen this device before".
+' Not a strong identifier (User-Agent is client controlled) — it feeds an
+' informational flag, never an access decision.
+Function MakeDeviceKey(ByVal browser As String, ByVal os As String, ByVal devType As String) As String
+    MakeDeviceKey = LCase$(browser & "|" & os & "|" & devType)
+End Function
+
+' Channel through which the user entered, derived from the validated redirect target.
+Function GetAccessSource(ByVal nextUrl As String) As String
+    Dim p As String
+    p = LCase$(nextUrl)
+    If Left$(p, 6) = "/verse" Then
+        GetAccessSource = "HCL Verse (web)"
+    ElseIf InStr(p, "/mail/") > 0 Or InStr(p, "inotes") > 0 Then
+        GetAccessSource = "iNotes (web)"
+    Else
+        GetAccessSource = "Domino web application"
+    End If
+End Function
+
+' Open-redirect protection.  Only same-site absolute PATHS are allowed.
+Function SafeNext(ByVal u As String) As String
+    Dim i As Integer
+    Dim c As Long
+    SafeNext = DEFAULT_NEXT
+    u = Trim$(u)
+    If u = "" Or Len(u) > 512 Then Exit Function
+    If Left$(u, 1) <> "/" Then Exit Function
+    If Len(u) > 1 Then
+        If Mid$(u, 2, 1) = "/" Or Mid$(u, 2, 1) = "\" Then Exit Function
+    End If
+    If InStr(u, "\") > 0 Then Exit Function
+    For i = 1 To Len(u)
+        c = Asc(Mid$(u, i, 1))
+        If c < 32 Or c = 127 Then Exit Function
+    Next i
+    If InStr(LCase$(u), "loginlanding") > 0 Then Exit Function   ' no redirect loops
+    SafeNext = u
+End Function
+
+'===========================================================================
+' History analysis
+'===========================================================================
+
+' Compares the current login with the user's earlier events.
+'   isFirst   : user has no earlier events (flags are then NOT raised)
+'   newIp     : IP never seen in the last LOOKBACK_EVENTS events
+'   newDevice : device key never seen in the last LOOKBACK_EVENTS events
+Sub AnalyseHistory(view As NotesView, ByVal caller As String, ByVal ip As String, _
+                   ByVal deviceKey As String, isFirst As Boolean, _
+                   newIp As Boolean, newDevice As Boolean)
+    Dim vec     As NotesViewEntryCollection
+    Dim entry   As NotesViewEntry
+    Dim doc     As NotesDocument
+    Dim n       As Integer
+    Dim seenIp  As Boolean
+    Dim seenDev As Boolean
+
+    isFirst = True
+    newIp = False
+    newDevice = False
+
+    Set vec = view.GetAllEntriesByKey(caller, True)
+    If vec Is Nothing Then Exit Sub
+    If vec.Count = 0 Then Exit Sub
+
+    isFirst = False
+    Set entry = vec.GetFirstEntry()
+    Do While Not (entry Is Nothing)
+        If n >= LOOKBACK_EVENTS Then Exit Do
+        Set doc = entry.Document
+        If Not (doc Is Nothing) Then
+            If ItemStr(doc, "IP") = ip Then seenIp = True
+            If ItemStr(doc, "DeviceKey") = deviceKey Then seenDev = True
+        End If
+        n = n + 1
+        Set entry = vec.GetNextEntry(entry)
+    Loop
+    newIp = Not seenIp
+    newDevice = Not seenDev
+End Sub
+
+'===========================================================================
+' JSON output helpers
+'===========================================================================
+
+Function JsonEscape(ByVal s As String) As String
+    Dim r As String
+    r = s
+    r = Replace(r, "\", "\\")
+    r = Replace(r, Chr$(34), "\" & Chr$(34))
+    r = Replace(r, Chr$(8), "\b")
+    r = Replace(r, Chr$(9), "\t")
+    r = Replace(r, Chr$(10), "\n")
+    r = Replace(r, Chr$(12), "\f")
+    r = Replace(r, Chr$(13), "\r")
+    r = Replace(r, "<", "<")
+    r = Replace(r, ">", ">")
+    JsonEscape = r
+End Function
+
+' "key":"escaped value"
+Function JStr(ByVal key As String, ByVal value As String) As String
+    JStr = Chr$(34) & key & Chr$(34) & ":" & Chr$(34) & JsonEscape(value) & Chr$(34)
+End Function
+
+' "key":123   or   "key":true/false
+Function JRaw(ByVal key As String, ByVal rawValue As String) As String
+    JRaw = Chr$(34) & key & Chr$(34) & ":" & rawValue
+End Function
+
+Function JBool(ByVal b As Boolean) As String
+    If b Then
+        JBool = "true"
+    Else
+        JBool = "false"
+    End If
+End Function
+
+' ISO-8601 UTC string for a NotesDateTime ("" if Nothing).
+Function IsoUtc(dt As NotesDateTime) As String
+    Dim g As Variant
+    IsoUtc = ""
+    If dt Is Nothing Then Exit Function
+    g = dt.LSGMTTime
+    IsoUtc = Format$(g, "yyyy-mm-dd") & "T" & Format$(g, "hh:nn:ss") & "Z"
+End Function
+
+' Writes standard JSON response headers (call BEFORE any body output).
+Sub PrintJsonHeaders()
+    Print "Content-Type: application/json; charset=UTF-8"
+    Print "Cache-Control: no-store"
+    Print "X-Content-Type-Options: nosniff"
+    Print ""
+End Sub
+
+'===========================================================================
+' Mail helpers (optional — only used when enabled in the constants above)
+'===========================================================================
+
+Sub SendNewSigninAlert(db As NotesDatabase, ByVal toName As String, ByVal ip As String, _
+                       ByVal browser As String, ByVal os As String, ByVal whenUtc As String, _
+                       ByVal reasons As String)
+    On Error Resume Next
+    Dim memo As NotesDocument
+    Dim rt   As NotesRichTextItem
+    Set memo = db.CreateDocument()
+    Call memo.ReplaceItemValue("Form", "Memo")
+    Call memo.ReplaceItemValue("Subject", ALERT_SUBJECT)
+    Call memo.ReplaceItemValue("SendTo", toName)
+    Set rt = memo.CreateRichTextItem("Body")
+    Call rt.AppendText("We noticed a sign-in to your account from a " & reasons & "." & Chr$(10) & Chr$(10))
+    Call rt.AppendText("Time (UTC): " & whenUtc & Chr$(10))
+    Call rt.AppendText("IP address: " & ip & Chr$(10))
+    Call rt.AppendText("Browser   : " & browser & " on " & os & Chr$(10) & Chr$(10))
+    Call rt.AppendText("If this was you, no action is needed. If not, open Login Activity in HCL Verse, ")
+    Call rt.AppendText("press 'This wasn't me' on that sign-in, and change your password.")
+    memo.SaveMessageOnSend = False
+    Call memo.Send(False)
+End Sub
+
+Sub SendNotMeNotice(db As NotesDatabase, ByVal userName As String, ByVal ip As String, _
+                    ByVal whenUtc As String, ByVal unid As String)
+    On Error Resume Next
+    Dim memo As NotesDocument
+    Dim rt   As NotesRichTextItem
+    If Trim$(SECURITY_MAILBOX) = "" Then Exit Sub
+    Set memo = db.CreateDocument()
+    Call memo.ReplaceItemValue("Form", "Memo")
+    Call memo.ReplaceItemValue("Subject", "Login Activity: user reported an unrecognised sign-in")
+    Call memo.ReplaceItemValue("SendTo", SECURITY_MAILBOX)
+    Set rt = memo.CreateRichTextItem("Body")
+    Call rt.AppendText("User      : " & userName & Chr$(10))
+    Call rt.AppendText("Sign-in   : " & whenUtc & " UTC from " & ip & Chr$(10))
+    Call rt.AppendText("Event UNID: " & unid & Chr$(10) & Chr$(10))
+    Call rt.AppendText("Review it in LOGINAUDIT.NSF, view (NotMeReports).")
+    memo.SaveMessageOnSend = False
+    Call memo.Send(False)
+End Sub
+
+'===========================================================================
+' Readers list for a stored document: the user (if given), the reviewer group,
+' and the optional extra reader.
+Function ReadersFor(ByVal userName As String) As Variant
+    Dim r() As String
+    Dim n   As Integer
+    ReDim r(2)
+    n = 0
+    If Trim$(userName) <> "" Then
+        r(n) = userName
+        n = n + 1
+    End If
+    r(n) = READER_ADMIN_GROUP
+    n = n + 1
+    If Trim$(EXTRA_READER) <> "" Then
+        r(n) = EXTRA_READER
+        n = n + 1
+    End If
+    ReDim Preserve r(n - 1)
+    ReadersFor = r
+End Function
+
+'===========================================================================
+' Error logging — best effort, never raises
+'===========================================================================
+Sub LogAuditError(session As NotesSession, db As NotesDatabase, ByVal agentName As String, _
+                  ByVal errNum As Long, ByVal errLine As Long, ByVal errMsg As String)
+    On Error Resume Next
+    Dim e   As NotesDocument
+    Dim dt  As NotesDateTime
+    Dim it  As NotesItem
+    If db Is Nothing Then Exit Sub
+    Set e = db.CreateDocument()
+    Call e.ReplaceItemValue("Form", "AuditError")
+    Call e.ReplaceItemValue("Agent", agentName)
+    Call e.ReplaceItemValue("ErrNum", errNum)
+    Call e.ReplaceItemValue("ErrLine", errLine)
+    Call e.ReplaceItemValue("ErrMsg", CleanText(errMsg, 500))
+    Set dt = New NotesDateTime("")
+    Call dt.SetNow
+    Call e.ReplaceItemValue("ErrWhen", dt)
+    Set it = e.ReplaceItemValue("Readers", ReadersFor(""))
+    it.IsReaders = True
+    Call e.Save(True, False)
+End Sub

@@ -1,0 +1,84 @@
+'===========================================================================
+' PurgeLoginAudit.lss  —  Agent "PurgeLoginAudit"  (LOGINAUDIT.NSF)
+'
+' Version  : 3.0.0
+' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
+'
+' WHAT IT DOES
+' ------------
+' Retention job.  Deletes LoginEvent documents older than RETENTION_DAYS
+' (LoginAuditLib; default 365) and AuditError documents older than 30 days.
+' Events with ReviewStatus = "OPEN" (unreviewed "not me" reports) are kept.
+'
+' SAFE BY DEFAULT: PURGE_DRY_RUN = True only COUNTS and logs what it would
+' delete.  Review the agent log, then set PURGE_DRY_RUN = False and re-sign.
+'
+' AGENT PROPERTIES
+'   Trigger  : On schedule -> Daily, e.g. 02:00, "Run on: server"
+'   Act on   : None
+'   Sign with: the service ID (member of LocalDomainAdmins, Editor access)
+' LOG        : Designer -> Agents -> right-click agent -> Log  (agent log)
+'===========================================================================
+Option Public
+Option Declare
+Use "LoginAuditLib"
+
+Const PURGE_DRY_RUN = True
+Const ERROR_DOC_DAYS = 30
+
+Sub Initialize()
+    Dim session As New NotesSession
+    Dim db      As NotesDatabase
+    Dim log     As New NotesLog("PurgeLoginAudit")
+
+    On Error GoTo ErrHandler
+    Call log.OpenAgentLog()
+
+    Set db = session.CurrentDatabase
+
+    Call log.LogAction("Start. Retention=" & RETENTION_DAYS & " days, DryRun=" & PURGE_DRY_RUN)
+
+    Call PurgeByFormula(db, log, _
+        |Form = "LoginEvent" & LoginTime < @Adjust(@Today; 0; 0; -| & RETENTION_DAYS & |; 0; 0; 0) & ReviewStatus != "OPEN"|, _
+        "LoginEvent")
+
+    Call PurgeByFormula(db, log, _
+        |Form = "AuditError" & ErrWhen <@Adjust(@Today; 0; 0; -| & ERROR_DOC_DAYS & |; 0; 0; 0)|, _
+        "AuditError")
+
+    Call log.LogAction("Done.")
+    Call log.Close()
+    Exit Sub
+
+ErrHandler:
+    Call log.LogError(Err, "Line " & Erl & ": " & Error$)
+    Call log.Close()
+    Exit Sub
+End Sub
+
+Sub PurgeByFormula(db As NotesDatabase, log As NotesLog, ByVal formula As String, ByVal label As String)
+    Dim dc      As NotesDocumentCollection
+    Dim doc     As NotesDocument
+    Dim nextDoc As NotesDocument
+    Dim removed As Long
+
+    Set dc = db.Search(formula, Nothing, 0)
+    If dc.Count = 0 Then
+        Call log.LogAction(label & ": nothing to purge")
+        Exit Sub
+    End If
+
+    If PURGE_DRY_RUN Then
+        Call log.LogAction(label & ": DRY RUN - would delete " & dc.Count & " document(s)")
+        Exit Sub
+    End If
+
+    Set doc = dc.GetFirstDocument()
+    Do While Not (doc Is Nothing)
+        Set nextDoc = dc.GetNextDocument(doc)      ' fetch next BEFORE removing
+        Call doc.Remove(True)
+        removed = removed + 1
+        Set doc = nextDoc
+    Loop
+    Call log.LogAction(label & ": deleted " & removed & " document(s)")
+End Sub

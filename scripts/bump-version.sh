@@ -8,15 +8,12 @@
 #   ./scripts/bump-version.sh 2.5.1
 #
 # What it updates:
-#   VERSION                               ← central source of truth
-#   login-forms/DominoEmbeddedForm.html   ← CONFIG.version, CONFIG.versionDate, footer span
-#   login-forms/EnterpriseLoginForm.html  ← CONFIG.version, CONFIG.versionDate, footer span
-#   login-forms/CustomLoginForm-Domino.html ← version comment header
-#   config.js                             ← @version JSDoc tag
-#   i18n/translations.js                  ← @version JSDoc tag
-#   js/login.js                           ← @version JSDoc tag (if present)
-#   README.md                             ← badge, footer Version line, Last Updated date
-#   docs/*.md                             ← inline vX.Y.Z references
+#   VERSION                               <- central source of truth
+#   login-forms/DominoEmbeddedForm.html   <- CONFIG.version, CONFIG.versionDate, footer spans
+#   lotusscript/*.lss                     <- "Version  : X.Y.Z" header line
+#   verse-extension/LoginActivityViewer.html <- "v X.Y.Z" header comment
+#   README.md                             <- Version / Last Updated lines
+#   docs/*.md                             <- Version / Last Updated lines and inline vX.Y.Z
 # =============================================================================
 
 set -euo pipefail
@@ -60,8 +57,7 @@ sedi() {
 
 # ── HTML login forms ──────────────────────────────────────────────────────────
 for f in \
-    "$ROOT/login-forms/DominoEmbeddedForm.html" \
-    "$ROOT/login-forms/EnterpriseLoginForm.html"; do
+    "$ROOT/login-forms/DominoEmbeddedForm.html"; do
     [ -f "$f" ] || continue
     # 1. CONFIG object: version and versionDate fields
     sedi -e "s/version: \"${OLD_VERSION}\"/version: \"${NEW_VERSION}\"/" \
@@ -74,37 +70,26 @@ for f in \
     echo "  ✅  $(basename "$f")"
 done
 
-# CustomLoginForm-Domino.html — comment header + footer span
-f="$ROOT/login-forms/CustomLoginForm-Domino.html"
+# ── LotusScript agents/library — header "Version  : X.Y.Z" ────────────────────
+for f in "$ROOT/lotusscript/"*.lss; do
+    [ -f "$f" ] || continue
+    sedi "s/^' Version  : [0-9][0-9.]*/' Version  : ${NEW_VERSION}/" "$f"
+    echo "  ✅  lotusscript/$(basename "$f")"
+done
+
+# ── Verse viewer — header comment ─────────────────────────────────────────────
+f="$ROOT/verse-extension/LoginActivityViewer.html"
 if [ -f "$f" ]; then
-    # Comment header: <!-- Version: X.Y.Z | Date: YYYY-MM-DD | ... -->
-    sedi -e "s/Version: ${OLD_VERSION}/Version: ${NEW_VERSION}/" \
-         -e "s/Date: [0-9][0-9-]*/Date: ${NEW_DATE}/" \
-         "$f"
-    # Footer span fallback
-    sedi "s/id=\"versionNumber\">${OLD_VERSION}<\/span>/id=\"versionNumber\">${NEW_VERSION}<\/span>/" "$f"
+    sedi "s/Login Activity Viewer v[0-9][0-9.]*/Login Activity Viewer v${NEW_VERSION}/" "$f"
     echo "  ✅  $(basename "$f")"
 fi
-
-# ── JavaScript / config files — @version JSDoc tag ───────────────────────────
-for f in \
-    "$ROOT/config.js" \
-    "$ROOT/i18n/translations.js" \
-    "$ROOT/js/login.js"; do
-    [ -f "$f" ] || continue
-    sedi "s/@version [0-9][0-9.]*/@version ${NEW_VERSION}/" "$f"
-    echo "  ✅  $(basename "$f")"
-done
 
 # ── README.md ─────────────────────────────────────────────────────────────────
 f="$ROOT/README.md"
 if [ -f "$f" ]; then
-    # Badge: version-X.Y.Z-blue  (use OLD_VERSION for precision)
-    sedi "s/version-${OLD_VERSION}-blue/version-${NEW_VERSION}-blue/" "$f"
     # Footer **Version:** line — generic pattern captures any version string and
     # any optional trailing annotation like "(HTML files: A.B.C)"
-    sedi "s/\*\*Version:\*\* [0-9][0-9.]* *([^)]*)/\*\*Version:\*\* ${NEW_VERSION}/" "$f"
-    sedi "s/\*\*Version:\*\* [0-9][0-9.]*$/\*\*Version:\*\* ${NEW_VERSION}/" "$f"
+    sedi "s/\*\*Version:\*\* [0-9][0-9.]*/**Version:** ${NEW_VERSION}/" "$f"
     # Footer **Last Updated:** — match both ISO (2026-07-01) and prose (July 1, 2026)
     sedi "s/\*\*Last Updated:\*\* [0-9A-Za-z ,_-]*/\*\*Last Updated:\*\* ${NEW_DATE}/" "$f"
     echo "  ✅  README.md"
@@ -113,7 +98,9 @@ fi
 # ── docs/*.md — inline vX.Y.Z references ─────────────────────────────────────
 for f in "$ROOT/docs/"*.md; do
     [ -f "$f" ] || continue
-    sedi "s/v${OLD_VERSION}/v${NEW_VERSION}/g" "$f"
+    sedi -e "s/v${OLD_VERSION}/v${NEW_VERSION}/g" \
+         -e "s/\*\*Version:\*\* [0-9][0-9.]*/**Version:** ${NEW_VERSION}/" \
+         -e "s/\*\*Last Updated:\*\* [0-9][0-9-]*/**Last Updated:** ${NEW_DATE}/" "$f"
     echo "  ✅  docs/$(basename "$f")"
 done
 
