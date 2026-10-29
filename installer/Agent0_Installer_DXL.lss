@@ -489,7 +489,7 @@ Function ReadVersion(session As NotesSession, detail As String) As String
 End Function
 
 Function HeaderVersion(src As String) As String
-	' Value of the header line  ' Version        : x.y.z  (looked for in the first 15 lines); "" if missing.
+	' Value of the header line  ' Version  : x.y.z  (only the first word after the colon; looked for in the first 15 lines); "" if missing.
 	Dim lines As Variant, i As Long, t As String, p As Long
 	lines = Split(src, Chr$(10))
 	For i = 0 To Ubound(lines)
@@ -497,7 +497,12 @@ Function HeaderVersion(src As String) As String
 		t = Trim$(CStr(lines(i)))
 		If StartsCI(t, "' Version") Then
 			p = InStr(t, ":")
-			If p > 0 Then HeaderVersion = Trim$(Mid$(t, p + 1))
+			If p > 0 Then
+				HeaderVersion = Trim$(Mid$(t, p + 1))
+				' keep only the version number: ignore anything after the first blank (a trailing note)
+				p = InStr(HeaderVersion, " ")
+				If p > 0 Then HeaderVersion = Left$(HeaderVersion, p - 1)
+			End If
 			Exit Function
 		End If
 	Next

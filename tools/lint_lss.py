@@ -24,7 +24,7 @@ END_PROC_RE = re.compile(r"^\s*End\s+(Sub|Function)\b", re.I)
 END_CLASS_RE = re.compile(r"^\s*End\s+Class\b", re.I)
 DIM_RE = re.compile(r"^\s*(?:Dim|Private|Public|Static|Const|Redim(?:\s+Preserve)?)\s+(.*)$", re.I)
 FORALL_RE = re.compile(r"^\s*ForAll\s+([A-Za-z_]\w*)\s+In\b", re.I)
-HEADER_VER_RE = re.compile(r"^'\s*Version\s*:\s*(\S+)", re.I)
+HEADER_VER_RE = re.compile(r"^'\s*Version\s*:\s*(\S+)\s*$", re.I)   # nothing may follow the number (the installer compares the whole value)
 
 
 def names_from_decl(text):
