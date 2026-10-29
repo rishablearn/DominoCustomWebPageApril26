@@ -20,7 +20,7 @@
 '   Name                     : LoginLanding
 '   Trigger                  : On Schedule -> Never   (any "On Event" gives HTTP 500)
 '   Act on                   : None
-'   Run as web user          : UNCHECKED  (runs as the signer - see README)
+'   Run as web user          : UNCHECKED  (runs as the signer - see Deployment.md section 4)
 '   Sign with                : service ID that is a member of LocalDomainAdmins
 '
 ' TEST (authenticated browser):

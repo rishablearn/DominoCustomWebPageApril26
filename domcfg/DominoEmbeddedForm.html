@@ -205,7 +205,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
 
         // =====================================================================
         // MFA / TOTP SETTINGS  (Requires Domino 12.0.1+ with MFA enabled)
-        // Domino enforces MFA server-side; see docs/02-Deployment-Guide.md §8.2
+        // Domino enforces MFA server-side; see Deployment.md section 9.2
         // =====================================================================
         mfa: {
             enable: false,
@@ -251,7 +251,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         //   Failed logins never reach the agent, so only successful logins
         //   are recorded.
         //
-        // PREREQUISITES: loginaudit.nsf + agents deployed (docs/02-Deployment-Guide.md)
+        // PREREQUISITES: loginaudit.nsf + agents deployed (Deployment.md)
         //
         // landingUrl : agent URL, server-relative, must contain ?OpenAgent
         // defaultNext: where users go when the login page had no RedirectTo

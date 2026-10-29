@@ -110,12 +110,12 @@ def lint(path, version, problems, check_header=True):
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "."
     version = open(os.path.join(root, "VERSION")).read().strip()
-    files = sorted(glob.glob(os.path.join(root, "lotusscript", "ScriptLibraries", "*.lss")) +
-                   glob.glob(os.path.join(root, "lotusscript", "Agents", "*.lss")))
+    files = sorted(glob.glob(os.path.join(root, "nsf", "ScriptLibraries", "*.lss")) +
+                   glob.glob(os.path.join(root, "nsf", "Agents", "*.lss")))
     problems = []
     for f in files:
         lint(f, version, problems)
-    installer = os.path.join(root, "lotusscript", "Installer", "Agent0_Installer_DXL.lss")
+    installer = os.path.join(root, "installer", "Agent0_Installer_DXL.lss")
     if os.path.exists(installer):
         lint(installer, version, problems, check_header=False)
         files.append(installer)

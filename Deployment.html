@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HCL Domino Login Page + Login Activity: Deployment Guide</title>
+<style>
+:root{--bg:#fff;--fg:#1d2430;--mut:#5b6677;--line:#d9dee7;--code:#f3f5f9;--acc:#0b5cab;--nav:#f7f9fc}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--fg:#e4e9f0;--mut:#9aa6b8;--line:#2a3340;--code:#1a222d;--acc:#6db2ff;--nav:#151c26}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{display:flex;max-width:1280px;margin:0 auto}
+nav{position:sticky;top:0;align-self:flex-start;width:260px;flex:none;height:100vh;overflow:auto;padding:24px 16px;background:var(--nav);border-right:1px solid var(--line)}
+nav b{display:block;margin-bottom:8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
+nav a{display:block;padding:4px 8px;border-radius:6px;color:var(--fg);text-decoration:none;font-size:14px}nav a:hover{background:var(--code);color:var(--acc)}
+main{min-width:0;flex:1;padding:32px 40px 80px;max-width:960px}
+h1{font-size:28px;margin-top:0}h2{font-size:22px;margin-top:2.2em;padding-top:.6em;border-top:1px solid var(--line)}h3{font-size:18px;margin-top:1.6em}
+a{color:var(--acc)}code{background:var(--code);padding:.1em .35em;border-radius:4px;font:13.5px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{background:var(--code);padding:14px 16px;border-radius:8px;overflow:auto}pre code{background:none;padding:0}
+table{border-collapse:collapse;display:block;overflow-x:auto;margin:1em 0}th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}th{background:var(--code)}
+blockquote{margin:1em 0;padding:.4em 1em;border-left:4px solid var(--acc);background:var(--code);color:var(--mut)}hr{border:0;border-top:1px solid var(--line)}
+@media (max-width:860px){.wrap{display:block}nav{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 16px 60px}}
+@media print{nav{display:none}main{max-width:none;padding:0}}
+</style></head><body><div class="wrap">
+<nav><b>v3.1.0</b><a href="#1-overview">1. Overview</a><a href="#2-requirements">2. Requirements</a><a href="#3-build-loginauditnsf-with-the-dxl-installer">3. Build loginaudit.nsf with the DXL installer</a><a href="#4-configure-compile-and-sign">4. Configure, compile and sign</a><a href="#5-viewer-file-resource">5. Viewer file resource</a><a href="#6-login-page-in-domcfgnsf">6. Login page in domcfg.nsf</a><a href="#7-verse-extension">7. Verse extension</a><a href="#8-test-plan-testing-environment-native-domino-auth-no-proxy">8. Test plan (testing environment: native Domino auth, no proxy)</a><a href="#9-production-notes">9. Production notes</a><a href="#10-troubleshooting">10. Troubleshooting</a><a href="#appendix-a-manual-build-without-the-installer">Appendix A. Manual build (without the installer)</a><a href="#appendix-b-dxl-reference">Appendix B. DXL reference</a></nav>
+<main>
+<h1 id="hcl-domino-login-page-login-activity-deployment-guide">HCL Domino Login Page + Login Activity: Deployment Guide</h1>
+<blockquote>
+<p><strong>Version:</strong> 3.1.0 | <strong>Last Updated:</strong> 2026-10-29 | <strong>Targets:</strong> HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)<br />
+Written to documented HCL behaviour; <strong>not yet executed on a server</strong>. Items marked <em>(verify)</em> must be confirmed in testing. Use a non-production server first.</p>
+</blockquote>
+<p>Placeholders used below: <code>&lt;SERVER&gt;</code>, <code>&lt;SERVICE_ID&gt;</code> (the ID that signs the agents), <code>&lt;REPO_FOLDER&gt;</code> (this repository on the admin workstation), <code>&lt;PROXY_IP_1&gt;</code>. Never put real credentials in these files.</p>
+<h2 id="1-overview">1. Overview</h2>
+<p>A branded Domino login page (self-contained HTML, deployed in <code>domcfg.nsf</code>) plus a server-side <strong>login audit</strong>: users see their last 5 successful logins (IP, time, approximate session duration, access source, new-IP / new-device flags) in an HCL Verse <strong>Login Activity</strong> window and can report a sign-in as <strong>This wasn't me</strong>.</p>
+<pre><code>Browser --POST /names.nsf?Login--&gt; Domino authenticates (password [+ TOTP])
+        &lt;-- redirect: /loginaudit.nsf/LoginLanding?OpenAgent&amp;next=/verse
+Browser --&gt; LoginLanding agent   identity = server-set Remote_User (not client data)
+                                 writes a LoginEvent document: server time, IP, User-Agent,
+                                 access source, new-IP / new-device flags
+        &lt;-- redirect to /verse
+Verse &gt; More &gt; Login Activity --&gt; LoginActivityViewer.html
+                                  +- GetLoginHistory  (last 5, exact user match)
+                                  +- Heartbeat        (approximate session duration)
+                                  +- NotMe            (&quot;This wasn't me&quot; report)
+Nightly: PurgeLoginAudit deletes events older than the retention period.
+</code></pre>
+<h3 id="repository-layout">Repository layout</h3>
+<pre><code>nsf/                        everything that goes INTO loginaudit.nsf
+  MANIFEST.txt              what the installer imports, in order
+  Forms/  Views/            DXL (*.form, *.view)
+  ScriptLibraries/          LoginAuditLib.lss
+  Agents/                   LoginLanding, GetLoginHistory, Heartbeat, NotMe, PurgeLoginAudit (*.lss)
+  WebContent/               LoginActivityViewer.html (imported by hand as a file resource)
+installer/                  Agent0_Installer_DXL.lss, runs once in a Notes client
+domcfg/                     DominoEmbeddedForm.html, the login page for domcfg.nsf
+verse/                      applications.json, merge-snippet.json (Verse registration)
+tools/                      bump-version.sh, lint_lss.py, validate_dxl.py, build_docs.py, github-sync.sh
+archive/                    EVALUATION.md (review that led to this design)
+README.md  Deployment.md  Deployment.html  CHANGELOG.md  VERSION
+</code></pre>
+<p>Code lives in <code>.lss</code> files only (one copy). The installer imports forms and views as DXL and <strong>generates the DXL for the script library and agents from the <code>.lss</code> files</strong> at install time, so nothing is maintained twice.</p>
+<h3 id="design-rules">Design rules</h3>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Identity comes from the server (<code>Remote_User</code>), never from the browser</td>
+<td>A client-supplied username can be forged</td>
+</tr>
+<tr>
+<td>Record only after authentication (landing agent)</td>
+<td>Entries are real, successful logins</td>
+</tr>
+<tr>
+<td>Server time, server-side User-Agent parsing</td>
+<td>Client clocks and fields are user-controlled</td>
+</tr>
+<tr>
+<td>Separate database, one document per login, Readers-protected</td>
+<td>No writes to the Domino Directory; a user sees only own events</td>
+</tr>
+<tr>
+<td>Agents run as a least-privilege signer and fail closed on unknown identity</td>
+<td><code>EffectiveUserName</code> is the signer in that mode and is never used</td>
+</tr>
+<tr>
+<td>Open-redirect and CSRF guards, input caps</td>
+<td>Landing, NotMe and Heartbeat are reachable by any signed-in user</td>
+</tr>
+</tbody>
+</table>
+<h3 id="known-limitations">Known limitations</h3>
+<ul>
+<li>Only <strong>successful</strong> web logins are recorded; a failed login never reaches the landing agent.</li>
+<li>Session duration is approximate and measured only while a heartbeat source (the viewer) is open; otherwise "Not measured".</li>
+<li>Notes-client, mobile-sync, API and SSO/OIDC logins that bypass the form are not recorded unless their post-login URL goes through <code>LoginLanding</code>.</li>
+<li>Behind a reverse proxy the real client IP depends on your proxy setup (section 9.1).</li>
+</ul>
+<h2 id="2-requirements">2. Requirements</h2>
+<ul>
+<li>HCL Domino 12.0.1+ / 14.x server; HCL Verse on-premises 3.2.x for the Login Activity window.</li>
+<li>A Notes client with Domino Designer and an admin ID that may create databases on <code>&lt;SERVER&gt;</code> (for the installer).</li>
+<li><code>&lt;SERVICE_ID&gt;</code>: a dedicated ID that signs the design. It must be a member of the reviewer group <code>LocalDomainAdmins</code> (Readers fields also apply to agents) and listed in <em>Run restricted LotusScript/Java agents</em> on the server.</li>
+<li>Python 3 (optional) for <code>tools/lint_lss.py</code> and <code>tools/validate_dxl.py</code>.</li>
+</ul>
+<h2 id="3-build-loginauditnsf-with-the-dxl-installer">3. Build <code>loginaudit.nsf</code> with the DXL installer</h2>
+<p>One LotusScript agent, <code>installer/Agent0_Installer_DXL.lss</code>, runs in the Notes client and builds the database with <code>NotesDXLImporter</code>. <strong>Not yet run on a Domino server</strong>; use a non-production server first. It never touches <code>names.nsf</code> or <code>domcfg.nsf</code>, and never imports documents.</p>
+<h3 id="31-what-it-creates">3.1 What it creates</h3>
+<table>
+<thead>
+<tr>
+<th>Element</th>
+<th>Names</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Database</td>
+<td><code>loginaudit.nsf</code>, title "Login Audit v3.1.0"</td>
+<td>installer constants</td>
+</tr>
+<tr>
+<td>ACL (new database only)</td>
+<td><code>-Default-</code> Reader (signed-in users run the agents; documents stay protected by <code>Readers</code> fields), <code>Anonymous</code> No Access, <code>LocalDomainServers</code> Manager, <code>LocalDomainAdmins</code> Editor (reviews "not me" reports, sets <code>ReviewStatus</code>), <code>&lt;SERVICE_ID&gt;</code> Editor with create and delete (purge agent), the running ID Manager. <strong>No custom roles.</strong></td>
+<td>installer constants</td>
+</tr>
+<tr>
+<td>Forms (2)</td>
+<td><code>LoginEvent</code>, <code>AuditError</code></td>
+<td><code>nsf/Forms/</code></td>
+</tr>
+<tr>
+<td>Views (3)</td>
+<td><code>(LoginsByUser)</code>, <code>(NotMeReports)</code>, <code>(AuditErrors)</code></td>
+<td><code>nsf/Views/</code></td>
+</tr>
+<tr>
+<td>Script library (1)</td>
+<td><code>LoginAuditLib</code></td>
+<td><code>nsf/ScriptLibraries/</code></td>
+</tr>
+<tr>
+<td>Agents (5)</td>
+<td><code>LoginLanding</code>, <code>GetLoginHistory</code>, <code>Heartbeat</code>, <code>NotMe</code>, <code>PurgeLoginAudit</code>: trigger <em>Action menu selection</em>, target None, <strong>not</strong> run as web user</td>
+<td><code>nsf/Agents/</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-run-it">3.2 Run it</h3>
+<ol>
+<li>Open a scratch NSF (not <code>loginaudit.nsf</code>) in Domino Designer: <strong>Agents &gt; New Agent</strong> <code>Installer</code>, LotusScript, trigger <em>Action menu selection</em>, target <em>None</em>.</li>
+<li>Paste <code>installer/Agent0_Installer_DXL.lss</code>: the lines under <code>'(Options)</code> go to Options, the <code>Const</code>/<code>Dim</code> lines to Declarations, each <code>Sub</code>/<code>Function</code> into its own entry (<code>Initialize</code> into the Initialize event). Save; a compile error means stop.</li>
+<li>Set the constants at the top and replace every <code>&lt;PLACEHOLDER&gt;</code>:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Set to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TARGET_SERVER</code></td>
+<td><code>&lt;SERVER&gt;</code> or <code>LOCAL</code> (this workstation)</td>
+</tr>
+<tr>
+<td><code>TARGET_FILE</code></td>
+<td><code>loginaudit.nsf</code> (or a path such as <code>apps\loginaudit.nsf</code>)</td>
+</tr>
+<tr>
+<td><code>REPO_FOLDER</code></td>
+<td><code>&lt;REPO_FOLDER&gt;</code>, the folder that <strong>contains</strong> <code>nsf</code>, as seen by <strong>this workstation</strong>, e.g. <code>/Users/&lt;you&gt;/CascadeProjects/DominoCustomWebPageApril26</code> or <code>C:\Temp\DominoCustomWebPage</code></td>
+</tr>
+<tr>
+<td><code>SIGNER_ID</code></td>
+<td><code>&lt;SERVICE_ID&gt;</code></td>
+</tr>
+<tr>
+<td><code>REVIEW_GROUP</code> / <code>SERVER_GROUP</code></td>
+<td>defaults <code>LocalDomainAdmins</code> / <code>LocalDomainServers</code>; keep <code>REVIEW_GROUP</code> equal to <code>READER_ADMIN_GROUP</code> in <code>LoginAuditLib.lss</code></td>
+</tr>
+<tr>
+<td><code>INSTALL_MODE</code></td>
+<td><code>NEW</code> first install (stops if the database exists); <code>UPDATE</code> import into the existing database (same-named design is replaced, ACL unchanged unless <code>APPLY_ACL = True</code>); <code>CHECK</code> changes nothing and reports what exists</td>
+</tr>
+<tr>
+<td><code>INSTALL_DESIGN</code>, <code>INSTALL_CODE</code></td>
+<td><code>True</code>, <code>True</code> (stage 1 forms and views, stage 2 library and agents)</td>
+</tr>
+<tr>
+<td><code>AGENTS_UNRESTRICTED</code></td>
+<td><code>False</code>; <code>True</code> only if testing shows a restricted-operation error</td>
+</tr>
+</tbody>
+</table>
+<ol start="4">
+<li><strong>Actions &gt; Installer.</strong> It checks the settings, that installer and files have the same version, and that every manifest file exists, all <strong>before creating anything</strong>. It then shows target and counts and asks to continue (default No), creates the NSF and ACL, imports stage 1 then stage 2, re-opens the database from disk and reports <code>Forms: 2 of 2 found</code> ... <code>Agents: 5 of 5 found</code>. Logs and the exact DXL sent are written to <code>&lt;REPO_FOLDER&gt;/installer_*.log</code> (git-ignored). <strong>Open exactly the database it names.</strong></li>
+<li>Continue with section 4. Delete the <code>Installer</code> agent from the scratch database.</li>
+</ol>
+<h3 id="33-upgrade">3.3 Upgrade</h3>
+<p>Copy the matching <code>Agent0_Installer_DXL.lss</code> (its <code>INSTALLER_VERSION</code> must equal the <code>' Version</code> header of <code>LoginAuditLib.lss</code>), set <code>INSTALL_MODE = "UPDATE"</code>, run, then recompile and re-sign. <strong>Same-named design elements are replaced</strong>, including the constants in <code>LoginAuditLib</code>: back up the NSF and re-apply your production constants afterwards. Event documents are untouched.</p>
+<h2 id="4-configure-compile-and-sign">4. Configure, compile and sign</h2>
+<ol>
+<li><strong>Constants.</strong> In Designer open script library <code>LoginAuditLib</code> and edit the constants at the top (production values: section 9): <code>TRUSTED_PROXIES</code>, <code>SECURITY_MAILBOX</code>, <code>AUTH_METHOD_LABEL</code>, <code>RETENTION_DAYS</code>, <code>ALERT_ON_NEW_SIGNIN</code>, <code>READER_ADMIN_GROUP</code>, <code>EXTRA_READER</code>. Keep <code>PURGE_DRY_RUN = True</code> in <code>PurgeLoginAudit</code> until you have read its log.</li>
+<li><strong>Recompile and sign.</strong> Designer: <em>Tools &gt; Recompile All LotusScript</em>, then select all design elements and sign with <code>&lt;SERVICE_ID&gt;</code> (<em>Tools/File &gt; Sign</em>). Freshly imported agents are unsigned; Notes reports "Document is not signed" until this is done.</li>
+<li><strong>Schedule the purge agent.</strong> <code>PurgeLoginAudit</code> is imported as an Action-menu agent. Change it to <em>On schedule &gt; Daily, 02:00, run on server</em>, <em>Which documents</em> = None.</li>
+<li><strong>Server security.</strong> Server document &gt; <strong>Security</strong> &gt; add <code>&lt;SERVICE_ID&gt;</code> to <em>Run restricted LotusScript/Java agents</em> (the agents use only standard Notes classes). <code>tell http restart</code>.</li>
+<li><strong>Database property.</strong> Advanced tab: tick <em>Don't maintain unread marks</em> (the DXL import does not set database properties).</li>
+</ol>
+<blockquote>
+<p><strong>Agent triggers.</strong> The installer imports the web agents with <em>Action menu selection</em> and target None (the pattern used in <code>DominoPasswordReset-March2026</code>); this also answers <code>?OpenAgent</code>. If testing shows HTTP 500 on <code>?OpenAgent</code>, change the trigger to <em>On schedule &gt; Never</em>. Any event trigger makes <code>?OpenAgent</code> return HTTP 500.</p>
+<p><strong>Why "run as web user" is off.</strong> The agents run as the signer, so they can write although users only have Reader access. The user is identified from <code>Remote_User</code>, not from the run-as setting. Do <strong>not</strong> change the code to use <code>EffectiveUserName</code>.</p>
+</blockquote>
+<h2 id="5-viewer-file-resource">5. Viewer file resource</h2>
+<p>Designer &gt; <code>loginaudit.nsf</code> &gt; <strong>Resources &gt; Files &gt; New File Resource</strong> &gt; <code>nsf/WebContent/LoginActivityViewer.html</code>, name <code>LoginActivityViewer.html</code>, MIME <code>text/html</code>. URL: <code>https://&lt;SERVER&gt;/loginaudit.nsf/LoginActivityViewer.html</code>. The page and the agents share one origin, so no CORS setup is needed; the page uses only <code>textContent</code> and makes no external requests.</p>
+<h2 id="6-login-page-in-domcfgnsf">6. Login page in <code>domcfg.nsf</code></h2>
+<ol>
+<li>Domino Administrator &gt; <strong>File &gt; Application &gt; New</strong>, template <em>Domino Web Server Configuration (DOMCFG5.NTF)</em>, file <code>domcfg.nsf</code>.</li>
+<li>ACL: <code>Anonymous = Reader</code> (the form must be readable before sign-in), <code>LocalDomainServers = Manager</code>.</li>
+<li>Designer &gt; <code>domcfg.nsf</code> &gt; new form <strong><code>$$LoginUserForm</code></strong> &gt; paste all of <code>domcfg/DominoEmbeddedForm.html</code> &gt; select all &gt; <strong>Text &gt; Pass-Thru HTML</strong> (text turns green) &gt; save.</li>
+<li>Notes client &gt; <code>domcfg.nsf</code> &gt; <strong>Create &gt; Sign In Form Mapping</strong>: <em>Login form database</em> = <code>domcfg.nsf</code>, <em>Login form name</em> = <code>$$LoginUserForm</code>.</li>
+<li><code>tell http restart</code>.</li>
+</ol>
+<p><strong>Turn the audit on.</strong> In <code>DominoEmbeddedForm.html</code>, inline <code>DominoLoginConfig</code>:</p>
+<pre><code class="language-javascript">features: { enableLoginAudit: true, /* ... */ },
+loginAudit: {
+    enable: true,
+    landingUrl: &quot;/loginaudit.nsf/LoginLanding?OpenAgent&quot;,
+    defaultNext: &quot;/verse&quot;          // where users land if no RedirectTo
+},
+debug: { showStatusPanel: false }  // true only while configuring
+</code></pre>
+<p>Re-paste as Pass-Thru HTML after every edit, then <code>tell http restart</code>. The form then sets <code>RedirectTo</code> to the landing agent; the browser sends <strong>no</strong> tracking data.
+<strong>Rollback:</strong> set <code>features.enableLoginAudit = false</code>, re-paste. Data stays in <code>loginaudit.nsf</code>.</p>
+<h2 id="7-verse-extension">7. Verse extension</h2>
+<p>Adds <strong>Login Activity</strong> to the Verse navbar <em>More</em> menu (<code>com.ibm.action.link</code>, order 96500; order values 96000-96999 place a link in the <em>More</em> menu; <code>link</code> must be an absolute HTTPS URL). It opens a window with the user's last 5 sign-ins, a <strong>This wasn't me</strong> button and a <strong>Sign out</strong> button.</p>
+<pre><code>Verse navbar &gt; More &gt; &quot;Login Activity&quot;
+        +--&gt; https://&lt;SERVER&gt;/loginaudit.nsf/LoginActivityViewer.html   (file resource, section 5)
+                +- GET  /loginaudit.nsf/GetLoginHistory?OpenAgent
+                +- POST /loginaudit.nsf/Heartbeat?OpenAgent     (every 60 s while open)
+                +- POST /loginaudit.nsf/NotMe?OpenAgent
+</code></pre>
+<ol>
+<li><strong>No existing <code>applications.json</code>:</strong> edit <code>verse/applications.json</code>, replace <code>YOUR_DOMINO_SERVER</code> with your host name.</li>
+<li><strong>You already have one:</strong> it is a JSON <strong>array</strong>. Add the object from <code>verse/merge-snippet.json</code> (after replacing <code>YOUR_DOMINO_SERVER</code>) as one more element and validate the JSON.</li>
+<li><strong>Provider (Domino <code>notes.ini</code>)</strong>, local file:</li>
+</ol>
+<pre><code class="language-ini">VOP_Extensibility_Data_Provider_Name=localFileProvider
+VOP_Extensibility_Applications_Json_FilePath=&lt;PATH_ON_SERVER&gt;/applications.json
+</code></pre>
+<p>or HTTP:</p>
+<pre><code class="language-ini">VOP_Extensibility_Data_Provider_Name=httpDataProvider
+VOP_Extensibility_Applications_Json_URL=https://&lt;SERVER&gt;/verse/applications.json
+</code></pre>
+<p>Restart HTTP (<code>tell http restart</code>) after changing <code>notes.ini</code>. Later edits to <code>applications.json</code> should not need a restart <em>(verify on your deployment)</em>.</p>
+<p><strong>Test:</strong> Verse &gt; <strong>More</strong> &gt; <strong>Login Activity</strong> opens a window (allow pop-ups); your sign-ins are listed newest first with the current one tagged <em>This device</em>; after 3+ minutes <strong>Refresh</strong> shows "approx. N min (active)". Then run section 8.</p>
+<p><strong>Session duration.</strong> Measured by the viewer's heartbeat while it is open and by <strong>Sign out</strong>, which ends the session record before redirecting to Domino's logout. Verse 3.2.7 documents no always-on background extension point; do not use <code>modifyOnSend</code> (it blocks sending if it does not answer within 30 seconds).</p>
+<p><strong>Security.</strong> Only the signed-in user's events are shown (exact canonical-name match). "This wasn't me" and heartbeat calls need a custom request header, and the event must belong to the caller. Stored: login time, IP, User-Agent (browser/OS), access source; no passwords, tokens or cookies. See HCL's <a href="https://opensource.hcltechsw.com/Verse-Extension-Documentation/docs/best-security-practices/">Verse security practices</a>.</p>
+<hr />
+<h2 id="8-test-plan-testing-environment-native-domino-auth-no-proxy">8. Test plan (testing environment: native Domino auth, no proxy)</h2>
+<p>Run in order. Use two test users (A, B) and two browsers.</p>
+<p><strong>8.0 Quick flow check.</strong> Open <code>https://&lt;SERVER&gt;/loginaudit.nsf/LoginLanding?OpenAgent&amp;next=/verse</code> while signed in: you are redirected to <code>/verse</code> and a <code>LoginEvent</code> appears in <code>(LoginsByUser)</code>.</p>
+<p><strong>8.1 Diagnostics first.</strong> Temporarily set <code>DIAG_MODE = True</code> in <code>LoginLanding</code>, re-save/sign, open the landing URL signed in. Confirm: <code>Remote_User (raw)</code> is the user (not blank/Anonymous), <code>Caller (canonical)</code> is <code>CN=.../O=...</code>, <code>Remote_Addr</code> is your client IP, <code>X-Forwarded-For</code> is empty. <code>EffectiveUserName</code> should show the <strong>signer</strong> — that confirms run-as-signer. Set <code>DIAG_MODE = False</code> again, re-sign.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Test</th>
+<th>Expected</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Sign in via the login page as A</td>
+<td>Lands on <code>/verse</code>; 1 new event for A with your IP, correct browser/OS, <code>FirstLogin=1</code>, <code>NewIP=0</code>, <code>NewDevice=0</code>, server time</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Reload landing URL within 15 s</td>
+<td>No second event (dedupe)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Sign in as A from a second browser on the same machine</td>
+<td>New event, <code>NewDevice=1</code>, <code>NewIP=0</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Sign in as A with a wrong password</td>
+<td><strong>No</strong> event</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Open Login Activity in Verse as A</td>
+<td>Table shows A's events, newest first; "This device" tag on the current one; no events from B</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Same as B</td>
+<td>Only B's events</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>GetLoginHistory?OpenAgent</code> while signed out (private window)</td>
+<td><code>{"ok":false,"reason":"auth","events":[]}</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>LoginLanding?OpenAgent&amp;next=https://evil.example</code> (signed in)</td>
+<td>Redirects to <code>/verse</code>, not to the external site. Also try <code>next=//evil.example</code> and <code>next=/%5Cevil</code></td>
+</tr>
+<tr>
+<td>9</td>
+<td>Heartbeat without header: browser address bar <code>…/Heartbeat?OpenAgent</code></td>
+<td><code>{"ok":false,"reason":"bad_request"}</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td>Keep the viewer open 3+ min, Refresh</td>
+<td>Duration shows "≈ N min (active)" for the current session</td>
+</tr>
+<tr>
+<td>11</td>
+<td>In DevTools run <code>fetch('/loginaudit.nsf/Heartbeat?OpenAgent&amp;end=1',{method:'POST',headers:{'X-Requested-With':'LoginAudit'},credentials:'same-origin'}).then(r=&gt;r.text()).then(console.log)</code></td>
+<td><code>state":"ended"</code>; viewer shows final duration</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Press <strong>This wasn't me</strong> on an A event</td>
+<td>Event flagged; appears in <code>(NotMeReports)</code> with <code>ReviewStatus=OPEN</code>; mail sent if <code>SECURITY_MAILBOX</code> set</td>
+</tr>
+<tr>
+<td>13</td>
+<td>As B, <code>POST NotMe</code> with A's event UNID</td>
+<td><code>{"ok":false,"reason":"not_found"}</code>; A's event unchanged</td>
+</tr>
+<tr>
+<td>14</td>
+<td><code>POST NotMe</code> without the <code>X-Requested-With</code> header</td>
+<td><code>bad_request</code></td>
+</tr>
+<tr>
+<td>15</td>
+<td>Log in as A where the Person's name differs in case/format</td>
+<td>Event stored under the canonical name; history still found</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Open the DB views in a browser as B (<code>/loginaudit.nsf/(LoginsByUser)?OpenView</code>)</td>
+<td>B sees <strong>no</strong> documents of A (Readers)</td>
+</tr>
+<tr>
+<td>17</td>
+<td>Purge agent with <code>PURGE_DRY_RUN = True</code></td>
+<td>Agent log reports counts, deletes nothing. Then set old <code>LoginTime</code> on a test doc, set <code>False</code>, run: only that doc deleted; an <code>OPEN</code> report is kept</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Break the view name (rename <code>(LoginsByUser)</code>), sign in</td>
+<td>User still lands on <code>/verse</code>; an <code>AuditError</code> doc is written</td>
+</tr>
+<tr>
+<td>19</td>
+<td>Many rapid landing requests (e.g. 20 reloads)</td>
+<td>No more than one event per 15 s per IP+device</td>
+</tr>
+</tbody>
+</table>
+<p>Record the actual results; anything that differs from "Expected" is a defect to fix before production.</p>
+<p>Verify on the <strong>server console</strong> after test 1: <code>tell http</code> shows no agent errors; Domino log has no "Agent signer not allowed to run" messages.</p>
+<hr />
+<h2 id="9-production-notes">9. Production notes</h2>
+<h3 id="91-reverse-proxy-waf-real-client-ip">9.1 Reverse proxy / WAF — real client IP</h3>
+<ul>
+<li>By default Domino exposes the proxy's address in <code>Remote_Addr</code>. The code reads <code>X-Forwarded-For</code> <strong>only</strong> when <code>Remote_Addr</code> is in <code>TRUSTED_PROXIES</code>, then takes the right-most address that is not a trusted proxy.</li>
+<li>In <code>LoginAuditLib</code>: <code>Const TRUSTED_PROXIES = "&lt;PROXY_IP_1&gt;,&lt;PROXY_IP_2&gt;"</code>. Leave empty in testing.</li>
+<li>The proxy must <strong>append</strong> to (or overwrite) <code>X-Forwarded-For</code>, and Domino's HTTP port must accept traffic <strong>only from the proxy</strong> (firewall), otherwise anyone could spoof the header.</li>
+<li>Confirm with <code>DIAG_MODE = True</code> through the proxy: <code>Remote_Addr</code> = proxy IP, <code>X-Forwarded-For</code> present, <code>Client IP (computed)</code> = the real user.</li>
+<li>The older <code>$WS*</code> "connector header" approach: community reports say Domino 12.0.1 changed its behaviour. Do not rely on it; check HCL's current documentation for your version <em>(verify)</em>. Domino's IP allow/deny lists have been reported not to see the real client IP behind a proxy <em>(verify)</em>.</li>
+<li>Domino's own <code>HTTP_LOG_ACCESS_XFORWARDED_FOR</code> setting only affects Domino's access log, not CGI variables.</li>
+</ul>
+<h3 id="92-mfa-totp-and-oidc">9.2 MFA (TOTP) and OIDC</h3>
+<ul>
+<li><strong>TOTP:</strong> configure Domino MFA on the server (see HCL docs); in the login form set <code>features.enableMFA = true</code>, <code>mfa.enable = true</code>. Domino enforces MFA; the login form is only the UI. In <code>LoginAuditLib</code> set <code>AUTH_METHOD_LABEL = "Domino password + TOTP"</code> (a label — the server's policy is authoritative).</li>
+<li><strong>OIDC / SAML:</strong> these flows normally do <strong>not</strong> go through the custom form, so the landing agent is not called automatically. To record those logins, the post-login start URL must be <code>/loginaudit.nsf/LoginLanding?OpenAgent&amp;next=/verse</code> (for example the entry link users open, or an IdP/proxy post-login redirect). The agent identifies the user by <code>Remote_User</code> as long as the Domino session exists <em>(verify with your OIDC setup)</em>. Set <code>AUTH_METHOD_LABEL</code> accordingly.</li>
+</ul>
+<h3 id="93-go-live-checklist">9.3 Go-live checklist</h3>
+<ul>
+<li>[ ] <code>loginaudit.nsf</code> built (DXL installer, <code>04-DXL-Install.md</code>, or manually), recompiled and signed; installer agent deleted from the scratch database</li>
+<li>[ ] section 8 test plan passed in a staging copy</li>
+<li>[ ] <code>TRUSTED_PROXIES</code> set and verified with <code>DIAG_MODE</code>; <code>DIAG_MODE = False</code>; status panel off</li>
+<li>[ ] <code>ALERT_ON_NEW_SIGNIN</code> decision made (mail to the user on new IP/device; needs mail routing) — default <code>False</code></li>
+<li>[ ] <code>SECURITY_MAILBOX</code> set to the review mailbox; <code>LocalDomainAdmins</code> members know they review <code>(NotMeReports)</code></li>
+<li>[ ] <code>RETENTION_DAYS</code> decided (180 = 6 months, 365 = 1 year); <strong>legal/privacy review</strong> of storing IP + User-Agent (personal data in many jurisdictions), user notice, access/erasure process</li>
+<li>[ ] <code>PurgeLoginAudit</code> scheduled (Daily 02:00, on the server)</li>
+<li>[ ] <code>PURGE_DRY_RUN</code> run once, log reviewed, then set <code>False</code> and re-sign</li>
+<li>[ ] Signer ID is a dedicated service ID with the minimum rights above</li>
+<li>[ ] Verse extension deployed and tested (section 7)</li>
+<li>[ ] Rollback: set <code>features.enableLoginAudit = false</code> in the form (users then redirect as before) and re-paste; data stays in <code>loginaudit.nsf</code></li>
+</ul>
+<h3 id="94-known-behaviour-to-explain-to-users-and-stakeholders">9.4 Known behaviour to explain to users and stakeholders</h3>
+<ul>
+<li>Only <strong>successful</strong> web logins are listed; failed attempts are not shown.</li>
+<li>Duration is approximate and measured only while the Login Activity page (or another heartbeat source) is open; otherwise "Not measured".</li>
+<li>Options to measure duration better, to evaluate later: derive last-activity from the Domino web access log database, or a Verse widget/extension page that stays loaded — Verse 3.2.7 documents no always-on background extension point, and the hidden <code>modifyOnSend</code> iframe is not suitable (it blocks sending if it does not answer in 30 s).</li>
+</ul>
+<hr />
+<h2 id="10-troubleshooting">10. Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely cause</th>
+<th>Verify / fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Landing returns the login form HTML</td>
+<td>Agent URL not reachable for signed-in user</td>
+<td>DB ACL <code>-Default-</code> must be Reader or higher</td>
+</tr>
+<tr>
+<td>HTTP 500 on <code>?OpenAgent</code></td>
+<td>Agent trigger is not <em>On Schedule → Never</em></td>
+<td>Change trigger, re-sign</td>
+</tr>
+<tr>
+<td>Redirect works, no event written</td>
+<td>Remote_User blank, or signer lacks access</td>
+<td>Run <code>DIAG_MODE</code>; check <code>(AuditErrors)</code>; signer needs Editor access and membership of <code>LocalDomainAdmins</code> (or <code>EXTRA_READER</code>)</td>
+</tr>
+<tr>
+<td><code>AuditError</code>: "View (LoginsByUser) not found"</td>
+<td>View name wrong or not created</td>
+<td>Appendix A.1 exact name with parentheses</td>
+</tr>
+<tr>
+<td>History empty but events exist</td>
+<td>Events saved under a different canonical name, or Readers excludes user</td>
+<td>Compare <code>UserCanonical</code> with the DIAG canonical name</td>
+</tr>
+<tr>
+<td>Newest event not first</td>
+<td>View column 2 not sorted descending</td>
+<td>Appendix A.1</td>
+</tr>
+<tr>
+<td>Installer: "this installer is vX but the project files are vY"</td>
+<td>Installer and repository are different versions</td>
+<td>Copy <code>Agent0_Installer_DXL.lss</code> from the same commit (<code>04-DXL-Install.md</code>)</td>
+</tr>
+<tr>
+<td>Installer: <code>warning ... id 7118/12051</code> in <code>installer_*.log</code></td>
+<td>Compile error in the library; agents cascade</td>
+<td>Fix the first error, re-run with <code>INSTALL_MODE = "UPDATE"</code></td>
+</tr>
+<tr>
+<td>After <code>UPDATE</code>, constants are back to defaults</td>
+<td><code>LoginAuditLib</code> was replaced</td>
+<td>Re-apply <code>TRUSTED_PROXIES</code>, <code>SECURITY_MAILBOX</code>, <code>RETENTION_DAYS</code>; recompile; re-sign</td>
+</tr>
+<tr>
+<td>Heartbeat always <code>no_session</code></td>
+<td>IP/device differs from login (e.g. VPN switch, different browser), or gap &gt; 60 min</td>
+<td>Expected; duration then stays "Not measured"</td>
+</tr>
+<tr>
+<td>Everyone shows the proxy IP</td>
+<td><code>TRUSTED_PROXIES</code> empty or wrong</td>
+<td>section 9.1</td>
+</tr>
+<tr>
+<td>Viewer shows "not signed in"</td>
+<td>Viewer opened without a session</td>
+<td>Sign in to Verse first</td>
+</tr>
+<tr>
+<td>Installer: "this installer is vX but the project files are vY"</td>
+<td>Installer and repository are different versions</td>
+<td>Copy <code>installer/Agent0_Installer_DXL.lss</code> from the same commit</td>
+</tr>
+<tr>
+<td>Installer: "contains non-ASCII characters"</td>
+<td>A <code>.lss</code> file has a non-ASCII character</td>
+<td>Keep <code>.lss</code> ASCII (<code>python3 tools/lint_lss.py .</code>)</td>
+</tr>
+<tr>
+<td>Installer: <code>warning ... id 7118/12051</code> in <code>installer_*.log</code></td>
+<td>Compile error in the library; the agents cascade</td>
+<td>Fix the first error (the library), re-run with <code>INSTALL_MODE = "UPDATE"</code></td>
+</tr>
+<tr>
+<td>Installer: <code>fatalerror ... Unexpected &lt;element&gt;</code></td>
+<td>DXL breaks the DTD</td>
+<td><code>python3 tools/validate_dxl.py nsf</code> names the file and element</td>
+</tr>
+<tr>
+<td>Installer: ACL setup failed</td>
+<td>Message shows why</td>
+<td>Delete the database and re-run <code>NEW</code>, or <code>UPDATE</code> with <code>APPLY_ACL = True</code></td>
+</tr>
+<tr>
+<td>After an <code>UPDATE</code>, constants are back to defaults</td>
+<td><code>LoginAuditLib</code> was replaced</td>
+<td>Re-apply <code>TRUSTED_PROXIES</code>, <code>SECURITY_MAILBOX</code>, <code>RETENTION_DAYS</code>; recompile; re-sign</td>
+</tr>
+<tr>
+<td>"Document is not signed" when running an agent</td>
+<td>Imported agents are unsigned</td>
+<td>Section 4: recompile and sign</td>
+</tr>
+<tr>
+<td><code>?OpenAgent</code> returns HTTP 500</td>
+<td>Agent trigger is an event trigger, or unsigned</td>
+<td>Section 4 (trigger note), re-sign</td>
+</tr>
+<tr>
+<td>No "Login Activity" in Verse More menu</td>
+<td><code>applications.json</code> not loaded</td>
+<td>Section 7: check the <code>notes.ini</code> provider lines and path, restart HTTP, hard-refresh Verse</td>
+</tr>
+<tr>
+<td>Viewer window blank / 404</td>
+<td>File resource missing or wrong database</td>
+<td>URL must be <code>/loginaudit.nsf/LoginActivityViewer.html</code> (section 5)</td>
+</tr>
+<tr>
+<td>Viewer: "history is temporarily unavailable"</td>
+<td>Agent error</td>
+<td>Check the <code>(AuditErrors)</code> view</td>
+</tr>
+<tr>
+<td>Viewer: pop-up blocked</td>
+<td>Browser setting</td>
+<td>Allow pop-ups for the Domino server</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="appendix-a-manual-build-without-the-installer">Appendix A. Manual build (without the installer)</h2>
+<p>Use this only if you do not use the installer; do <strong>not</strong> do both (the installer replaces same-named design elements). Create <code>loginaudit.nsf</code> (title "Login Audit") in Domino Administrator, set the ACL as in section 3.1, then:</p>
+<h3 id="a1-views">A.1 Views</h3>
+<p>Designer &gt; New View; the names include the parentheses (hidden from menus).</p>
+<p><strong><code>(LoginsByUser)</code></strong>, required by every agent. Selection <code>SELECT Form = "LoginEvent"</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Col</th>
+<th>Formula</th>
+<th>Sort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>UserCanonical</code></td>
+<td><strong>Ascending</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>LoginTime</code></td>
+<td><strong>Descending</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>IP</code></td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>Column 2 descending makes "newest first" work; do not change these two columns.</p>
+<p><strong><code>(NotMeReports)</code></strong>, for reviewers: <code>SELECT Form = "LoginEvent" &amp; NotMeFlag = "1"</code>; columns <code>ReviewStatus</code>, <code>UserCanonical</code>, <code>LoginTime</code> (descending), <code>IP</code>.
+<strong><code>(AuditErrors)</code></strong>: <code>SELECT Form = "AuditError"</code>; columns <code>ErrWhen</code> (descending), <code>Agent</code>, <code>ErrNum</code>, <code>ErrMsg</code>.</p>
+<h3 id="a2-forms">A.2 Forms</h3>
+<p><code>LoginEvent</code> and <code>AuditError</code> are optional by hand (they let admins open an event and set <code>ReviewStatus</code> to <code>CLOSED</code>). Fields are listed in Appendix B; <code>Readers</code> must be a <em>readers</em> field.</p>
+<h3 id="a3-library-and-agents">A.3 Library and agents</h3>
+<ol>
+<li><strong>Shared Code &gt; Script Libraries &gt; New</strong>, name <code>LoginAuditLib</code>, paste <code>nsf/ScriptLibraries/LoginAuditLib.lss</code>, edit the constants, save.</li>
+<li><strong>Shared Code &gt; Agents &gt; New</strong> for each agent (paste the file from <code>nsf/Agents/</code>), <em>Which documents</em> = <strong>None</strong>:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Trigger</th>
+<th>Run as web user</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LoginLanding</code>, <code>GetLoginHistory</code>, <code>Heartbeat</code>, <code>NotMe</code></td>
+<td>On schedule &gt; <strong>Never</strong></td>
+<td><strong>Unchecked</strong></td>
+</tr>
+<tr>
+<td><code>PurgeLoginAudit</code></td>
+<td>On schedule &gt; Daily 02:00, run on server</td>
+<td>n/a</td>
+</tr>
+</tbody>
+</table>
+<ol start="3">
+<li>Recompile, sign and secure the server as in section 4.</li>
+</ol>
+<h2 id="appendix-b-dxl-reference">Appendix B. DXL reference</h2>
+<p><code>nsf/MANIFEST.txt</code> is the single list of what is imported (<code>F</code> form, <code>V</code> view, <code>L</code> library, <code>A</code> agent; paths relative to <code>nsf/</code>; library order matters). To change the design, edit these files and run the installer in <code>UPDATE</code> mode.</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Defines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>nsf/Forms/LoginEvent.form</code></td>
+<td>26 fields: <code>UserCanonical</code>, <code>UserCommon</code>, <code>LoginTime</code> (date/time, server), <code>LoginTimeUTC</code>, <code>IP</code>, <code>RemoteAddr</code>, <code>ForwardedFor</code>, <code>UserAgent</code>, <code>Browser</code>, <code>OS</code>, <code>DeviceType</code>, <code>DeviceKey</code>, <code>AccessSource</code>, <code>AuthMethod</code>, <code>FirstLogin</code>, <code>NewIP</code>, <code>NewDevice</code>, <code>Heartbeats</code> (number), <code>LastSeen</code>, <code>EndTime</code>, <code>EndReason</code>, <code>NotMeFlag</code>, <code>NotMeTime</code>, <code>ReviewStatus</code>, <code>Form</code>, <code>Readers</code> (readers)</td>
+</tr>
+<tr>
+<td><code>nsf/Forms/AuditError.form</code></td>
+<td><code>ErrWhen</code>, <code>Agent</code>, <code>ErrNum</code>, <code>ErrLine</code>, <code>ErrMsg</code>, <code>Form</code>, <code>Readers</code></td>
+</tr>
+<tr>
+<td><code>nsf/Views/LoginsByUser.view</code></td>
+<td><code>(LoginsByUser)</code>: <code>UserCanonical</code> ascending, <code>LoginTime</code> descending, <code>IP</code></td>
+</tr>
+<tr>
+<td><code>nsf/Views/NotMeReports.view</code></td>
+<td><code>(NotMeReports)</code></td>
+</tr>
+<tr>
+<td><code>nsf/Views/AuditErrors.view</code></td>
+<td><code>(AuditErrors)</code>, newest first</td>
+</tr>
+<tr>
+<td><code>nsf/ScriptLibraries/*.lss</code>, <code>nsf/Agents/*.lss</code></td>
+<td>the installer splits each file into options, declarations and one code element per <code>Sub</code>/<code>Function</code>; <code>Sub</code>/<code>Function</code>/<code>End</code> lines must start in column 1 and files must be ASCII</td>
+</tr>
+</tbody>
+</table>
+<p>Rules checked by <code>tools/validate_dxl.py</code>: <code>&lt;run&gt;</code> holds plain text only; no whitespace between tags inside <code>par</code>, <code>field</code>, <code>code</code>, <code>column</code>; field types <code>text</code>, <code>number</code>, <code>datetime</code>, <code>names</code>, <code>keyword</code>, <code>richtext</code>, <code>readers</code>; a view is its <code>selection</code> code followed by columns. The importer uses <em>replace else create</em> for design and <strong>ignores documents and ACL</strong>.</p>
+<p>Run before every release: <code>python3 tools/lint_lss.py .</code> and <code>python3 tools/validate_dxl.py nsf</code>. Release: <code>bash tools/bump-version.sh X.Y.Z</code>, add the entry to <code>CHANGELOG.md</code>, <code>bash tools/github-sync.sh -m "release: vX.Y.Z"</code>.</p>
+<hr><p style="color:var(--mut);font-size:13px">Generated from Deployment.md by tools/build_docs.py. Edit the .md, not this file.</p>
+</main></div></body></html>

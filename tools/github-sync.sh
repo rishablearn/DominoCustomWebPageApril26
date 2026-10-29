@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #
-# github-sync.sh — two-way sync (pull + push) between this repo and GitHub.
+# tools/github-sync.sh — two-way sync (pull + push) between this repo and GitHub.
 # Compatible with macOS default bash 3.2 / BSD userland.
 #
 # Usage:
-#   ./github-sync.sh [command] [options]
+#   tools/github-sync.sh [command] [options]
 #
 # Commands:
 #   sync    (default) fetch -> commit local changes -> rebase onto remote -> push
@@ -286,7 +286,7 @@ case "$CMD" in
     rebase_remote
     ;;
   push)
-    [[ $BEHIND -eq 0 ]] || die "Remote is $BEHIND commit(s) ahead. Run './github-sync.sh sync' or 'pull' first."
+    [[ $BEHIND -eq 0 ]] || die "Remote is $BEHIND commit(s) ahead. Run 'tools/github-sync.sh sync' or 'pull' first."
     commit_local
     push_remote
     ;;

@@ -1,0 +1,19 @@
+# MANIFEST.txt - read by installer/Agent0_Installer_DXL.lss at install time.
+# Format:  kind | design element name | file path relative to THIS folder (nsf/; use "/")
+#   F = form (DXL)    V = view (DXL)
+#   L = script library (.lss)    A = agent (.lss, imported as an Action-menu agent, target None)
+# Library ORDER matters: a library may only  Use  libraries listed ABOVE it.
+# Forms and views are imported as DXL; the library and agents are turned into DXL by the
+# installer from the .lss files, so each .lss is the only copy of its code.
+# Lines starting with # and blank lines are ignored. Names and paths must not contain "|".
+F|LoginEvent|Forms/LoginEvent.form
+F|AuditError|Forms/AuditError.form
+V|(LoginsByUser)|Views/LoginsByUser.view
+V|(NotMeReports)|Views/NotMeReports.view
+V|(AuditErrors)|Views/AuditErrors.view
+L|LoginAuditLib|ScriptLibraries/LoginAuditLib.lss
+A|LoginLanding|Agents/LoginLanding.lss
+A|GetLoginHistory|Agents/GetLoginHistory.lss
+A|Heartbeat|Agents/Heartbeat.lss
+A|NotMe|Agents/NotMe.lss
+A|PurgeLoginAudit|Agents/PurgeLoginAudit.lss
