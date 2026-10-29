@@ -18,11 +18,11 @@ blockquote{margin:1em 0;padding:.4em 1em;border-left:4px solid var(--acc);backgr
 @media (max-width:860px){.wrap{display:block}nav{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 16px 60px}}
 @media print{nav{display:none}main{max-width:none;padding:0}}
 </style></head><body><div class="wrap">
-<nav><b>v3.1.2</b><a href="#1-overview">1. Overview</a><a href="#2-requirements">2. Requirements</a><a href="#3-build-loginauditnsf-with-the-dxl-installer">3. Build loginaudit.nsf with the DXL installer</a><a href="#4-configure-compile-and-sign">4. Configure, compile and sign</a><a href="#5-viewer-file-resource">5. Viewer file resource</a><a href="#6-login-page-in-domcfgnsf">6. Login page in domcfg.nsf</a><a href="#7-verse-extension">7. Verse extension</a><a href="#8-test-plan-testing-environment-native-domino-auth-no-proxy">8. Test plan (testing environment: native Domino auth, no proxy)</a><a href="#9-production-notes">9. Production notes</a><a href="#10-troubleshooting">10. Troubleshooting</a><a href="#appendix-a-manual-build-without-the-installer">Appendix A. Manual build (without the installer)</a><a href="#appendix-b-dxl-reference">Appendix B. DXL reference</a></nav>
+<nav><b>v3.2.0</b><a href="#1-overview">1. Overview</a><a href="#2-requirements">2. Requirements</a><a href="#3-build-loginauditnsf-with-the-dxl-installer">3. Build loginaudit.nsf with the DXL installer</a><a href="#4-configure-compile-and-sign">4. Configure, compile and sign</a><a href="#5-viewer-file-resource">5. Viewer file resource</a><a href="#6-login-page-in-domcfgnsf">6. Login page in domcfg.nsf</a><a href="#7-verse-extension">7. Verse extension</a><a href="#8-test-plan-testing-environment-native-domino-auth-no-proxy">8. Test plan (testing environment: native Domino auth, no proxy)</a><a href="#9-production-notes">9. Production notes</a><a href="#10-troubleshooting">10. Troubleshooting</a><a href="#appendix-a-manual-build-without-the-installer">Appendix A. Manual build (without the installer)</a><a href="#appendix-b-dxl-reference">Appendix B. DXL reference</a></nav>
 <main>
 <h1 id="hcl-domino-login-page-login-activity-deployment-guide">HCL Domino Login Page + Login Activity: Deployment Guide</h1>
 <blockquote>
-<p><strong>Version:</strong> 3.1.2 | <strong>Last Updated:</strong> 2026-10-29 | <strong>Targets:</strong> HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)<br />
+<p><strong>Version:</strong> 3.2.0 | <strong>Last Updated:</strong> 2026-10-29 | <strong>Targets:</strong> HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)<br />
 Written to documented HCL behaviour; <strong>not yet executed on a server</strong>. Items marked <em>(verify)</em> must be confirmed in testing. Use a non-production server first.</p>
 </blockquote>
 <p>Placeholders used below: <code>&lt;SERVER&gt;</code>, <code>&lt;SERVICE_ID&gt;</code> (the ID that signs the agents), <code>&lt;REPO_FOLDER&gt;</code> (this repository on the admin workstation), <code>&lt;PROXY_IP_1&gt;</code>. Never put real credentials in these files.</p>
@@ -233,6 +233,7 @@ loginAudit: {
 },
 debug: { showStatusPanel: false }  // true only while configuring
 </code></pre>
+<p><strong>Information row.</strong> Below the form the page shows chips for sign-in tracking, MFA and CAPTCHA (On/Off) and, when tracking is on, a one-line notice that sign-ins are recorded. It follows the settings above (<code>features.enableLoginAudit</code> + <code>loginAudit.enable</code>, <code>features.enableMFA</code> / <code>mfa.enable</code>, <code>features.enableCaptcha</code>). Text keys: <code>auditChipTracking</code>, <code>auditChipMFA</code>, <code>auditChipCaptcha</code>, <code>auditChipOn</code>, <code>auditChipOff</code>, <code>auditInfoText</code> in each language's <code>strings</code> (English is the fallback).</p>
 <p>Re-paste as Pass-Thru HTML after every edit, then <code>tell http restart</code>. The form then sets <code>RedirectTo</code> to the landing agent; the browser sends <strong>no</strong> tracking data.
 <strong>Rollback:</strong> set <code>features.enableLoginAudit = false</code>, re-paste. Data stays in <code>loginaudit.nsf</code>.</p>
 <h2 id="7-verse-extension">7. Verse extension</h2>

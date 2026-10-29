@@ -83,7 +83,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
      */
     const DominoLoginConfig = {
         // Version info - displayed at bottom of page
-        version: "3.1.2",
+        version: "3.2.0",
         versionDate: "2026-10-29",
         
         branding: {
@@ -338,6 +338,12 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                         forgotPassword: "Forgot password?",
                         signIn: "Sign In",
                         securityNotice: "This is a secure connection",
+                        auditChipTracking: "Sign-in tracking",
+                        auditChipMFA: "MFA",
+                        auditChipCaptcha: "CAPTCHA",
+                        auditChipOn: "On",
+                        auditChipOff: "Off",
+                        auditInfoText: "For your security, each successful sign-in is recorded (time, IP address, browser). Review it in HCL Verse under Login Activity.",
                         captchaTitle: "Security Verification",
                         captchaInstruction: "Solve this math problem",
                         captchaPlaceholder: "Your answer",
@@ -1882,6 +1888,35 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             padding: 20px 16px 32px;
         }
     }
+
+    /* ===== COMPACT LAYOUT (3.2.0): smaller card, tighter spacing, info row below the form ===== */
+    .login-container { max-width: clamp(280px, 92vw, 360px); }
+    .login-card { padding: 26px 26px 18px; border-radius: 14px; }
+    .login-card:hover { transform: none; }
+    .logo-section { margin-bottom: 12px; }
+    .company-logo { max-width: 130px; max-height: 44px; }
+    .welcome-section { margin-bottom: 18px; }
+    .welcome-title { font-size: 1.25rem; margin-bottom: 4px; }
+    .welcome-subtitle { font-size: 0.8rem; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: 0.8rem; margin-bottom: 5px; }
+    .form-input { padding: 10px 12px; font-size: 0.95rem; }
+    .password-wrapper .form-input { padding-right: 42px; }
+    .submit-btn { padding: 11px 20px; font-size: 0.95rem; }
+    .submit-btn:hover:not(:disabled) { transform: none; }
+    .security-notice { margin-top: 14px; padding-top: 12px; }
+    .audit-info { margin-top: 10px; text-align: center; }
+    .audit-info[hidden] { display: none; }
+    .ai-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    .ai-chip { font-size: 0.68rem; line-height: 1; padding: 4px 8px; border-radius: 10px; border: 1px solid var(--input-border); color: var(--text-secondary); white-space: nowrap; }
+    .ai-chip.on { border-color: var(--success-color); color: var(--success-color); }
+    .ai-text { margin: 8px 0 0; font-size: 0.68rem; line-height: 1.4; color: var(--text-secondary); }
+    .login-footer { margin-top: 14px; }
+    .footer-text { font-size: 0.78rem; margin-bottom: 6px; }
+    .domino-badge { padding: 4px 10px; }
+    .version-info { margin-top: 6px; }
+    @media (max-width: 768px) { .form-input { font-size: 16px; } }   /* 16px prevents iOS zoom on focus */
+    @media (max-width: 480px) { .login-card { padding: 20px 18px 14px; } }
     </style>
 </head>
 <body>
@@ -2247,6 +2282,16 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 </svg>
                 <span id="securityText">This is a secure connection</span>
             </div>
+
+            <!-- Information row: sign-in tracking / MFA / CAPTCHA state (filled by renderAuditInfo) -->
+            <div class="audit-info" id="auditInfo" hidden>
+                <div class="ai-chips">
+                    <span class="ai-chip" id="aiTracking"></span>
+                    <span class="ai-chip" id="aiMFA"></span>
+                    <span class="ai-chip" id="aiCaptcha"></span>
+                </div>
+                <p class="ai-text" id="aiText"></p>
+            </div>
             
             <!-- Quick Links -->
             <div class="quick-links" id="quickLinksContainer"></div>
@@ -2267,7 +2312,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
                 <strong>HCL Domino</strong>
             </div>
             <div class="version-info" id="versionInfo">
-                <span>Version <span id="versionNumber">3.1.2</span></span>
+                <span>Version <span id="versionNumber">3.2.0</span></span>
                 <span class="version-date" id="versionDate">2026-10-29</span>
             </div>
         </footer>
@@ -2954,6 +2999,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             setTextContent('forgotPasswordLink', s.forgotPassword);
             setTextContent('btnText', s.signIn);
             setTextContent('securityText', s.securityNotice);
+            renderAuditInfo(s);
             
             // CAPTCHA
             setTextContent('captchaTitleText', s.captchaTitle);
@@ -3475,6 +3521,7 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
             setupMFA();
             setupMFAEnrollment();
             setupStatusPanel();
+            renderAuditInfo(currentStrings);
 
             // Real-time validation - enables submit only when all fields valid
             setupRealtimeValidation();
@@ -3717,6 +3764,33 @@ HCL Documentation: https://help.hcl-software.com/dom_designer/14.5.1/basic/H_IMP
         // Shown when CONFIG.debug.showStatusPanel = true.
         // Displays active/inactive state of Login audit, MFA, and CAPTCHA.
         // =====================================================================
+
+        // ── Information row below the form: sign-in tracking / MFA / CAPTCHA ────
+        // Shown to everyone (the admin-only panel is setupStatusPanel). Text comes from the
+        // selected language; languages without these keys fall back to English.
+        function renderAuditInfo(s) {
+            var cfg = DominoLoginConfig;
+            var box = document.getElementById('auditInfo');
+            if (!box) return;
+            var en = (cfg.i18n && cfg.i18n.languages && cfg.i18n.languages.en && cfg.i18n.languages.en.strings) || {};
+            s = s || currentStrings || {};
+            function tx(k) { return s[k] || en[k] || ''; }
+            var trackingOn = !!(cfg.loginAudit && cfg.loginAudit.enable && cfg.features && cfg.features.enableLoginAudit);
+            var mfaOn      = !!((cfg.features && cfg.features.enableMFA) || (cfg.mfa && cfg.mfa.enable));
+            var captchaOn  = !!(cfg.features && cfg.features.enableCaptcha);
+            [['aiTracking', 'auditChipTracking', trackingOn],
+             ['aiMFA',      'auditChipMFA',      mfaOn],
+             ['aiCaptcha',  'auditChipCaptcha',  captchaOn]].forEach(function (c) {
+                var el = document.getElementById(c[0]);
+                if (!el) return;
+                el.textContent = tx(c[1]) + ': ' + (c[2] ? tx('auditChipOn') : tx('auditChipOff'));
+                el.className = 'ai-chip' + (c[2] ? ' on' : '');
+            });
+            var t = document.getElementById('aiText');
+            if (t) t.textContent = trackingOn ? tx('auditInfoText') : '';
+            box.hidden = !(trackingOn || mfaOn || captchaOn);
+        }
+
         function setupStatusPanel() {
             var cfg = DominoLoginConfig;
             if (!cfg.debug?.showStatusPanel) return;

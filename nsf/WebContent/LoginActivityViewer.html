@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Login Activity — HCL Verse</title>
 <style>
-/* Login Activity Viewer v3.1.2 — self-contained, no external requests. */
+/* Login Activity Viewer v3.2.0 — self-contained, no external requests. */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
     --bg: #f4f4f4; --card: #ffffff; --text: #161616; --muted: #525252; --line: #e0e0e0;
@@ -32,7 +32,8 @@ body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "IBM Plex S
 .hdr { background: var(--brand); color: var(--brand-ink); padding: 14px 24px; display: flex;
        align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .hdr h1 { font-size: 1.15rem; font-weight: 600; }
-.hdr .sub { font-size: .8rem; opacity: .9; }
+.hdr .sub { color: inherit; opacity: 1; font-size: .85rem; }   /* the generic .sub colour is grey: unreadable on the brand bar */
+.hdr .who { font-size: 1.05rem; font-weight: 600; line-height: 1.3; }
 .btn { font: inherit; border: 1px solid currentColor; background: transparent; color: inherit;
        padding: 6px 12px; border-radius: var(--radius); cursor: pointer; }
 .btn:hover { background: rgba(127,127,127,.18); }
@@ -76,7 +77,8 @@ tr.reported { background: var(--bad-bg); }
 <header class="hdr">
     <div>
         <h1>Login Activity</h1>
-        <div class="sub" id="who">Your last 5 successful sign-ins</div>
+        <div class="who" id="who"></div>
+        <div class="sub" id="whoSub">Your last 5 successful sign-ins</div>
     </div>
     <div>
         <button class="btn" id="refreshBtn" type="button">Refresh</button>
@@ -116,6 +118,12 @@ tr.reported { background: var(--bad-bg); }
 </main>
 
 <script>
+    // CN=Vikas Tiwari/O=ACME -> Vikas Tiwari (the full name stays in the tooltip)
+    function shortName(n) {
+        var m = /^CN=([^\/]+)/i.exec(n || '');
+        return m ? m[1] : (n || '');
+    }
+
 (function () {
     'use strict';
 
@@ -169,7 +177,11 @@ tr.reported { background: var(--bad-bg); }
         rows.textContent = '';
         var events = (data && data.events) || [];
 
-        if (data && data.user) $('who').textContent = data.user + ' — your last ' + events.length + ' successful sign-in(s)';
+        if (data && data.user) {
+            $('who').textContent = shortName(data.user);
+            $('who').title = data.user;
+            $('whoSub').textContent = 'Your last ' + events.length + ' successful sign-in' + (events.length === 1 ? '' : 's');
+        }
 
         if (!events.length) {
             $('tbl').hidden = true;

@@ -1,6 +1,6 @@
 # HCL Domino Login Page + Login Activity: Deployment Guide
 
-> **Version:** 3.1.2 | **Last Updated:** 2026-10-29 | **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)  
+> **Version:** 3.2.0 | **Last Updated:** 2026-10-29 | **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)  
 > Written to documented HCL behaviour; **not yet executed on a server**. Items marked *(verify)* must be confirmed in testing. Use a non-production server first.
 
 Placeholders used below: `<SERVER>`, `<SERVICE_ID>` (the ID that signs the agents), `<REPO_FOLDER>` (this repository on the admin workstation), `<PROXY_IP_1>`. Never put real credentials in these files.
@@ -158,6 +158,8 @@ loginAudit: {
 },
 debug: { showStatusPanel: false }  // true only while configuring
 ```
+
+**Information row.** Below the form the page shows chips for sign-in tracking, MFA and CAPTCHA (On/Off) and, when tracking is on, a one-line notice that sign-ins are recorded. It follows the settings above (`features.enableLoginAudit` + `loginAudit.enable`, `features.enableMFA` / `mfa.enable`, `features.enableCaptcha`). Text keys: `auditChipTracking`, `auditChipMFA`, `auditChipCaptcha`, `auditChipOn`, `auditChipOff`, `auditInfoText` in each language's `strings` (English is the fallback).
 
 Re-paste as Pass-Thru HTML after every edit, then `tell http restart`. The form then sets `RedirectTo` to the landing agent; the browser sends **no** tracking data.
 **Rollback:** set `features.enableLoginAudit = false`, re-paste. Data stays in `loginaudit.nsf`.

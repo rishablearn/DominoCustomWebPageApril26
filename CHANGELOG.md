@@ -4,6 +4,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-29
+
+### Changed
+- **Login Activity viewer** (`nsf/WebContent/LoginActivityViewer.html`): the user's name is now a prominent header line (common name, full name as tooltip) with "Your last N successful sign-ins" below it. The name was grey on the dark header (the generic `.sub` colour won over `.hdr .sub`).
+- **Login page** (`domcfg/DominoEmbeddedForm.html`) is more compact: card 360 px wide (was 420), padding 26 px (was 48), smaller logo, title, fields and button, no hover lift, tighter footer. Mobile keeps 16 px inputs (no iOS zoom).
+
+### Added
+- Information row below the form: chips **Sign-in tracking / MFA / CAPTCHA: On|Off** and, when tracking is on, one sentence telling users that sign-ins are recorded (time, IP, browser) and where to review them. Driven by the existing `features.enableLoginAudit`, `loginAudit.enable`, `features.enableMFA` / `mfa.enable` and `features.enableCaptcha` settings. English text is built in; other languages fall back to English until `auditChip*` / `auditInfoText` keys are added to their `strings`.
+
 ## [3.1.2] - 2026-10-29
 
 ### Fixed
