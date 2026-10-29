@@ -44,7 +44,7 @@ Const AGENTS_UNRESTRICTED = False                ' False = restricted agents (De
 ' ---------------------------------------------------------------------------
 
 Const MANIFEST_REL = "MANIFEST.txt"
-Const INSTALLER_VERSION = "3.1.1"                 ' this installer's version; must equal the ' Version header of nsf\ScriptLibraries\LoginAuditLib.lss or the install stops
+Const INSTALLER_VERSION = "3.1.2"                 ' this installer's version; must equal the ' Version header of nsf\ScriptLibraries\LoginAuditLib.lss or the install stops
 Dim gVersion As String        ' read from the LoginAuditLib.lss header (single source of the version number)
 Dim gRoot As String           ' REPO_FOLDER with a trailing path separator
 Dim gSep As String            ' path separator used by REPO_FOLDER
@@ -157,6 +157,12 @@ Sub Initialize
 		Call ApplyAclOrStop(db, aclFailed)
 		If aclFailed Then Exit Sub
 	End If
+	' --- the running ID needs Designer or Manager access to import design elements (else error 582) ---
+	If db.CurrentAccessLevel < ACLLEVEL_DESIGNER Then
+		Messagebox "Installer stopped (nothing imported). The ID running the installer (" & session.UserName & ") has access level " & AccessLevelName(db.CurrentAccessLevel) & " in " & ServerLabel(db.Server) & "!!" & db.FilePath & "; importing design needs Designer or Manager." & Chr$(10) & Chr$(10) & _
+		"Fix: open the database ACL (Domino Administrator, as a server administrator with full access, or an ID that is Manager) and make " & session.UserName & " Manager; or delete the database and run INSTALL_MODE = ""NEW"" again. Also check that your ID may create and replace databases on the server.", , "Installer"
+		Exit Sub
+	End If
 	Call WriteDiagFile("install start", "v" & gVersion & " mode=" & mode & " existed=" & existed & " RunBy=" & session.UserName & Chr$(10) & DescribeDb(db))
 
 	' --- imports (each stage reported separately) -----------------------------
@@ -217,6 +223,27 @@ End Function
 '------------------------------------------------------------------------------
 ' Where did it go, and is it really there?
 '------------------------------------------------------------------------------
+Function AccessLevelName(lvl As Integer) As String
+	Select Case lvl
+	Case ACLLEVEL_NOACCESS
+		AccessLevelName = "No Access"
+	Case ACLLEVEL_DEPOSITOR
+		AccessLevelName = "Depositor"
+	Case ACLLEVEL_READER
+		AccessLevelName = "Reader"
+	Case ACLLEVEL_AUTHOR
+		AccessLevelName = "Author"
+	Case ACLLEVEL_EDITOR
+		AccessLevelName = "Editor"
+	Case ACLLEVEL_DESIGNER
+		AccessLevelName = "Designer"
+	Case ACLLEVEL_MANAGER
+		AccessLevelName = "Manager"
+	Case Else
+		AccessLevelName = "level " & lvl
+	End Select
+End Function
+
 Function ServerLabel(srv As String) As String
 	If srv = "" Then ServerLabel = "LOCAL (this workstation)" Else ServerLabel = srv
 End Function
@@ -404,27 +431,35 @@ Sub ApplyAclOrStop(db As NotesDatabase, failed As Boolean)
 End Sub
 
 Sub SetupACL(db As NotesDatabase)
-	' Deployment.md section 3. The creating ID stays Manager so you cannot lock yourself out.
+	' Deployment.md section 3. The running ID stays Manager so you cannot lock yourself out.
 	' Safe to run again on an existing database. No custom roles are used.
+	' NEVER lowers an existing entry (EnsureLevel only raises): the ID running this installer, and the
+	' signer when it is the same person, keep Manager. Only -Default- and Anonymous are set exactly.
 	Dim s As New NotesSession
 	Dim acl As NotesACL, e As NotesACLEntry
 	Dim nMgr As Integer
+	Dim me1 As NotesName, signer As NotesName
 	Set acl = db.ACL
+	Set me1 = s.CreateName(s.UserName)
+	Set signer = s.CreateName(SIGNER_ID)
 
-	' 1) Managers FIRST (see PwdReset installer: lowering -Default- with no Manager gives error 4005).
-	Call SetEntry(acl, s.UserName, ACLLEVEL_MANAGER)
-	Call SetEntry(acl, SERVER_GROUP, ACLLEVEL_MANAGER)
+	' 1) Managers FIRST (lowering -Default- with no Manager gives error 4005).
+	Call EnsureLevel(acl, s.UserName, ACLLEVEL_MANAGER)
+	Call EnsureLevel(acl, SERVER_GROUP, ACLLEVEL_MANAGER)
 
-	' 2) Reviewers and the agent signer: Editor. The signer deletes documents in PurgeLoginAudit.
-	Call SetEntry(acl, REVIEW_GROUP, ACLLEVEL_EDITOR)
-	If LCase$(Trim$(SIGNER_ID)) <> LCase$(Trim$(s.UserName)) Then
-		Call SetEntry(acl, SIGNER_ID, ACLLEVEL_EDITOR)
+	' 2) Reviewers and the agent signer: at least Editor. The signer deletes documents in PurgeLoginAudit.
+	Call EnsureLevel(acl, REVIEW_GROUP, ACLLEVEL_EDITOR)
+	If LCase$(signer.Canonical) <> LCase$(me1.Canonical) And LCase$(signer.Abbreviated) <> LCase$(me1.Abbreviated) Then
+		Call EnsureLevel(acl, SIGNER_ID, ACLLEVEL_EDITOR)
 		Set e = acl.GetEntry(SIGNER_ID)
 		e.CanDeleteDocuments = True
 		e.CanCreateDocuments = True
 	End If
 
-	' 3) Verify a named Manager exists before changing the default entries.
+	' 3) The running ID must now be Manager, and a named Manager must exist, before the defaults change.
+	Set e = acl.GetEntry(s.UserName)
+	If e Is Nothing Then Error 1003, "ACL setup stopped: no ACL entry for the running ID " & s.UserName
+	If e.Level <> ACLLEVEL_MANAGER Then Error 1004, "ACL setup stopped: the running ID " & s.UserName & " is not Manager (level " & e.Level & "); it would lose design rights."
 	Set e = acl.GetFirstEntry()
 	Do While Not e Is Nothing
 		If e.Level = ACLLEVEL_MANAGER And UCase$(e.Name) <> "-DEFAULT-" Then nMgr = nMgr + 1
@@ -437,6 +472,17 @@ Sub SetupACL(db As NotesDatabase)
 	Call SetEntry(acl, "-Default-", ACLLEVEL_READER)
 	Call SetEntry(acl, "Anonymous", ACLLEVEL_NOACCESS)
 	Call acl.Save
+End Sub
+
+Sub EnsureLevel(acl As NotesACL, nm As String, lvl As Integer)
+	' Creates the entry if missing; raises an existing entry to lvl; never lowers it.
+	Dim e As NotesACLEntry
+	Set e = acl.GetEntry(nm)
+	If e Is Nothing Then
+		Set e = acl.CreateACLEntry(nm, lvl)
+	ElseIf e.Level < lvl Then
+		e.Level = lvl
+	End If
 End Sub
 
 Sub SetEntry(acl As NotesACL, nm As String, lvl As Integer)
@@ -606,6 +652,7 @@ Function ImportDxlText(session As NotesSession, db As NotesDatabase, dxl As Stri
 EH:
 	detail = label & " FAILED: " & Err & " " & Error$
 	If Not dxlImp Is Nothing Then
+		If InStr(dxlImp.Log, "id='582'") > 0 Then detail = detail & " | ERROR 582 = the running ID lacks Designer/Manager access in the target database or may not create/replace databases on the server: check the database ACL and the server's Create/Replace databases rights"
 		detail = detail & " | importer log: " & Left$(dxlImp.Log, 1500)
 		Call WriteDiagFile(label, "IMPORT FAILED " & Err & " " & Error$ & Chr$(10) & dxlImp.Log)
 	Else

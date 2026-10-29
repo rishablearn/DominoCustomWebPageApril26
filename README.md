@@ -1,6 +1,6 @@
 # HCL Domino Custom Login Page + Login Activity (HCL Verse)
 
-**Version:** 3.1.1  
+**Version:** 3.1.2  
 **Last Updated:** 2026-10-29  
 **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)
 

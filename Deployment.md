@@ -1,6 +1,6 @@
 # HCL Domino Login Page + Login Activity: Deployment Guide
 
-> **Version:** 3.1.1 | **Last Updated:** 2026-10-29 | **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)  
+> **Version:** 3.1.2 | **Last Updated:** 2026-10-29 | **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)  
 > Written to documented HCL behaviour; **not yet executed on a server**. Items marked *(verify)* must be confirmed in testing. Use a non-production server first.
 
 Placeholders used below: `<SERVER>`, `<SERVICE_ID>` (the ID that signs the agents), `<REPO_FOLDER>` (this repository on the admin workstation), `<PROXY_IP_1>`. Never put real credentials in these files.
@@ -295,6 +295,7 @@ Verify on the **server console** after test 1: `tell http` shows no agent errors
 | Installer: "contains non-ASCII characters" | A `.lss` file has a non-ASCII character | Keep `.lss` ASCII (`python3 tools/lint_lss.py .`) |
 | Installer: `warning ... id 7118/12051` in `installer_*.log` | Compile error in the library; the agents cascade | Fix the first error (the library), re-run with `INSTALL_MODE = "UPDATE"` |
 | Installer: `fatalerror ... Unexpected <element>` | DXL breaks the DTD | `python3 tools/validate_dxl.py nsf` names the file and element |
+| Installer: error `582 You are not authorized` on forms/views, or "access level Editor ... needs Designer or Manager" | The ID running the installer is below Designer in the database ACL (installers before 3.1.2 could lower it to Editor when `SIGNER_ID` was that same ID) | Make your ID **Manager** in the database ACL (Domino Administrator as a server administrator with full access, or any Manager), or delete `loginaudit.nsf` and run `NEW`. Use installer 3.1.2+, set `SIGNER_ID` to the service ID, run with `UPDATE` (add `APPLY_ACL = True` to re-apply the ACL). Also check your ID may create/replace databases on the server |
 | Installer: ACL setup failed | Message shows why | Delete the database and re-run `NEW`, or `UPDATE` with `APPLY_ACL = True` |
 | After an `UPDATE`, constants are back to defaults | `LoginAuditLib` was replaced | Re-apply `TRUSTED_PROXIES`, `SECURITY_MAILBOX`, `RETENTION_DAYS`; recompile; re-sign |
 | "Document is not signed" when running an agent | Imported agents are unsigned | Section 4: recompile and sign |

@@ -4,6 +4,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); version
 
 ## [Unreleased]
 
+## [3.1.2] - 2026-10-29
+
+### Fixed
+- **Installer: `582 You are not authorized to perform that operation`** on every form and view. `SetupACL` set each ACL entry to an exact level, so when `SIGNER_ID` was the same person as the ID running the installer (written in another name format) the Manager entry was lowered to Editor and the import lost design rights. ACL entries are now only raised, never lowered (`EnsureLevel`); the signer is compared as a Notes name; the running ID must still be Manager before `-Default-` is lowered.
+- The installer now checks the running ID's access level **before** importing and stops with the level and the fix when it is below Designer. A 582 in the importer log now says what to check.
+- Recovery for a database already locked out by 3.1.0/3.1.1: Deployment.md section 10.
+
 ## [3.1.1] - 2026-10-29
 
 ### Fixed
