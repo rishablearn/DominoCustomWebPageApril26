@@ -191,6 +191,33 @@ fi
 
 [[ "$CMD" == "status" ]] && exit 0
 
+# --- Nested repositories ------------------------------------------------------
+# A folder with its own .git (e.g. a reference project copied in for comparison) is staged by
+# 'git add -A' as a bare submodule pointer (mode 160000): no files, no .gitmodules, broken on
+# GitHub. Never commit one by accident: unstage new ones and tell the user how to ignore them.
+unstage_nested_repos() {
+  [[ $DRY_RUN -eq 1 ]] && return 0
+  local line path found=0
+  while IFS= read -r line; do
+    [[ -n "$line" ]] || continue
+    path="${line#*	}"
+    # only gitlinks that are NEW in this commit (an existing one is the user's decision)
+    if ! git cat-file -e "HEAD:$path" 2>/dev/null; then
+      git rm --cached -f -q -r -- "$path" || true
+      warn "Not committed: '$path' is a separate git repository (it has its own .git)."
+      echo "    Add it to .gitignore:   echo '$path/' >> .gitignore   (then re-run)" >&2
+      found=1
+    fi
+  done < <(git ls-files -s | awk '$1 == "160000"')
+  if [[ $found -eq 0 && -z "$(git status --porcelain | head -1)" ]]; then return 0; fi
+  # Tracked gitlinks without .gitmodules are broken on GitHub: report them.
+  if [[ ! -f .gitmodules ]]; then
+    git ls-files -s | awk '$1 == "160000" {print $4}' | while IFS= read -r path; do
+      warn "'$path' is tracked as an embedded repo without .gitmodules (shows as an empty folder on GitHub). Fix: git rm --cached '$path' && echo '$path/' >> .gitignore"
+    done
+  fi
+}
+
 # --- Commit local changes (sync/push) ----------------------------------------
 commit_local() {
   [[ $DIRTY -eq 1 ]] || return 0
@@ -212,6 +239,7 @@ commit_local() {
 
   confirm "Commit all local changes?" || die "Cancelled."
   run git add -A
+  unstage_nested_repos
   run git commit -m "${MSG:-Sync $(date '+%Y-%m-%d %H:%M:%S')}"
 }
 

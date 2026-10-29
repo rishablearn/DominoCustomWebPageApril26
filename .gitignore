@@ -28,3 +28,7 @@ login-forms/DominoEmbeddedForm-CentralBankOfIndia.html
 
 # Installer logs
 installer_*.log
+
+# Reference project copied in for comparison (has its own .git and GitHub repo); never commit it here
+DominoPasswordReset-March2026/
+.fuse_hidden*

@@ -66,6 +66,7 @@ Duration is measured by the heartbeat the viewer sends **while it is open**, and
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | No "Login Activity" in More | `applications.json` not loaded | Check `notes.ini` provider lines and file path, restart HTTP, hard-refresh Verse |
+| Agents return the login form / 404 | `loginaudit.nsf` not installed or agents unsigned | Build it with the DXL installer (`04-DXL-Install.md`), recompile and sign |
 | Window blank / 404 | File resource missing or wrong DB | URL must be `/loginaudit.nsf/LoginActivityViewer.html` |
 | "You are not signed in" | Session expired | Sign in to Verse again |
 | "history is temporarily unavailable" | Agent error | Check `(AuditErrors)` view in `loginaudit.nsf` |

@@ -19,9 +19,13 @@ After every edit of the HTML: repeat step 3 (re-paste as Pass-Thru HTML), then `
 
 ## 2. Create `loginaudit.nsf`
 
-Domino Administrator → new blank database `loginaudit.nsf`, title "Login Audit".
+> **Recommended: use the DXL installer.** `deploy/notes-client/Agent0_Installer_DXL.lss` performs sections 2.1 (ACL), 2.2 (views, plus the forms `LoginEvent` and `AuditError`) and 3 steps 1-2 (script library and the 5 agents) in one run. Follow [`04-DXL-Install.md`](04-DXL-Install.md), then continue here at **section 3 step 3 (recompile and sign)**. Sections 2.1-2.2 and 3 steps 1-2 below are the **manual alternative** and a reference for what the installer creates. Do not do both: the installer replaces same-named design elements.
+>
+> Still manual after the installer: recompile + sign (3.3), server security (3.4), `LoginAuditLib` constants (8), `PurgeLoginAudit` schedule (3), viewer file resource (4), database property (2.3), login page (1).
 
-### 2.1 ACL
+Manual: Domino Administrator → new blank database `loginaudit.nsf`, title "Login Audit".
+
+### 2.1 ACL (installer: new database only; `APPLY_ACL = True` re-applies it)
 
 | Entry | Level | Roles | Notes |
 |---|---|---|---|
@@ -53,15 +57,15 @@ Selection: `SELECT Form = "LoginEvent" & NotMeFlag = "1"` — columns: `ReviewSt
 
 **`(AuditErrors)`** — Selection: `SELECT Form = "AuditError"` — columns: `ErrWhen` (descending), `Agent`, `ErrNum`, `ErrMsg`.
 
-Optional: simple forms `LoginEvent` and `AuditError` (fields as in `01-Overview.md`) so admins can open an event and set `ReviewStatus` to `CLOSED`.
+Forms `LoginEvent` and `AuditError` (fields as in `01-Overview.md`) let admins open an event and set `ReviewStatus` to `CLOSED`. **The installer creates them** (`deploy/dxl/Forms/`); if you build by hand they are optional. `Readers` is a *readers* field on both forms, so opening and saving an event in the Notes client keeps it protected.
 
 ### 2.3 Database properties
 
-Advanced tab: tick *Don't maintain unread marks*. No full-text index is needed.
+Advanced tab: tick *Don't maintain unread marks*. No full-text index is needed. **The installer does not set this property** (DXL import does not replace database properties), so do it by hand either way.
 
 ## 3. Script library and agents
 
-In `loginaudit.nsf` (Designer):
+In `loginaudit.nsf` (Designer). **Steps 1-2 are done by the DXL installer** (`04-DXL-Install.md`); do them by hand only if you do not use it.
 
 1. **Shared Code → Script Libraries → New** — name `LoginAuditLib`, language LotusScript → paste `lotusscript/LoginAuditLib.lss` → save. **Edit the constants at the top** (see §8 for production values).
 2. **Shared Code → Agents → New** for each agent below. Paste the file; save.
@@ -74,11 +78,13 @@ In `loginaudit.nsf` (Designer):
 | `NotMe` | `NotMe.lss` | On Schedule → **Never** | **Unchecked** |
 | `PurgeLoginAudit` | `PurgeLoginAudit.lss` | Schedule → Daily, 02:00, run on server | n/a |
 
+> **Installer difference:** the installer imports every agent with trigger *Action menu selection*, target *None*, *Run as web user* off. This is the same pattern as `DominoPasswordReset-March2026` and also answers `?OpenAgent` from the web. If testing shows HTTP 500 on `?OpenAgent`, switch the trigger to *On Schedule → Never* as in the table. **`PurgeLoginAudit` must be changed by hand to Schedule → Daily 02:00, run on server** (the installer cannot set the schedule).
+
 Common settings: *Which documents should it act on* = **None**. Any "On event" trigger makes `?OpenAgent` return HTTP 500.
 
 > **Why "run as web user" is unchecked:** the agents run as the signer, so they can write to the database even though users only have Reader access. The user's identity is taken from `Remote_User`, not from the run-as setting. Do **not** change the code to use `EffectiveUserName`.
 
-3. **Sign every design element** (library + agents) with `<SERVICE_ID>`: Designer → select → *Tools/File → Sign*.
+3. **Recompile and sign every design element** (library + agents) with `<SERVICE_ID>`: Designer → *Tools → Recompile All LotusScript*, then select all → *Tools/File → Sign*. Required after the installer too: freshly imported agents are unsigned (Notes reports "Document is not signed" until then). The signer must also be a member of `LocalDomainAdmins` (section 2.1).
 4. Server security: in the Server document → **Security** → add `<SERVICE_ID>` to *Run restricted LotusScript/Java agents* (these agents use only standard Notes classes). Restart HTTP: `tell http restart`.
 
 ## 4. Verse viewer file
@@ -161,11 +167,13 @@ Verify on the **server console** after test 1: `tell http` shows no agent errors
 
 ### 8.3 Go-live checklist
 
+- [ ] `loginaudit.nsf` built (DXL installer, `04-DXL-Install.md`, or manually), recompiled and signed; installer agent deleted from the scratch database
 - [ ] §7 test plan passed in a staging copy
 - [ ] `TRUSTED_PROXIES` set and verified with `DIAG_MODE`; `DIAG_MODE = False`; status panel off
 - [ ] `ALERT_ON_NEW_SIGNIN` decision made (mail to the user on new IP/device; needs mail routing) — default `False`
 - [ ] `SECURITY_MAILBOX` set to the review mailbox; `LocalDomainAdmins` members know they review `(NotMeReports)`
 - [ ] `RETENTION_DAYS` decided (180 = 6 months, 365 = 1 year); **legal/privacy review** of storing IP + User-Agent (personal data in many jurisdictions), user notice, access/erasure process
+- [ ] `PurgeLoginAudit` scheduled (Daily 02:00, on the server)
 - [ ] `PURGE_DRY_RUN` run once, log reviewed, then set `False` and re-sign
 - [ ] Signer ID is a dedicated service ID with the minimum rights above
 - [ ] Verse extension deployed and tested (`03-Verse-Extension.md`)
@@ -189,6 +197,9 @@ Verify on the **server console** after test 1: `tell http` shows no agent errors
 | `AuditError`: "View (LoginsByUser) not found" | View name wrong or not created | §2.2 exact name with parentheses |
 | History empty but events exist | Events saved under a different canonical name, or Readers excludes user | Compare `UserCanonical` with the DIAG canonical name |
 | Newest event not first | View column 2 not sorted descending | §2.2 |
+| Installer: "this installer is vX but the project files are vY" | Installer and repository are different versions | Copy `Agent0_Installer_DXL.lss` from the same commit (`04-DXL-Install.md`) |
+| Installer: `warning ... id 7118/12051` in `installer_*.log` | Compile error in the library; agents cascade | Fix the first error, re-run with `INSTALL_MODE = "UPDATE"` |
+| After `UPDATE`, constants are back to defaults | `LoginAuditLib` was replaced | Re-apply `TRUSTED_PROXIES`, `SECURITY_MAILBOX`, `RETENTION_DAYS`; recompile; re-sign |
 | Heartbeat always `no_session` | IP/device differs from login (e.g. VPN switch, different browser), or gap > 60 min | Expected; duration then stays "Not measured" |
 | Everyone shows the proxy IP | `TRUSTED_PROXIES` empty or wrong | §8.1 |
 | Viewer shows "not signed in" | Viewer opened without a session | Sign in to Verse first |

@@ -63,6 +63,9 @@ Only **successful** logins are recorded: a failed login never reaches the landin
 
 ### 3.1.0 (2026-10-29)
 - **New:** DXL installer (`deploy/notes-client/Agent0_Installer_DXL.lss`) building `loginaudit.nsf` (ACL, forms `LoginEvent`/`AuditError`, views `(LoginsByUser)`/`(NotMeReports)`/`(AuditErrors)`, library, 5 agents); `docs/04-DXL-Install.md`; `deploy/scripts/` checks.
+- **Docs:** `01-Overview` (layout, design-element table), `02-Deployment-Guide` (installer vs manual steps, signing, purge schedule, troubleshooting), `03-Verse-Extension`, `04-DXL-Install` (DXL contents, rules, upgrade).
+- **Repo:** `DominoPasswordReset-March2026/` is a reference copy with its own repo; it is git-ignored and no longer tracked (it had been committed by mistake as an empty submodule pointer).
+- **Tooling:** `github-sync.sh` no longer commits a folder that has its own `.git` (new nested repos are unstaged with a warning and the `.gitignore` command to use); it also reports an already tracked one.
 - **Fixed:** `.lss` sources are ASCII-only (em dashes in comments); `JsonEscape` now escapes `<` and `>` as `\u003c`/`\u003e` (the replace was a no-op).
 
 ### 3.0.0 (2026-10-28)

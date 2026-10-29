@@ -5,6 +5,21 @@
 
 One LotusScript agent, `deploy/notes-client/Agent0_Installer_DXL.lss`, runs in the Notes client and builds `loginaudit.nsf` with `NotesDXLImporter`. It replaces the manual steps of `02-Deployment-Guide.md` sections 2.1, 2.2 and 3 (steps 1-2).
 
+## Contents of the DXL
+
+`deploy/dxl/MANIFEST.txt` is the single list of what is imported (`F` form, `V` view, `L` library, `A` agent; paths relative to the repository root; library order matters). Changing the design means editing these files and running the installer in `UPDATE` mode.
+
+| File | Defines |
+|---|---|
+| `deploy/dxl/Forms/LoginEvent.form` | 26 fields: identity (`UserCanonical`, `UserCommon`), time (`LoginTime` date/time, `LoginTimeUTC`), network (`IP`, `RemoteAddr`, `ForwardedFor`), device (`UserAgent`, `Browser`, `OS`, `DeviceType`, `DeviceKey`), context (`AccessSource`, `AuthMethod`), flags (`FirstLogin`, `NewIP`, `NewDevice`), session (`Heartbeats` number, `LastSeen`, `EndTime`, `EndReason`), review (`NotMeFlag`, `NotMeTime`, `ReviewStatus`), `Form`, `Readers` (readers field) |
+| `deploy/dxl/Forms/AuditError.form` | `ErrWhen`, `Agent`, `ErrNum`, `ErrLine`, `ErrMsg`, `Form`, `Readers` |
+| `deploy/dxl/Views/LoginsByUser.view` | `(LoginsByUser)`: `SELECT Form = "LoginEvent"`; `UserCanonical` ascending, `LoginTime` descending, `IP` |
+| `deploy/dxl/Views/NotMeReports.view` | `(NotMeReports)`: `SELECT Form = "LoginEvent" & NotMeFlag = "1"` |
+| `deploy/dxl/Views/AuditErrors.view` | `(AuditErrors)`: `SELECT Form = "AuditError"`, newest first |
+| `lotusscript/*.lss` | library and agents; the installer splits each file into options, declarations and one code element per `Sub`/`Function` (so `Sub`/`Function`/`End` lines must start in column 1 and files must be ASCII) |
+
+DXL rules checked by `deploy/scripts/validate_dxl.py`: `<run>` holds plain text only; no whitespace between tags inside `par`, `field`, `code`, `column`; field types `text`, `number`, `datetime`, `names`, `keyword`, `richtext`, `readers`; view = `selection` code then columns. The importer runs with `REPLACE_ELSE_CREATE` for design, and **ignores documents and ACL** (the ACL comes from the installer's own `SetupACL`).
+
 ## What it creates
 
 | Element | Names | Source |
