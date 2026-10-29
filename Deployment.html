@@ -390,7 +390,7 @@ VOP_Extensibility_Applications_Json_URL=https://&lt;SERVER&gt;/verse/application
 </ul>
 <h3 id="93-go-live-checklist">9.3 Go-live checklist</h3>
 <ul>
-<li>[ ] <code>loginaudit.nsf</code> built (DXL installer, <code>04-DXL-Install.md</code>, or manually), recompiled and signed; installer agent deleted from the scratch database</li>
+<li>[ ] <code>loginaudit.nsf</code> built (DXL installer, section 3, or Appendix A), recompiled and signed; installer agent deleted from the scratch database</li>
 <li>[ ] section 8 test plan passed in a staging copy</li>
 <li>[ ] <code>TRUSTED_PROXIES</code> set and verified with <code>DIAG_MODE</code>; <code>DIAG_MODE = False</code>; status panel off</li>
 <li>[ ] <code>ALERT_ON_NEW_SIGNIN</code> decision made (mail to the user on new IP/device; needs mail routing) — default <code>False</code></li>
@@ -452,7 +452,7 @@ VOP_Extensibility_Applications_Json_URL=https://&lt;SERVER&gt;/verse/application
 <tr>
 <td>Installer: "this installer is vX but the project files are vY"</td>
 <td>Installer and repository are different versions</td>
-<td>Copy <code>Agent0_Installer_DXL.lss</code> from the same commit (<code>04-DXL-Install.md</code>)</td>
+<td>Copy <code>installer/Agent0_Installer_DXL.lss</code> from the same commit</td>
 </tr>
 <tr>
 <td>Installer: <code>warning ... id 7118/12051</code> in <code>installer_*.log</code></td>

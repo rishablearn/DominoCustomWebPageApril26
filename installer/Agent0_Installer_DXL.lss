@@ -44,7 +44,7 @@ Const AGENTS_UNRESTRICTED = False                ' False = restricted agents (De
 ' ---------------------------------------------------------------------------
 
 Const MANIFEST_REL = "MANIFEST.txt"
-Const INSTALLER_VERSION = "--help"                 ' this installer's version; must equal the ' Version header of nsf\ScriptLibraries\LoginAuditLib.lss or the install stops
+Const INSTALLER_VERSION = "3.1.0"                 ' this installer's version; must equal the ' Version header of nsf\ScriptLibraries\LoginAuditLib.lss or the install stops
 Dim gVersion As String        ' read from the LoginAuditLib.lss header (single source of the version number)
 Dim gRoot As String           ' REPO_FOLDER with a trailing path separator
 Dim gSep As String            ' path separator used by REPO_FOLDER

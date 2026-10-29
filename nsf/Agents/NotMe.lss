@@ -1,7 +1,7 @@
 '===========================================================================
 ' NotMe.lss  -  Agent "NotMe"  (LOGINAUDIT.NSF)
 '
-' Version  : --help
+' Version  : 3.1.0
 ' Requires : HCL Domino 12.0.1+, script library LoginAuditLib
 '
 ' WHAT IT DOES

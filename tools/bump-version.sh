@@ -11,7 +11,9 @@
 # =============================================================================
 set -euo pipefail
 NEW_VERSION="${1:-}"
-[ -n "$NEW_VERSION" ] || { echo "Usage: $0 NEW_VERSION (e.g. $0 3.2.0)"; exit 1; }
+usage() { echo "Usage: $0 NEW_VERSION   (MAJOR.MINOR.PATCH, e.g. $0 3.2.0)"; echo "Current version: $(tr -d '[:space:]' < "$(dirname "$0")/../VERSION")"; }
+case "$NEW_VERSION" in -h|--help|"") usage; exit 0 ;; esac
+[[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "ERROR: '$NEW_VERSION' is not a version like 3.2.0" >&2; usage >&2; exit 1; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OLD_VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION")"
 NEW_DATE="$(date +%Y-%m-%d)"

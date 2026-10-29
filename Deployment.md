@@ -1,6 +1,6 @@
 # HCL Domino Login Page + Login Activity: Deployment Guide
 
-> **Version:** --help | **Last Updated:** 2026-10-29 | **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)  
+> **Version:** 3.1.0 | **Last Updated:** 2026-10-29 | **Targets:** HCL Domino 12.0.1+ / 14.x, HCL Verse on-premises 3.2.x (developed against 3.2.7)  
 > Written to documented HCL behaviour; **not yet executed on a server**. Items marked *(verify)* must be confirmed in testing. Use a non-production server first.
 
 Placeholders used below: `<SERVER>`, `<SERVICE_ID>` (the ID that signs the agents), `<REPO_FOLDER>` (this repository on the admin workstation), `<PROXY_IP_1>`. Never put real credentials in these files.
