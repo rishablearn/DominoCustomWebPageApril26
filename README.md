@@ -31,15 +31,15 @@ Only **successful** logins are recorded: a failed login never reaches the landin
 | Path | Purpose |
 |---|---|
 | `login-forms/DominoEmbeddedForm.html` | The login page (paste into `$$LoginUserForm` as Pass-Thru HTML). Config block at the top. |
-| `lotusscript/LoginAuditLib.lss` | Script library: config constants, identity, IP, UA parsing, JSON helpers |
-| `lotusscript/LoginLanding.lss` | Records the login, then redirects |
-| `lotusscript/GetLoginHistory.lss` | JSON for the viewer |
-| `lotusscript/Heartbeat.lss` | Session-duration heartbeat / explicit end |
-| `lotusscript/NotMe.lss` | "This wasn't me" report |
-| `lotusscript/PurgeLoginAudit.lss` | Scheduled retention job (dry-run by default) |
-| `deploy/notes-client/Agent0_Installer_DXL.lss` | One-shot installer (Notes client) that builds `loginaudit.nsf`: ACL, 2 forms, 3 views, library, 5 agents via DXL import |
-| `deploy/dxl/` | `MANIFEST.txt`, form + view DXL |
-| `deploy/scripts/` | `lint_lss.py`, `validate_dxl.py` |
+| `lotusscript/ScriptLibraries/LoginAuditLib.lss` | Script library: config constants, identity, IP, UA parsing, JSON helpers |
+| `lotusscript/Agents/LoginLanding.lss` | Records the login, then redirects |
+| `lotusscript/Agents/GetLoginHistory.lss` | JSON for the viewer |
+| `lotusscript/Agents/Heartbeat.lss` | Session-duration heartbeat / explicit end |
+| `lotusscript/Agents/NotMe.lss` | "This wasn't me" report |
+| `lotusscript/Agents/PurgeLoginAudit.lss` | Scheduled retention job (dry-run by default) |
+| `lotusscript/Installer/Agent0_Installer_DXL.lss` | One-shot installer (Notes client) that builds `loginaudit.nsf`: ACL, 2 forms, 3 views, library, 5 agents via DXL import |
+| `dxl/` | DXL design: `MANIFEST.txt` (import list), `Forms/`, `Views/` |
+| `scripts/` | `bump-version.sh`, `lint_lss.py`, `validate_dxl.py` |
 | `verse-extension/` | Viewer page + `applications.json` / `merge-snippet.json` |
 | `docs/` | Overview (incl. `04-DXL-Install.md`), deployment + test plan, Verse extension guide |
 | `EVALUATION.md` | Review that led to this design |
@@ -62,7 +62,8 @@ Only **successful** logins are recorded: a failed login never reaches the landin
 ## Changelog
 
 ### 3.1.0 (2026-10-29)
-- **New:** DXL installer (`deploy/notes-client/Agent0_Installer_DXL.lss`) building `loginaudit.nsf` (ACL, forms `LoginEvent`/`AuditError`, views `(LoginsByUser)`/`(NotMeReports)`/`(AuditErrors)`, library, 5 agents); `docs/04-DXL-Install.md`; `deploy/scripts/` checks.
+- **New:** DXL installer (`lotusscript/Installer/Agent0_Installer_DXL.lss`) building `loginaudit.nsf` (ACL, forms `LoginEvent`/`AuditError`, views `(LoginsByUser)`/`(NotMeReports)`/`(AuditErrors)`, library, 5 agents); `docs/04-DXL-Install.md`; `scripts/` checks.
+- **Layout:** all LotusScript under `lotusscript/` (`ScriptLibraries/`, `Agents/`, `Installer/`); DXL (manifest, forms, views) under `dxl/`; developer tools under `scripts/`. The old `deploy/` folder is gone and `lotusscript/*.lss` moved into the subfolders; every path in docs, scripts, manifest and installer was updated.
 - **Docs:** `01-Overview` (layout, design-element table), `02-Deployment-Guide` (installer vs manual steps, signing, purge schedule, troubleshooting), `03-Verse-Extension`, `04-DXL-Install` (DXL contents, rules, upgrade).
 - **Repo:** `DominoPasswordReset-March2026/` is a reference copy with its own repo; it is git-ignored and no longer tracked (it had been committed by mistake as an empty submodule pointer).
 - **Tooling:** `github-sync.sh` no longer commits a folder that has its own `.git` (new nested repos are unstaged with a warning and the `.gitignore` command to use); it also reports an already tracked one.

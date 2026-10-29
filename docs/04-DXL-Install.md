@@ -3,34 +3,34 @@
 > **Version:** 3.1.0 | **Last Updated:** 2026-10-29  
 > Same pattern as `DominoPasswordReset-March2026`. **Not yet run on a Domino server** - use a non-production server first.
 
-One LotusScript agent, `deploy/notes-client/Agent0_Installer_DXL.lss`, runs in the Notes client and builds `loginaudit.nsf` with `NotesDXLImporter`. It replaces the manual steps of `02-Deployment-Guide.md` sections 2.1, 2.2 and 3 (steps 1-2).
+One LotusScript agent, `lotusscript/Installer/Agent0_Installer_DXL.lss`, runs in the Notes client and builds `loginaudit.nsf` with `NotesDXLImporter`. It replaces the manual steps of `02-Deployment-Guide.md` sections 2.1, 2.2 and 3 (steps 1-2).
 
 ## Contents of the DXL
 
-`deploy/dxl/MANIFEST.txt` is the single list of what is imported (`F` form, `V` view, `L` library, `A` agent; paths relative to the repository root; library order matters). Changing the design means editing these files and running the installer in `UPDATE` mode.
+`dxl/MANIFEST.txt` is the single list of what is imported (`F` form, `V` view, `L` library, `A` agent; paths relative to the repository root; library order matters). Changing the design means editing these files and running the installer in `UPDATE` mode.
 
 | File | Defines |
 |---|---|
-| `deploy/dxl/Forms/LoginEvent.form` | 26 fields: identity (`UserCanonical`, `UserCommon`), time (`LoginTime` date/time, `LoginTimeUTC`), network (`IP`, `RemoteAddr`, `ForwardedFor`), device (`UserAgent`, `Browser`, `OS`, `DeviceType`, `DeviceKey`), context (`AccessSource`, `AuthMethod`), flags (`FirstLogin`, `NewIP`, `NewDevice`), session (`Heartbeats` number, `LastSeen`, `EndTime`, `EndReason`), review (`NotMeFlag`, `NotMeTime`, `ReviewStatus`), `Form`, `Readers` (readers field) |
-| `deploy/dxl/Forms/AuditError.form` | `ErrWhen`, `Agent`, `ErrNum`, `ErrLine`, `ErrMsg`, `Form`, `Readers` |
-| `deploy/dxl/Views/LoginsByUser.view` | `(LoginsByUser)`: `SELECT Form = "LoginEvent"`; `UserCanonical` ascending, `LoginTime` descending, `IP` |
-| `deploy/dxl/Views/NotMeReports.view` | `(NotMeReports)`: `SELECT Form = "LoginEvent" & NotMeFlag = "1"` |
-| `deploy/dxl/Views/AuditErrors.view` | `(AuditErrors)`: `SELECT Form = "AuditError"`, newest first |
-| `lotusscript/*.lss` | library and agents; the installer splits each file into options, declarations and one code element per `Sub`/`Function` (so `Sub`/`Function`/`End` lines must start in column 1 and files must be ASCII) |
+| `dxl/Forms/LoginEvent.form` | 26 fields: identity (`UserCanonical`, `UserCommon`), time (`LoginTime` date/time, `LoginTimeUTC`), network (`IP`, `RemoteAddr`, `ForwardedFor`), device (`UserAgent`, `Browser`, `OS`, `DeviceType`, `DeviceKey`), context (`AccessSource`, `AuthMethod`), flags (`FirstLogin`, `NewIP`, `NewDevice`), session (`Heartbeats` number, `LastSeen`, `EndTime`, `EndReason`), review (`NotMeFlag`, `NotMeTime`, `ReviewStatus`), `Form`, `Readers` (readers field) |
+| `dxl/Forms/AuditError.form` | `ErrWhen`, `Agent`, `ErrNum`, `ErrLine`, `ErrMsg`, `Form`, `Readers` |
+| `dxl/Views/LoginsByUser.view` | `(LoginsByUser)`: `SELECT Form = "LoginEvent"`; `UserCanonical` ascending, `LoginTime` descending, `IP` |
+| `dxl/Views/NotMeReports.view` | `(NotMeReports)`: `SELECT Form = "LoginEvent" & NotMeFlag = "1"` |
+| `dxl/Views/AuditErrors.view` | `(AuditErrors)`: `SELECT Form = "AuditError"`, newest first |
+| `lotusscript/ScriptLibraries/*.lss`, `lotusscript/Agents/*.lss` | library and agents; the installer splits each file into options, declarations and one code element per `Sub`/`Function` (so `Sub`/`Function`/`End` lines must start in column 1 and files must be ASCII) |
 
-DXL rules checked by `deploy/scripts/validate_dxl.py`: `<run>` holds plain text only; no whitespace between tags inside `par`, `field`, `code`, `column`; field types `text`, `number`, `datetime`, `names`, `keyword`, `richtext`, `readers`; view = `selection` code then columns. The importer runs with `REPLACE_ELSE_CREATE` for design, and **ignores documents and ACL** (the ACL comes from the installer's own `SetupACL`).
+DXL rules checked by `scripts/validate_dxl.py`: `<run>` holds plain text only; no whitespace between tags inside `par`, `field`, `code`, `column`; field types `text`, `number`, `datetime`, `names`, `keyword`, `richtext`, `readers`; view = `selection` code then columns. The importer runs with `REPLACE_ELSE_CREATE` for design, and **ignores documents and ACL** (the ACL comes from the installer's own `SetupACL`).
 
 ## What it creates
 
 | Element | Names | Source |
 |---|---|---|
 | Database + ACL (new DB only) | `loginaudit.nsf`, "Login Audit v3.1.0"; `-Default-` Reader, `Anonymous` No Access, `LocalDomainServers` Manager, `LocalDomainAdmins` Editor, signer Editor (create + delete), running ID Manager | installer constants |
-| Forms (2) | `LoginEvent`, `AuditError` | `deploy/dxl/Forms/` |
-| Views (3) | `(LoginsByUser)` (col 1 `UserCanonical` asc, col 2 `LoginTime` **desc**, col 3 `IP`), `(NotMeReports)`, `(AuditErrors)` | `deploy/dxl/Views/` |
-| Script library (1) | `LoginAuditLib` | `lotusscript/LoginAuditLib.lss` |
-| Agents (5) | `LoginLanding`, `GetLoginHistory`, `Heartbeat`, `NotMe`, `PurgeLoginAudit` (Action menu, target None, **not** run as web user) | `lotusscript/*.lss` |
+| Forms (2) | `LoginEvent`, `AuditError` | `dxl/Forms/` |
+| Views (3) | `(LoginsByUser)` (col 1 `UserCanonical` asc, col 2 `LoginTime` **desc**, col 3 `IP`), `(NotMeReports)`, `(AuditErrors)` | `dxl/Views/` |
+| Script library (1) | `LoginAuditLib` | `lotusscript/ScriptLibraries/LoginAuditLib.lss` |
+| Agents (5) | `LoginLanding`, `GetLoginHistory`, `Heartbeat`, `NotMe`, `PurgeLoginAudit` (Action menu, target None, **not** run as web user) | `lotusscript/Agents/*.lss` |
 
-The list and library order are in `deploy/dxl/MANIFEST.txt`. The `.lss` files are the only copy of the code; the installer builds the DXL from them. It never touches `names.nsf` or `domcfg.nsf`.
+The list and library order are in `dxl/MANIFEST.txt`. The `.lss` files are the only copy of the code; the installer builds the DXL from them. It never touches `names.nsf` or `domcfg.nsf`.
 
 ## Not done by the installer
 
@@ -54,7 +54,7 @@ The list and library order are in `deploy/dxl/MANIFEST.txt`. The `.lss` files ar
 |---|---|
 | `TARGET_SERVER` | `<SERVER>` or `LOCAL` |
 | `TARGET_FILE` | `loginaudit.nsf` (or a path) |
-| `REPO_FOLDER` | repository root as seen by **this workstation** (contains `deploy` and `lotusscript`), e.g. `/Users/<you>/CascadeProjects/DominoCustomWebPageApril26` |
+| `REPO_FOLDER` | repository root as seen by **this workstation** (contains `dxl` and `lotusscript`), e.g. `/Users/<you>/CascadeProjects/DominoCustomWebPageApril26` |
 | `SIGNER_ID` | `<SIGNER_ID>`: service ID that signs the design; **must be a member of `LocalDomainAdmins`** (Readers fields apply to agents) |
 | `REVIEW_GROUP` / `SERVER_GROUP` | defaults `LocalDomainAdmins` / `LocalDomainServers`; keep `REVIEW_GROUP` equal to `READER_ADMIN_GROUP` in `LoginAuditLib.lss` |
 | `INSTALL_MODE` | `NEW` first; `UPDATE` to replace same-named design (ACL unchanged unless `APPLY_ACL = True`); `CHECK` changes nothing and lists what exists |
@@ -71,11 +71,11 @@ Copy the matching `Agent0_Installer_DXL.lss` (its `INSTALLER_VERSION` must equal
 | Symptom | Cause / fix |
 |---|---|
 | "this installer is vX but the project files are vY" | Copy the installer from the same commit |
-| "contains non-ASCII characters" | Keep `.lss` ASCII (`python3 deploy/scripts/lint_lss.py .`) |
+| "contains non-ASCII characters" | Keep `.lss` ASCII (`python3 scripts/lint_lss.py .`) |
 | `warning ... id 7118/12051` in the import log | Compile error; fix the first one (the library), re-run `UPDATE` |
-| `fatalerror ... Unexpected <element>` | DXL breaks the DTD; run `python3 deploy/scripts/validate_dxl.py deploy/dxl` |
+| `fatalerror ... Unexpected <element>` | DXL breaks the DTD; run `python3 scripts/validate_dxl.py dxl` |
 | ACL setup failed | Message shows why; delete the DB and rerun `NEW`, or `UPDATE` with `APPLY_ACL = True` |
 | `?OpenAgent` returns the login form | `-Default-` must be Reader or higher; agents must be signed |
 | History empty, events exist | Signer is not in `LocalDomainAdmins` (Readers field) |
 
-Before packaging a change, run both checks: `python3 deploy/scripts/lint_lss.py .` and `python3 deploy/scripts/validate_dxl.py deploy/dxl`.
+Before packaging a change, run both checks: `python3 scripts/lint_lss.py .` and `python3 scripts/validate_dxl.py dxl`.

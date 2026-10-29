@@ -10,7 +10,8 @@
 # What it updates:
 #   VERSION                               <- central source of truth
 #   login-forms/DominoEmbeddedForm.html   <- CONFIG.version, CONFIG.versionDate, footer spans
-#   lotusscript/*.lss                     <- "Version  : X.Y.Z" header line
+#   lotusscript/{ScriptLibraries,Agents}/*.lss <- "Version  : X.Y.Z" header line
+#   lotusscript/Installer/Agent0_Installer_DXL.lss <- INSTALLER_VERSION
 #   verse-extension/LoginActivityViewer.html <- "v X.Y.Z" header comment
 #   README.md                             <- Version / Last Updated lines
 #   docs/*.md                             <- Version / Last Updated lines and inline vX.Y.Z
@@ -71,17 +72,17 @@ for f in \
 done
 
 # ── LotusScript agents/library — header "Version  : X.Y.Z" ────────────────────
-for f in "$ROOT/lotusscript/"*.lss; do
+for f in "$ROOT/lotusscript/ScriptLibraries/"*.lss "$ROOT/lotusscript/Agents/"*.lss; do
     [ -f "$f" ] || continue
     sedi "s/^' Version  : [0-9][0-9.]*/' Version  : ${NEW_VERSION}/" "$f"
-    echo "  ✅  lotusscript/$(basename "$f")"
+    echo "  ✅  ${f#$ROOT/}"
 done
 
 # ── DXL installer — INSTALLER_VERSION constant ────────────────────────────────
-f="$ROOT/deploy/notes-client/Agent0_Installer_DXL.lss"
+f="$ROOT/lotusscript/Installer/Agent0_Installer_DXL.lss"
 if [ -f "$f" ]; then
     sedi "s/^Const INSTALLER_VERSION = \"[0-9][0-9.]*\"/Const INSTALLER_VERSION = \"${NEW_VERSION}\"/" "$f"
-    echo "  ✅  deploy/notes-client/Agent0_Installer_DXL.lss"
+    echo "  ✅  lotusscript/Installer/Agent0_Installer_DXL.lss"
 fi
 
 # ── Verse viewer — header comment ─────────────────────────────────────────────

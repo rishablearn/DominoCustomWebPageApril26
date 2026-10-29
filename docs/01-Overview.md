@@ -6,20 +6,25 @@
 
 1. A custom Domino login page (`login-forms/DominoEmbeddedForm.html`): branding, 18 languages with RTL, dark/light theme, configurable CAPTCHA (math or alphanumeric canvas, with audio), TOTP step for Domino MFA, accessibility (WCAG 2.1 AA). All CSS/JS inline — deploy as one Pass-Thru HTML form in `DOMCFG.NSF`.
 2. A **login audit** in a separate database `loginaudit.nsf`, written by agents, shown to the user in HCL Verse.
-3. A **DXL installer** (`deploy/notes-client/Agent0_Installer_DXL.lss`) that builds `loginaudit.nsf` (database, ACL, forms, views, script library, agents) from this repository in one run - see [`04-DXL-Install.md`](04-DXL-Install.md).
+3. A **DXL installer** (`lotusscript/Installer/Agent0_Installer_DXL.lss`) that builds `loginaudit.nsf` (database, ACL, forms, views, script library, agents) from this repository in one run - see [`04-DXL-Install.md`](04-DXL-Install.md).
 
 ## Repository layout
 
 ```
-login-forms/        login page (Pass-Thru HTML for $$LoginUserForm in DOMCFG.NSF)
-lotusscript/        LoginAuditLib + 5 agents: the ONLY copy of the code (the installer builds DXL from these files)
-deploy/dxl/         MANIFEST.txt (what is imported, in order) + Forms/*.form + Views/*.view (DXL)
-deploy/notes-client/Agent0_Installer_DXL.lss   one-shot installer, runs in a Notes client
-deploy/scripts/     lint_lss.py, validate_dxl.py (run before every release)
-verse-extension/    LoginActivityViewer.html + applications.json / merge-snippet.json
-scripts/            bump-version.sh (updates VERSION, headers, docs, installer)
-docs/               01 overview, 02 deployment + tests, 03 Verse, 04 DXL install
+lotusscript/                  ALL LotusScript, nothing else
+  ScriptLibraries/            LoginAuditLib.lss
+  Agents/                     LoginLanding, GetLoginHistory, Heartbeat, NotMe, PurgeLoginAudit (.lss)
+  Installer/                  Agent0_Installer_DXL.lss  (one-shot installer, runs in a Notes client)
+dxl/                          DXL design of loginaudit.nsf
+  MANIFEST.txt                what is imported, in order (forms, views, library, agents)
+  Forms/  Views/              *.form, *.view
+login-forms/                  login page (Pass-Thru HTML for $$LoginUserForm in DOMCFG.NSF)
+verse-extension/              LoginActivityViewer.html + applications.json / merge-snippet.json
+scripts/                      bump-version.sh, lint_lss.py, validate_dxl.py (developer tools)
+docs/                         01 overview, 02 deployment + tests, 03 Verse, 04 DXL install
 ```
+
+Code stays in `.lss` files (one copy). The installer reads `dxl/MANIFEST.txt`, imports the form and view DXL as is, and **generates the script library and agent DXL from the `.lss` files** at install time, so DXL for agents and library is never hand-maintained and cannot drift from the code.
 
 ## Design elements of `loginaudit.nsf`
 

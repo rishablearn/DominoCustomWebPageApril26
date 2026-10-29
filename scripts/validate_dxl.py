@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural check of deploy/dxl/Forms/*.form and deploy/dxl/Views/*.view against the Domino DXL DTD subset
+"""Structural check of dxl/Forms/*.form and dxl/Views/*.view against the Domino DXL DTD subset
 this project uses (content models from HCL Domino Designer 14.0 "Domino DTD" reference).
 
 It catches the errors the NotesDXLImporter rejects, before you import:
@@ -9,7 +9,7 @@ It catches the errors the NotesDXLImporter rejects, before you import:
   - no whitespace-only text between elements inside par/field/code/column
   - attribute names/values limited to the ones proven to import
 
-Usage: validate_dxl.py deploy/dxl     exit code 0 = OK, 1 = problems
+Usage: validate_dxl.py dxl     exit code 0 = OK, 1 = problems
 Python 3 standard library only.
 """
 import sys
@@ -177,7 +177,7 @@ def check_view(path, root):
 
 
 def main():
-    base = sys.argv[1] if len(sys.argv) > 1 else "deploy/dxl"
+    base = sys.argv[1] if len(sys.argv) > 1 else "dxl"
     files = sorted(glob.glob(os.path.join(base, "Forms", "*.form")) + glob.glob(os.path.join(base, "Views", "*.view")))
     if not files:
         print("No DXL files found under %s" % base)

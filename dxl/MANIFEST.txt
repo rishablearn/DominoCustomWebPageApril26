@@ -1,0 +1,18 @@
+# MANIFEST.txt - read by lotusscript/Installer/Agent0_Installer_DXL.lss at install time.
+# Format:  kind | design element name | file path relative to REPO_FOLDER (the repository root; use "/")
+#   F = form (DXL)    V = view (DXL)
+#   L = script library (.lss)    A = agent (.lss, imported as an Action-menu agent, target None)
+# Library ORDER matters: a library may only  Use  libraries listed ABOVE it.
+# The .lss files under lotusscript/ScriptLibraries and lotusscript/Agents are the single source of truth; nothing is copied.
+# Lines starting with # and blank lines are ignored. Names and paths must not contain "|".
+F|LoginEvent|dxl/Forms/LoginEvent.form
+F|AuditError|dxl/Forms/AuditError.form
+V|(LoginsByUser)|dxl/Views/LoginsByUser.view
+V|(NotMeReports)|dxl/Views/NotMeReports.view
+V|(AuditErrors)|dxl/Views/AuditErrors.view
+L|LoginAuditLib|lotusscript/ScriptLibraries/LoginAuditLib.lss
+A|LoginLanding|lotusscript/Agents/LoginLanding.lss
+A|GetLoginHistory|lotusscript/Agents/GetLoginHistory.lss
+A|Heartbeat|lotusscript/Agents/Heartbeat.lss
+A|NotMe|lotusscript/Agents/NotMe.lss
+A|PurgeLoginAudit|lotusscript/Agents/PurgeLoginAudit.lss

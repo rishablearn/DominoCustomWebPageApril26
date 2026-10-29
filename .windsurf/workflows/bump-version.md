@@ -36,7 +36,7 @@ The script updates **all** of the following in one shot:
 |------|-------------|
 | `VERSION` | New version number |
 | `login-forms/DominoEmbeddedForm.html` | `CONFIG.version`, `CONFIG.versionDate`, footer `<span id="versionNumber">` |
-| `lotusscript/*.lss` | `Version  :` header line |
+| `lotusscript/ScriptLibraries/*.lss`, `lotusscript/Agents/*.lss` | `Version  :` header line |
 | `verse-extension/LoginActivityViewer.html` | Header comment version |
 | `README.md` | **Version:** and **Last Updated:** lines |
 | `docs/*.md` | **Version:**, **Last Updated:** and inline `vX.Y.Z` references |
@@ -55,7 +55,7 @@ After a version bump, the HTML forms must be **re-pasted** into Domino Designer:
 4. Select all (Ctrl+A) → **Text → Pass-Thru HTML** (turns green)
 5. Save → `tell http restart`
 
-Also re-save and re-sign any changed LotusScript library/agents in `loginaudit.nsf` (paste the updated `lotusscript/*.lss`).
+Also re-save and re-sign any changed LotusScript library/agents in `loginaudit.nsf` (paste the updated `.lss` files from `lotusscript/ScriptLibraries/` and `lotusscript/Agents/`).
 
 ### Step 5 — Commit
 

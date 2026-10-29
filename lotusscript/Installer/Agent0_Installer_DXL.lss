@@ -11,11 +11,11 @@
 ' Does    : 1. creates loginaudit.nsf (or, if you allow it, updates an existing one)
 '           2. sets the ACL on a NEW database only (docs\02-Deployment-Guide.md 2.1)
 '           3. imports the design in stages and writes a log file per stage
-'              deploy\dxl\Forms\*.form, deploy\dxl\Views\*.view   (stage 1)
-'              lotusscript\*.lss  library + agents                   (stage 2)
+'              dxl\Forms\*.form, dxl\Views\*.view   (stage 1)
+'              lotusscript\ScriptLibraries and lotusscript\Agents  (*.lss)                   (stage 2)
 '                 DXL for the code is BUILT HERE from the .lss files, so the .lss
 '                 files stay the single source of truth for all code.
-'           The file list and the library order come from deploy\dxl\MANIFEST.txt.
+'           The file list and the library order come from dxl\MANIFEST.txt.
 ' It never touches names.nsf or domcfg.nsf. It does NOT import the login page
 ' (login-forms\, docs 02 section 1) or the Verse viewer file resource (docs 02 section 4).
 ' STATUS  : the pattern is the one used in DominoPasswordReset-March2026; THIS file has
@@ -32,7 +32,7 @@ Option Declare
 Const TARGET_SERVER = "<TARGET_SERVER>"          ' server to create the NSF on; the word LOCAL = this workstation
 Const TARGET_FILE = "loginaudit.nsf"             ' path/file name on that server, e.g. apps\loginaudit.nsf
 Const TARGET_TITLE = "Login Audit"
-Const REPO_FOLDER = "<REPO_FOLDER_PATH>"         ' repository root (the folder that CONTAINS deploy and lotusscript), AS SEEN BY THIS WORKSTATION, e.g. C:\Temp\DominoCustomWebPage or /Users/<you>/CascadeProjects/DominoCustomWebPageApril26
+Const REPO_FOLDER = "<REPO_FOLDER_PATH>"         ' repository root (the folder that CONTAINS dxl and lotusscript), AS SEEN BY THIS WORKSTATION, e.g. C:\Temp\DominoCustomWebPage or /Users/<you>/CascadeProjects/DominoCustomWebPageApril26
 Const SIGNER_ID = "<SIGNER_ID>"                  ' service ID that signs the app (Editor, new DB only). MUST be a member of REVIEW_GROUP (Readers fields apply to agents)
 Const REVIEW_GROUP = "LocalDomainAdmins"         ' Editor; reviews "not me" reports; must equal READER_ADMIN_GROUP in LoginAuditLib.lss
 Const SERVER_GROUP = "LocalDomainServers"        ' Manager (new DB only)
@@ -43,8 +43,8 @@ Const INSTALL_CODE = True                        ' stage 2: script libraries + a
 Const AGENTS_UNRESTRICTED = False                ' False = restricted agents (docs 02 section 3 step 4). True only if testing shows a restricted-operation error
 ' ---------------------------------------------------------------------------
 
-Const MANIFEST_REL = "deploy/dxl/MANIFEST.txt"
-Const INSTALLER_VERSION = "3.1.0"                 ' this installer's version; must equal the ' Version header of lotusscript\LoginAuditLib.lss or the install stops
+Const MANIFEST_REL = "dxl/MANIFEST.txt"
+Const INSTALLER_VERSION = "3.1.0"                 ' this installer's version; must equal the ' Version header of lotusscript\ScriptLibraries\LoginAuditLib.lss or the install stops
 Dim gVersion As String        ' read from the LoginAuditLib.lss header (single source of the version number)
 Dim gRoot As String           ' REPO_FOLDER with a trailing path separator
 Dim gSep As String            ' path separator used by REPO_FOLDER
@@ -73,7 +73,7 @@ Sub Initialize
 		Exit Sub
 	End If
 	If gVersion <> INSTALLER_VERSION Then
-		Messagebox "Installer stopped: this installer is v" & INSTALLER_VERSION & " but the project files are v" & gVersion & ". Use the installer from the same project version (copy deploy\notes-client\Agent0_Installer_DXL.lss again).", , "Installer"
+		Messagebox "Installer stopped: this installer is v" & INSTALLER_VERSION & " but the project files are v" & gVersion & ". Use the installer from the same project version (copy lotusscript\Installer\Agent0_Installer_DXL.lss again).", , "Installer"
 		Exit Sub
 	End If
 
@@ -343,14 +343,14 @@ Function SrcPath(relPath As String) As String
 End Function
 
 Function CheckSources(session As NotesSession, nForm As Long, nView As Long, nLib As Long, nAgent As Long) As String
-	' Reads deploy\dxl\MANIFEST.txt and checks every listed file exists. Nothing is created yet.
+	' Reads dxl\MANIFEST.txt and checks every listed file exists. Nothing is created yet.
 	Dim manifest As String, lines As Variant, parts As Variant
 	Dim ln As String, kind As String, s As String, detail As String, src As String
 	Dim i As Long
 
 	manifest = ReadTextFile(session, MANIFEST_REL, detail)
 	If manifest = "" Then
-		CheckSources = "  - " & detail & Chr$(10) & "  - REPO_FOLDER must be the repository root (it contains deploy and lotusscript)." & Chr$(10)
+		CheckSources = "  - " & detail & Chr$(10) & "  - REPO_FOLDER must be the repository root (it contains dxl and lotusscript)." & Chr$(10)
 		Exit Function
 	End If
 	lines = Split(manifest, Chr$(10))
@@ -479,9 +479,9 @@ EH:
 End Function
 
 Function ReadVersion(session As NotesSession, detail As String) As String
-	' Version number = the header line  ' Version  : x.y.z  of lotusscript\LoginAuditLib.lss
+	' Version number = the header line  ' Version  : x.y.z  of lotusscript\ScriptLibraries\LoginAuditLib.lss
 	Dim t As String
-	t = ReadTextFile(session, "lotusscript/LoginAuditLib.lss", detail)
+	t = ReadTextFile(session, "lotusscript/ScriptLibraries/LoginAuditLib.lss", detail)
 	If t = "" Then Exit Function
 	ReadVersion = HeaderVersion(t)
 	If ReadVersion = "" Then detail = "no ' Version header line found in LoginAuditLib.lss"
@@ -636,7 +636,7 @@ End Sub
 
 '------------------------------------------------------------------------------
 ' Code stage: build DXL for script libraries and agents from the .lss sources
-' listed in deploy\dxl\MANIFEST.txt, then import it.
+' listed in dxl\MANIFEST.txt, then import it.
 '------------------------------------------------------------------------------
 Function ImportCode(session As NotesSession, db As NotesDatabase, detail As String) As Boolean
 	On Error GoTo EH

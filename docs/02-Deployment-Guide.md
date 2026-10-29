@@ -19,7 +19,7 @@ After every edit of the HTML: repeat step 3 (re-paste as Pass-Thru HTML), then `
 
 ## 2. Create `loginaudit.nsf`
 
-> **Recommended: use the DXL installer.** `deploy/notes-client/Agent0_Installer_DXL.lss` performs sections 2.1 (ACL), 2.2 (views, plus the forms `LoginEvent` and `AuditError`) and 3 steps 1-2 (script library and the 5 agents) in one run. Follow [`04-DXL-Install.md`](04-DXL-Install.md), then continue here at **section 3 step 3 (recompile and sign)**. Sections 2.1-2.2 and 3 steps 1-2 below are the **manual alternative** and a reference for what the installer creates. Do not do both: the installer replaces same-named design elements.
+> **Recommended: use the DXL installer.** `lotusscript/Installer/Agent0_Installer_DXL.lss` performs sections 2.1 (ACL), 2.2 (views, plus the forms `LoginEvent` and `AuditError`) and 3 steps 1-2 (script library and the 5 agents) in one run. Follow [`04-DXL-Install.md`](04-DXL-Install.md), then continue here at **section 3 step 3 (recompile and sign)**. Sections 2.1-2.2 and 3 steps 1-2 below are the **manual alternative** and a reference for what the installer creates. Do not do both: the installer replaces same-named design elements.
 >
 > Still manual after the installer: recompile + sign (3.3), server security (3.4), `LoginAuditLib` constants (8), `PurgeLoginAudit` schedule (3), viewer file resource (4), database property (2.3), login page (1).
 
@@ -57,7 +57,7 @@ Selection: `SELECT Form = "LoginEvent" & NotMeFlag = "1"` — columns: `ReviewSt
 
 **`(AuditErrors)`** — Selection: `SELECT Form = "AuditError"` — columns: `ErrWhen` (descending), `Agent`, `ErrNum`, `ErrMsg`.
 
-Forms `LoginEvent` and `AuditError` (fields as in `01-Overview.md`) let admins open an event and set `ReviewStatus` to `CLOSED`. **The installer creates them** (`deploy/dxl/Forms/`); if you build by hand they are optional. `Readers` is a *readers* field on both forms, so opening and saving an event in the Notes client keeps it protected.
+Forms `LoginEvent` and `AuditError` (fields as in `01-Overview.md`) let admins open an event and set `ReviewStatus` to `CLOSED`. **The installer creates them** (`dxl/Forms/`); if you build by hand they are optional. `Readers` is a *readers* field on both forms, so opening and saving an event in the Notes client keeps it protected.
 
 ### 2.3 Database properties
 
@@ -67,7 +67,7 @@ Advanced tab: tick *Don't maintain unread marks*. No full-text index is needed. 
 
 In `loginaudit.nsf` (Designer). **Steps 1-2 are done by the DXL installer** (`04-DXL-Install.md`); do them by hand only if you do not use it.
 
-1. **Shared Code → Script Libraries → New** — name `LoginAuditLib`, language LotusScript → paste `lotusscript/LoginAuditLib.lss` → save. **Edit the constants at the top** (see §8 for production values).
+1. **Shared Code → Script Libraries → New** — name `LoginAuditLib`, language LotusScript → paste `lotusscript/ScriptLibraries/LoginAuditLib.lss` → save. **Edit the constants at the top** (see §8 for production values).
 2. **Shared Code → Agents → New** for each agent below. Paste the file; save.
 
 | Agent name | Source | Trigger | Run as web user |
